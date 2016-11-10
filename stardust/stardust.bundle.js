@@ -1,9 +1,13 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-if(typeof(window) != "undefined") {
-    window.Stardust = require("stardust-core");
-    window.StardustWebGL = require("stardust-webgl");
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Stardust = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+"use strict";
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
-},{"stardust-core":22,"stardust-webgl":29}],2:[function(require,module,exports){
+__export(require("stardust-core"));
+var stardust_webgl_1 = require("stardust-webgl");
+exports.WebGLPlatform = stardust_webgl_1.WebGLPlatform;
+
+},{"stardust-core":23,"stardust-webgl":30}],2:[function(require,module,exports){
 // binding.js:
 // Take care of data binding.
 "use strict";
@@ -18,6 +22,7 @@ function getBindingValue(value) {
         return value;
     }
 }
+exports.getBindingValue = getBindingValue;
 // The main binding class.
 var Binding = (function () {
     function Binding(typeName, value) {
@@ -141,7 +146,7 @@ var Binding = (function () {
 }());
 exports.Binding = Binding;
 
-},{"./math":13,"./types":20}],3:[function(require,module,exports){
+},{"./math":13,"./types":21}],3:[function(require,module,exports){
 "use strict";
 var exceptions_1 = require("../exceptions");
 var parser_1 = require("./parser");
@@ -819,7 +824,7 @@ function compileString(content) {
 }
 exports.compileString = compileString;
 
-},{"../exceptions":8,"../intrinsics":9,"../library/library":10,"../utils":21,"./parser":5}],4:[function(require,module,exports){
+},{"../exceptions":8,"../intrinsics":9,"../library/library":10,"../utils":22,"./parser":5}],4:[function(require,module,exports){
 // Declare shape code with Javascript calls.
 "use strict";
 var utils_1 = require("../utils");
@@ -925,7 +930,7 @@ var CustomShape = (function () {
 }());
 exports.CustomShape = CustomShape;
 
-},{"../utils":21,"./compiler":3}],5:[function(require,module,exports){
+},{"../utils":22,"./compiler":3}],5:[function(require,module,exports){
 "use strict";
 var exceptions_1 = require("../exceptions");
 var parser_pegjs = require("./parser_pegjs");
@@ -5009,7 +5014,7 @@ var Context = (function () {
 }());
 exports.Context = Context;
 
-},{"../exceptions":8,"../intrinsics":9,"../utils":21}],8:[function(require,module,exports){
+},{"../exceptions":8,"../intrinsics":9,"../utils":22}],8:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -5255,6 +5260,7 @@ RegisterConstructor("Color", ["float", "float", "float"], function (r, g, b) { r
 RegisterConstructor("Color", ["float", "float"], function (v, a) { return [v, v, v, a]; });
 RegisterConstructor("Color", ["float"], function (v) { return [v, v, v, 1]; });
 RegisterFunction("lab2rgb", ["Color"], "Color", function (color) { return color; });
+RegisterFunction("hcl2rgb", ["Color"], "Color", function (color) { return color; });
 // Type conversions.
 // We only allow low-precision to high-precision conversions to be automated.
 RegisterTypeConversion("bool", "int", 1, function (a) { return a; });
@@ -5272,7 +5278,7 @@ addConstant("SQRT2", "float", Math.SQRT2);
 addConstant("SQRT1_2", "float", Math.SQRT1_2);
 addConstant("RED", "Color", [1, 0, 0, 1]);
 
-},{"./math":13,"./utils":21}],10:[function(require,module,exports){
+},{"./math":13,"./utils":22}],10:[function(require,module,exports){
 "use strict";
 var parser_1 = require("../compiler/parser");
 var utils_1 = require("../utils");
@@ -5308,7 +5314,7 @@ function forEachModuleFunction(name, callback) {
 }
 exports.forEachModuleFunction = forEachModuleFunction;
 
-},{"../compiler/parser":5,"../utils":21,"./primitives2d":11,"./primitives3d":12}],11:[function(require,module,exports){
+},{"../compiler/parser":5,"../utils":22,"./primitives2d":11,"./primitives3d":12}],11:[function(require,module,exports){
 "use strict";
 exports.primitives = "\n    shape Triangle(\n        Vector2 p1,\n        Vector2 p2,\n        Vector2 p3,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: p1, color: color },\n            { position: p2, color: color },\n            { position: p3, color: color }\n        ];\n    }\n\n    shape Rectangle(\n        Vector2 p1,\n        Vector2 p2,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p2.x, p1.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p1.x, p2.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n    }\n\n    shape OutlinedRectangle(\n        Vector2 p1,\n        Vector2 p2,\n        float width = 1,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        Rectangle(p1, Vector2(p1.x + width, p2.y - width), color);\n        Rectangle(Vector2(p1.x, p2.y - width), Vector2(p2.x - width, p2.y), color);\n        Rectangle(Vector2(p1.x + width, p1.y), Vector2(p2.x, p1.y + width), color);\n        Rectangle(Vector2(p2.x - width, p1.y + width), p2, color);\n    }\n\n    shape Hexagon(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..5) {\n            float a1 = i / 6.0 * PI * 2.0;\n            float a2 = (i + 1) / 6.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle16(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..15) {\n            float a1 = i / 16.0 * PI * 2.0;\n            float a2 = (i + 1) / 16.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..31) {\n            float a1 = i / 32.0 * PI * 2.0;\n            float a2 = (i + 1) / 32.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Line(\n        Vector2 p1,\n        Vector2 p2,\n        float thickness = 1,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        Vector2 d = normalize(p2 - p1);\n        Vector2 t = Vector2(d.y, -d.x) * (thickness / 2);\n        emit [\n            { position: p1 + t, color: color },\n            { position: p1 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n        emit [\n            { position: p1 - t, color: color },\n            { position: p2 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n    }\n";
 
@@ -5516,6 +5522,12 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
+var PlatformShapeData = (function () {
+    function PlatformShapeData() {
+    }
+    return PlatformShapeData;
+}());
+exports.PlatformShapeData = PlatformShapeData;
 var PlatformShape = (function () {
     function PlatformShape() {
     }
@@ -5558,7 +5570,6 @@ exports.Platform = Platform;
 
 },{}],15:[function(require,module,exports){
 "use strict";
-var SC = require("./specConstruct");
 var ScaleBinding = (function () {
     function ScaleBinding(scale, returnType, argTypes) {
         var args = [];
@@ -5641,15 +5652,21 @@ var ScaleBinding = (function () {
     return ScaleBinding;
 }());
 exports.ScaleBinding = ScaleBinding;
-var scales;
-(function (scales) {
-    function linear() {
+
+},{}],16:[function(require,module,exports){
+"use strict";
+var scale_1 = require("./scale");
+var SC = require("../specConstruct");
+var scale;
+(function (scale_2) {
+    function linear(valueType) {
+        if (valueType === void 0) { valueType = "float"; }
         var scale = (function () {
             var args = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i - 0] = arguments[_i];
             }
-            return new (ScaleBinding.bind.apply(ScaleBinding, [void 0].concat([scale, "float", ["float"]], args)))();
+            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, valueType, ["float"]], args)))();
         });
         var domain = [0, 1];
         var range = [0, 1];
@@ -5669,10 +5686,10 @@ var scales;
         };
         scale.getAttributes = function () {
             return [
-                { name: "d0", type: "float", binding: domain[0] },
-                { name: "d1", type: "float", binding: domain[1] },
-                { name: "r0", type: "float", binding: range[0] },
-                { name: "r1", type: "float", binding: range[1] }
+                { name: "d0", type: valueType, binding: domain[0] },
+                { name: "d1", type: valueType, binding: domain[1] },
+                { name: "r0", type: valueType, binding: range[0] },
+                { name: "r1", type: valueType, binding: range[1] }
             ];
         };
         scale.getExpression = function (attrs, value) {
@@ -5680,14 +5697,15 @@ var scales;
         };
         return scale;
     }
-    scales.linear = linear;
-    function log() {
+    scale_2.linear = linear;
+    function log(valueType) {
+        if (valueType === void 0) { valueType = "float"; }
         var scale = (function () {
             var args = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i - 0] = arguments[_i];
             }
-            return new (ScaleBinding.bind.apply(ScaleBinding, [void 0].concat([scale, "float", ["float"]], args)))();
+            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, valueType, ["float"]], args)))();
         });
         var domain = [0, 1];
         var range = [0, 1];
@@ -5707,10 +5725,10 @@ var scales;
         };
         scale.getAttributes = function () {
             return [
-                { name: "d0", type: "float", binding: domain[0] },
-                { name: "d1", type: "float", binding: domain[1] },
-                { name: "r0", type: "float", binding: range[0] },
-                { name: "r1", type: "float", binding: range[1] }
+                { name: "d0", type: valueType, binding: domain[0] },
+                { name: "d1", type: valueType, binding: domain[1] },
+                { name: "r0", type: valueType, binding: range[0] },
+                { name: "r1", type: valueType, binding: range[1] }
             ];
         };
         scale.getExpression = function (attrs, value) {
@@ -5718,7 +5736,7 @@ var scales;
         };
         return scale;
     }
-    scales.log = log;
+    scale_2.log = log;
     // Common arithmetics
     function addScale() {
         var scale = (function () {
@@ -5726,7 +5744,7 @@ var scales;
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i - 0] = arguments[_i];
             }
-            return new (ScaleBinding.bind.apply(ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
+            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
         });
         scale.getAttributes = function () { return []; };
         scale.getExpression = function (attrs, value1, value2) {
@@ -5735,70 +5753,71 @@ var scales;
         };
         return scale;
     }
-    scales.addScale = addScale;
+    scale_2.addScale = addScale;
     function subScale() {
         var scale = (function () {
             var args = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i - 0] = arguments[_i];
             }
-            return new (ScaleBinding.bind.apply(ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
+            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
         });
         scale.getAttributes = function () { return []; };
         scale.getExpression = function (attrs, value1, value2) { return SC.sub(value1, value2); };
         return scale;
     }
-    scales.subScale = subScale;
+    scale_2.subScale = subScale;
     function mulScale() {
         var scale = (function () {
             var args = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i - 0] = arguments[_i];
             }
-            return new (ScaleBinding.bind.apply(ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
+            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
         });
         scale.getAttributes = function () { return []; };
         scale.getExpression = function (attrs, value1, value2) { return SC.mul(value1, value2); };
         return scale;
     }
-    scales.mulScale = mulScale;
+    scale_2.mulScale = mulScale;
     function divScale() {
         var scale = (function () {
             var args = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i - 0] = arguments[_i];
             }
-            return new (ScaleBinding.bind.apply(ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
+            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
         });
         scale.getAttributes = function () { return []; };
         scale.getExpression = function (attrs, value1, value2) { return SC.div(value1, value2); };
         return scale;
     }
-    scales.divScale = divScale;
+    scale_2.divScale = divScale;
     function add(value1, value2) {
         return addScale()(value1, value2);
     }
-    scales.add = add;
+    scale_2.add = add;
     function sub(value1, value2) {
         return subScale()(value1, value2);
     }
-    scales.sub = sub;
+    scale_2.sub = sub;
     function mul(value1, value2) {
         return mulScale()(value1, value2);
     }
-    scales.mul = mul;
+    scale_2.mul = mul;
     function div(value1, value2) {
         return divScale()(value1, value2);
     }
-    scales.div = div;
-})(scales = exports.scales || (exports.scales = {}));
+    scale_2.div = div;
+})(scale = exports.scale || (exports.scale = {}));
 
-},{"./specConstruct":17}],16:[function(require,module,exports){
+},{"../specConstruct":18,"./scale":15}],17:[function(require,module,exports){
 "use strict";
 var binding_1 = require("./binding");
 var exceptions_1 = require("./exceptions");
 var utils_1 = require("./utils");
-var scales_1 = require("./scales");
+var scale_1 = require("./scale/scale");
+;
 var Shape = (function () {
     function Shape(spec, platform) {
         this._spec = spec;
@@ -5807,6 +5826,7 @@ var Shape = (function () {
         this._bindings = new utils_1.Dictionary();
         this._platformShape = null;
         this._shouldUploadData = true;
+        this._instanceFunction = null;
         // Set bindings to default value whenever exists.
         for (var name_1 in this._spec.input) {
             if (this._spec.input.hasOwnProperty(name_1)) {
@@ -5841,7 +5861,7 @@ var Shape = (function () {
             if (!this._spec.input.hasOwnProperty(name)) {
                 throw new exceptions_1.RuntimeError("attr '" + name + " is undefined.");
             }
-            if (value instanceof scales_1.ScaleBinding) {
+            if (value instanceof scale_1.ScaleBinding) {
                 if (this._platformShape) {
                     if (this._bindings.get(name) != value) {
                         this._platformShape = null;
@@ -5878,6 +5898,14 @@ var Shape = (function () {
             return this;
         }
     };
+    Shape.prototype.instance = function (func) {
+        if (func === undefined) {
+            return this._instanceFunction;
+        }
+        else {
+            this._instanceFunction = func;
+        }
+    };
     // Make alternative spec to include ScaleBinding values.
     Shape.prototype.prepareSpecification = function () {
         var newSpec = {
@@ -5888,7 +5916,7 @@ var Shape = (function () {
         };
         var newBindings = this._bindings.clone();
         this._bindings.forEach(function (binding, name) {
-            if (binding instanceof scales_1.ScaleBinding) {
+            if (binding instanceof scale_1.ScaleBinding) {
                 var attributes = binding.getAttributes();
                 var attrs_1 = {};
                 attributes.forEach(function (attr) {
@@ -5921,7 +5949,7 @@ var Shape = (function () {
     Shape.prototype.uploadScaleUniforms = function () {
         var _this = this;
         this._bindings.forEach(function (binding, name) {
-            if (binding instanceof scales_1.ScaleBinding) {
+            if (binding instanceof scale_1.ScaleBinding) {
                 var attributes = binding.getAttributes();
                 var attrs = {};
                 attributes.forEach(function (attr) {
@@ -5931,28 +5959,52 @@ var Shape = (function () {
         });
     };
     Shape.prototype.prepare = function () {
+        var _this = this;
         if (!this._platformShape) {
             var _a = this.prepareSpecification(), spec = _a[0], binding = _a[1];
             this._platformShape = this._platform.compile(this, spec, binding);
             this._shouldUploadData = true;
         }
         if (this._shouldUploadData) {
-            this._platformShape.uploadData(this._data);
+            if (this._instanceFunction == null) {
+                this._platformShapeData = this._platformShape.uploadData(this._data);
+            }
+            else {
+                this._platformShapeData = this._data.map(function (datum, index) {
+                    var info = _this._instanceFunction(datum, index, _this._data);
+                    _this._platformShape.uploadData(info.data);
+                });
+            }
             this._shouldUploadData = false;
         }
         return this;
     };
     Shape.prototype.render = function () {
+        var _this = this;
         this.prepare();
         this.uploadScaleUniforms();
-        this._platformShape.render();
+        if (this._instanceFunction == null) {
+            this._platformShape.render(this._platformShapeData);
+        }
+        else {
+            var datas_1 = this._platformShapeData;
+            this._data.forEach(function (datum, index) {
+                var info = _this._instanceFunction(datum, index, _this._data);
+                for (var attr in info.attrs) {
+                    if (info.attrs.hasOwnProperty(attr)) {
+                        _this._platformShape.updateUniform(attr, binding_1.getBindingValue(info.attrs[attr]));
+                    }
+                }
+                _this._platformShape.render(datas_1[index]);
+            });
+        }
         return this;
     };
     return Shape;
 }());
 exports.Shape = Shape;
 
-},{"./binding":2,"./exceptions":8,"./scales":15,"./utils":21}],17:[function(require,module,exports){
+},{"./binding":2,"./exceptions":8,"./scale/scale":15,"./utils":22}],18:[function(require,module,exports){
 "use strict";
 // Construct part of specification.
 var intrinsics_1 = require("./intrinsics");
@@ -6043,7 +6095,7 @@ function lessThan(a1, a2) {
 }
 exports.lessThan = lessThan;
 
-},{"./intrinsics":9}],18:[function(require,module,exports){
+},{"./intrinsics":9}],19:[function(require,module,exports){
 // Flattener: Resolve emit statements into individual render calls.
 "use strict";
 var SC = require("../specConstruct");
@@ -6203,12 +6255,12 @@ function FlattenEmits(shape) {
 }
 exports.FlattenEmits = FlattenEmits;
 
-},{"../specConstruct":17,"../utils":21}],19:[function(require,module,exports){
+},{"../specConstruct":18,"../utils":22}],20:[function(require,module,exports){
 "use strict";
 var flattener_1 = require("./flattener");
 exports.FlattenEmits = flattener_1.FlattenEmits;
 
-},{"./flattener":18}],20:[function(require,module,exports){
+},{"./flattener":19}],21:[function(require,module,exports){
 // Basic types.
 "use strict";
 function MakeType(name, size, primitive, primitiveCount) {
@@ -6228,7 +6280,7 @@ exports.types = {
     "Color": MakeType("Color", 16, "float", 4)
 };
 
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 "use strict";
 var Dictionary = (function () {
     function Dictionary() {
@@ -6296,38 +6348,42 @@ function timeTask(name, cb) {
 }
 exports.timeTask = timeTask;
 
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 "use strict";
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
 exports.version = "0.0.1";
-// Math classes and utilities.
-__export(require("./core/math"));
+// Math classes and utilities
 __export(require("./core/utils"));
-// Shape class and shape specification.
+__export(require("./core/math"));
+// Shape class and shape specification
 __export(require("./core/shape"));
 __export(require("./core/binding"));
 __export(require("./core/intrinsics"));
 __export(require("./core/types"));
 __export(require("./core/exceptions"));
-__export(require("./core/transform/transforms"));
-// Parsing and compiling.
+// Parsing and compiling
 __export(require("./core/compiler/parser"));
 __export(require("./core/compiler/compiler"));
 __export(require("./core/compiler/declare"));
-// Javascript context.
+// Code transformation
+__export(require("./core/transform/transforms"));
+// Javascript context
 __export(require("./core/evaluator/evaluator"));
-// Builtin platforms.
+// Platform base class
 __export(require("./core/platform"));
-__export(require("./core/scales"));
+// Scales
+__export(require("./core/scale/scale"));
+var scales_1 = require("./core/scale/scales");
+exports.scale = scales_1.scale;
 
-},{"./core/binding":2,"./core/compiler/compiler":3,"./core/compiler/declare":4,"./core/compiler/parser":5,"./core/evaluator/evaluator":7,"./core/exceptions":8,"./core/intrinsics":9,"./core/math":13,"./core/platform":14,"./core/scales":15,"./core/shape":16,"./core/transform/transforms":19,"./core/types":20,"./core/utils":21}],23:[function(require,module,exports){
+},{"./core/binding":2,"./core/compiler/compiler":3,"./core/compiler/declare":4,"./core/compiler/parser":5,"./core/evaluator/evaluator":7,"./core/exceptions":8,"./core/intrinsics":9,"./core/math":13,"./core/platform":14,"./core/scale/scale":15,"./core/scale/scales":16,"./core/shape":17,"./core/transform/transforms":20,"./core/types":21,"./core/utils":22}],24:[function(require,module,exports){
 "use strict";
 var webgl_1 = require("./webgl/webgl");
 exports.WebGLPlatform = webgl_1.WebGLPlatform;
 
-},{"./webgl/webgl":27}],24:[function(require,module,exports){
+},{"./webgl/webgl":28}],25:[function(require,module,exports){
 "use strict";
 var types_1 = require("./types");
 var intrinsics_1 = require("./intrinsics");
@@ -6576,7 +6632,7 @@ var Generator = (function () {
 }());
 exports.Generator = Generator;
 
-},{"./intrinsics":25,"./types":26}],25:[function(require,module,exports){
+},{"./intrinsics":26,"./types":27}],26:[function(require,module,exports){
 "use strict";
 var stardust_core_1 = require("stardust-core");
 var stardust_core_2 = require("stardust-core");
@@ -6660,7 +6716,9 @@ ImplementSimpleFunction("length", ["Quaternion"], "float", "length");
 ImplementSimpleFunction("cross", ["Vector3", "Vector3"], "Vector3", "cross");
 ImplementSimpleFunction("quat_mul", ["Quaternion", "Quaternion"], "Quaternion", "s3_quat_mul", "\n    vec4 s3_quat_mul(vec4 q1, vec4 q2) {\n        return vec4(\n            q1.w * q2.xyz + q2.w * q1.xyz + cross(q1.xyz, q2.xyz),\n            q1.w * q2.w - dot(q1.xyz, q2.xyz)\n        );\n    }\n");
 ImplementSimpleFunction("quat_rotate", ["Quaternion", "Vector3"], "Vector3", "s3_quat_rotate", "\n    vec3 s3_quat_rotate(vec4 q, vec3 v) {\n        float d = dot(q.xyz, v);\n        vec3 c = cross(q.xyz, v);\n        return q.w * q.w * v + (q.w + q.w) * c + d * q.xyz - cross(c, q.xyz);\n    }\n");
-ImplementSimpleFunction("lab2rgb", ["Color"], "Color", "s3_lab2rgb", "\n    vec3 s3_lab2rgb_curve(float v) {\n        float p = pow(v, 3);\n        if(p > 0.008856) {\n            return p;\n        } else {\n            return (v - 16.0 / 116.0) / 7.787;\n        }\n    }\n    vec3 s3_lab2rgb_curve2(float v) {\n        if(v > 0.0031308) {\n            return 1.055 * pow(v , (1 / 2.4)) - 0.055;\n        } else {\n            return 12.92 * var_R;\n        }\n    }\n    vec4 s3_lab2rgb(vec4 lab) {\n        float var_Y = (lab.x + 16.0) / 116.0;\n        float var_X = lab.y / 500.0 + var_Y;\n        float var_Z = var_Y - lab.z / 200.0;\n\n        var_X = s3_lab2rgb_curve(var_X) * 0.95047;\n        var_Y = s3_lab2rgb_curve(var_Y);\n        var_Z = s3_lab2rgb_curve(var_Z) * 1.08883;\n\n        float var_R = var_X *  3.2406 + var_Y * -1.5372 + var_Z * -0.4986;\n        float var_G = var_X * -0.9689 + var_Y *  1.8758 + var_Z *  0.0415;\n        float var_B = var_X *  0.0557 + var_Y * -0.2040 + var_Z *  1.0570;\n\n        var_R = s3_lab2rgb_curve2(var_R);\n        var_G = s3_lab2rgb_curve2(var_G);\n        var_B = s3_lab2rgb_curve2(var_B);\n\n        return vec3(var_R, var_G, var_B, lab.a);\n    }\n");
+var colorCode = "\n    float s3_lab2rgb_curve(float v) {\n        float p = pow(v, 3.0);\n        if(p > 0.008856) {\n            return p;\n        } else {\n            return (v - 16.0 / 116.0) / 7.787;\n        }\n    }\n    float s3_lab2rgb_curve2(float v) {\n        if(v > 0.0031308) {\n            return 1.055 * pow(v , (1.0 / 2.4)) - 0.055;\n        } else {\n            return 12.92 * v;\n        }\n    }\n    vec4 s3_lab2rgb(vec4 lab) {\n        float var_Y = (lab.x + 0.160) / 1.160;\n        float var_X = lab.y / 5.0 + var_Y;\n        float var_Z = var_Y - lab.z / 2.0;\n\n        var_X = s3_lab2rgb_curve(var_X) * 0.95047;\n        var_Y = s3_lab2rgb_curve(var_Y);\n        var_Z = s3_lab2rgb_curve(var_Z) * 1.08883;\n\n        float var_R = var_X *  3.2406 + var_Y * -1.5372 + var_Z * -0.4986;\n        float var_G = var_X * -0.9689 + var_Y *  1.8758 + var_Z *  0.0415;\n        float var_B = var_X *  0.0557 + var_Y * -0.2040 + var_Z *  1.0570;\n\n        var_R = s3_lab2rgb_curve2(var_R);\n        var_G = s3_lab2rgb_curve2(var_G);\n        var_B = s3_lab2rgb_curve2(var_B);\n\n        return vec4(var_R, var_G, var_B, lab.a);\n    }\n    vec4 s3_hcl2rgb(vec4 hcl) {\n        vec4 lab = vec4(hcl.z, hcl.y * cos(hcl.x), hcl.y * sin(hcl.x), hcl.a);\n        return s3_lab2rgb(lab);\n    }\n";
+ImplementSimpleFunction("lab2rgb", ["Color"], "Color", "s3_lab2rgb", colorCode);
+ImplementSimpleFunction("hcl2rgb", ["Color"], "Color", "s3_hcl2rgb", colorCode);
 ImplementSimpleFunction("sqrt", ["float"], "float", "sqrt");
 ImplementSimpleFunction("exp", ["float"], "float", "exp");
 ImplementSimpleFunction("log", ["float"], "float", "log");
@@ -6693,7 +6751,7 @@ function generateIntrinsicFunction(name, args) {
 }
 exports.generateIntrinsicFunction = generateIntrinsicFunction;
 
-},{"stardust-core":22}],26:[function(require,module,exports){
+},{"stardust-core":23}],27:[function(require,module,exports){
 "use strict";
 var typeName2WebGLTypeName = {
     "float": "float",
@@ -6734,7 +6792,7 @@ function convertConstant(type, value) {
 }
 exports.convertConstant = convertConstant;
 
-},{}],27:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -6824,6 +6882,14 @@ var WebGLPlatformShapeProgram = (function () {
     };
     return WebGLPlatformShapeProgram;
 }());
+var WebGLPlatformShapeData = (function (_super) {
+    __extends(WebGLPlatformShapeData, _super);
+    function WebGLPlatformShapeData() {
+        _super.apply(this, arguments);
+    }
+    return WebGLPlatformShapeData;
+}(stardust_core_1.PlatformShapeData));
+exports.WebGLPlatformShapeData = WebGLPlatformShapeData;
 var WebGLPlatformShape = (function (_super) {
     __extends(WebGLPlatformShape, _super);
     function WebGLPlatformShape(platform, GL, shape, spec, bindings) {
@@ -6840,26 +6906,33 @@ var WebGLPlatformShape = (function (_super) {
         this._flattenedVertexCount = flattenedInfo.count;
         this._program = new WebGLPlatformShapeProgram(GL, this._specFlattened, function (name) { return _this.isUniform(name); }, this._platform.viewInfo.type, generator_1.GenerateMode.NORMAL);
         this._programPick = new WebGLPlatformShapeProgram(GL, this._specFlattened, function (name) { return _this.isUniform(name); }, this._platform.viewInfo.type, generator_1.GenerateMode.PICK);
-        this.initializeBuffers();
+        this.initializeUniforms();
     }
-    WebGLPlatformShape.prototype.initializeBuffers = function () {
-        var GL = this._GL;
-        this._buffers = new stardust_core_3.Dictionary();
+    WebGLPlatformShape.prototype.initializeUniforms = function () {
         for (var name_1 in this._specFlattened.input) {
             if (this.isUniform(name_1)) {
                 this.updateUniform(name_1, this._bindings.get(name_1).specValue);
             }
-            else {
-                var location_3 = this._program.getAttribLocation(name_1);
+        }
+    };
+    WebGLPlatformShape.prototype.initializeBuffers = function () {
+        var GL = this._GL;
+        var data = new WebGLPlatformShapeData();
+        data.buffers = new stardust_core_3.Dictionary();
+        ;
+        for (var name_2 in this._specFlattened.input) {
+            if (!this.isUniform(name_2)) {
+                var location_3 = this._program.getAttribLocation(name_2);
                 if (location_3 != null) {
-                    this._buffers.set(name_1, GL.createBuffer());
+                    data.buffers.set(name_2, GL.createBuffer());
                 }
             }
         }
         if (this._programPick) {
-            this._buffers.set("s3_pick_index", GL.createBuffer());
+            data.buffers.set("s3_pick_index", GL.createBuffer());
         }
-        this._vertexCount = 0;
+        data.vertexCount = 0;
+        return data;
     };
     // Is the input attribute compiled as uniform?
     WebGLPlatformShape.prototype.isUniform = function (name) {
@@ -6883,13 +6956,13 @@ var WebGLPlatformShape = (function (_super) {
         }
     };
     WebGLPlatformShape.prototype.uploadData = function (data) {
-        var _this = this;
+        var buffers = this.initializeBuffers();
         var n = data.length;
         var GL = this._GL;
         var bindings = this._bindings;
         var rep = this._flattenedVertexCount;
         this._bindings.forEach(function (binding, name) {
-            var buffer = _this._buffers.get(name);
+            var buffer = buffers.buffers.get(name);
             if (buffer == null)
                 return;
             var type = binding.type;
@@ -6903,7 +6976,7 @@ var WebGLPlatformShape = (function (_super) {
         for (var i = 0; i < n * rep; i++) {
             array[i] = i % rep;
         }
-        GL.bindBuffer(GL.ARRAY_BUFFER, this._buffers.get(this._flattenedVertexIndexVariable));
+        GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get(this._flattenedVertexIndexVariable));
         GL.bufferData(GL.ARRAY_BUFFER, array, GL.STATIC_DRAW);
         // The pick index attribute.
         if (this._programPick) {
@@ -6915,14 +6988,15 @@ var WebGLPlatformShape = (function (_super) {
                 array_1[i * 4 + 2] = ((index & 0xff0000) >> 16) / 255.0;
                 array_1[i * 4 + 3] = ((index & 0xff000000) >> 24) / 255.0;
             }
-            GL.bindBuffer(GL.ARRAY_BUFFER, this._buffers.get("s3_pick_index"));
+            GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get("s3_pick_index"));
             GL.bufferData(GL.ARRAY_BUFFER, array_1, GL.STATIC_DRAW);
         }
-        this._vertexCount = n * rep;
+        buffers.vertexCount = n * rep;
+        return buffers;
     };
     // Render the graphics.
-    WebGLPlatformShape.prototype.renderBase = function (mode) {
-        if (this._vertexCount > 0) {
+    WebGLPlatformShape.prototype.renderBase = function (buffers, mode) {
+        if (buffers.vertexCount > 0) {
             var GL = this._GL;
             var spec = this._specFlattened;
             var bindings = this._bindings;
@@ -6931,23 +7005,23 @@ var WebGLPlatformShape = (function (_super) {
                 program = this._programPick;
             }
             program.use();
-            for (var name_2 in spec.input) {
-                var attributeLocation = program.getAttribLocation(name_2);
+            for (var name_3 in spec.input) {
+                var attributeLocation = program.getAttribLocation(name_3);
                 if (attributeLocation == null)
                     continue;
-                GL.bindBuffer(GL.ARRAY_BUFFER, this._buffers.get(name_2));
+                GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get(name_3));
                 GL.enableVertexAttribArray(attributeLocation);
-                if (name_2 == this._flattenedVertexIndexVariable) {
+                if (name_3 == this._flattenedVertexIndexVariable) {
                     GL.vertexAttribPointer(attributeLocation, 1, GL.FLOAT, false, 0, 0);
                 }
                 else {
-                    var type = bindings.get(name_2).type;
+                    var type = bindings.get(name_3).type;
                     GL.vertexAttribPointer(attributeLocation, type.primitiveCount, type.primitive == "float" ? GL.FLOAT : GL.INT, false, 0, 0);
                 }
             }
             if (mode == generator_1.GenerateMode.PICK) {
                 var attributeLocation = program.getAttribLocation("s3_pick_index");
-                GL.bindBuffer(GL.ARRAY_BUFFER, this._buffers.get("s3_pick_index"));
+                GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get("s3_pick_index"));
                 GL.enableVertexAttribArray(attributeLocation);
                 GL.vertexAttribPointer(attributeLocation, 4, GL.FLOAT, false, 0, 0);
             }
@@ -6978,9 +7052,9 @@ var WebGLPlatformShape = (function (_super) {
             if (mode == generator_1.GenerateMode.PICK) {
                 GL.uniform1f(program.getUniformLocation("s3_pick_index_alpha"), this._pickIndex / 255.0);
             }
-            GL.drawArrays(GL.TRIANGLES, 0, this._vertexCount);
-            for (var name_3 in spec.input) {
-                var attributeLocation = program.getAttribLocation(name_3);
+            GL.drawArrays(GL.TRIANGLES, 0, buffers.vertexCount);
+            for (var name_4 in spec.input) {
+                var attributeLocation = program.getAttribLocation(name_4);
                 if (attributeLocation != null) {
                     GL.disableVertexAttribArray(attributeLocation);
                 }
@@ -6994,11 +7068,11 @@ var WebGLPlatformShape = (function (_super) {
     WebGLPlatformShape.prototype.setPickIndex = function (index) {
         this._pickIndex = index;
     };
-    WebGLPlatformShape.prototype.render = function () {
+    WebGLPlatformShape.prototype.render = function (buffers) {
         if (this._platform.renderMode == generator_1.GenerateMode.PICK) {
             this.setPickIndex(this._platform.assignPickIndex(this._shape));
         }
-        this.renderBase(this._platform.renderMode);
+        this.renderBase(buffers, this._platform.renderMode);
     };
     return WebGLPlatformShape;
 }(stardust_core_1.PlatformShape));
@@ -7118,7 +7192,7 @@ var WebGLPlatform = (function (_super) {
 }(stardust_core_1.Platform));
 exports.WebGLPlatform = WebGLPlatform;
 
-},{"./generator":24,"./webglutils":28,"stardust-core":22}],28:[function(require,module,exports){
+},{"./generator":25,"./webglutils":29,"stardust-core":23}],29:[function(require,module,exports){
 "use strict";
 var stardust_core_1 = require("stardust-core");
 function compileProgram(GL, vsCode, fsCode) {
@@ -7152,10 +7226,11 @@ function compileProgram(GL, vsCode, fsCode) {
 }
 exports.compileProgram = compileProgram;
 
-},{"stardust-core":22}],29:[function(require,module,exports){
+},{"stardust-core":23}],30:[function(require,module,exports){
 "use strict";
 exports.version = "0.0.1";
 var platforms_1 = require("./platforms/platforms");
 exports.WebGLPlatform = platforms_1.WebGLPlatform;
 
-},{"./platforms/platforms":23}]},{},[1]);
+},{"./platforms/platforms":24}]},{},[1])(1)
+});
