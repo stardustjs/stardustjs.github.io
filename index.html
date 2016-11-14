@@ -1,16 +1,115 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="utf-8" />
-        <title>Stardust: GPU-based Visualization Library</title>
-    </head>
-    <body>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Stardust: GPU-based Visualization Library</title>
+    <link rel="stylesheet" type="text/css" href="css/main.css" />
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/styles/color-brewer.min.css" />
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/highlight.min.js"></script>
+</head>
+
+<body>
+    <header>
+        <a href="#">Home</a>
+    </header>
+    <section>
         <h1>Stardust: GPU-based Visualization Library</h1>
-        <p>Description TBD.</p>
-        <p><a href="https://stardust-vis.github.io/playground/">Playground</a></p>
-        <h2>Examples</h2>
+        <p>
+            <b>Stardust</b> is a library for rendering information visualizations with GPU (WebGL). Stardust provides a easy-to-use
+            and familiar API for defining shapes and binding data to them. With Stardust, you can render tenth of thousands
+            of markers and animate them in real time without the hassle of managing WebGL shaders and buffers.
+        </p>
+        <p><a href="https://stardust-vis.github.io/playground/">Online Playground</a></p>
+        <p>Install with npm:</p>
+        <pre><code class="bash">npm install stardust-core
+npm install stardust-webgl</code></pre>
+        <p>Link to the latest release:</p>
+        <pre><code class="html">&lt;script type="text/javascript" src="//stardust-vis.github.io/stardust/stardust.bundle.min.js"&gt;&lt;/script&gt;</code></pre>
+        <p>Checkout the source code here:</p>
+        <ul>
+            <li><a href="https://github.com/stardust-vis/">https://github.com/stardust-vis/</a></li>
+        </ul>
+        <h2 id="examples">Examples</h2>
         <ul>
             <li><a href="http://bl.ocks.org/donghaoren/46068d0de800c2ca72d57ff194955c3e">Scatterplot</a></li>
         </ul>
-    </body>
+        <h2>Stardust API</h2>
+        <h3>Declaring Shape</h3>
+        <p>To render with Stardust, you need to create a <code>Shape</code> object.</p>
+        <p>Use predefined shapes:</p>
+        <pre><code class="javascript">let shape = Stardust.shape.circle();</code></pre>
+        <p>Declare a new shape with CustomShape class:</p>
+        <pre><code class="javascript">// Create custom shape and declare input and variables
+let shape = Stardust.shape.custom()
+    .input("x", "float")
+    .input("y", "float", "default_value")
+    // ...
+    .variable("position", "Vector2(x, y)");
+
+// Add elements to the shape
+shape.add("P2D.Circle")
+    .attr("center", "position")
+    .attr("radius", 3);</code></pre>
+
+        <p>Compile directly from the specification language:</p>
+        <pre><code class="javascript">let shape = Stardust.shape.compile(`
+    import Circle from P2D;
+    shape Shape(float x, float y) {
+        Circle(Vector2(x, y), 3);
+    }
+`).shape("Shape");</code></pre>
+
+        <h3>Bind Data to Shape and Render</h3>
+
+        <p>Direct binding:</p>
+
+        <pre><code class="javascript">let shape = platform.create(shape);
+
+// Specify attributes
+shape.attr("name1", 1);
+shape.attr("name2", (d) => d.x);
+
+// Use scales
+let xScale = Stardust.scale.linear()
+    .domain([ 0, 1 ])
+    .range([ 0, width ]);
+shape.attr("name1", xScale((d) => d.x));
+
+// Bind data
+shape.data(data);
+
+// Custom scales
+let cScale = Stardust.scale.custom("x * 15 + 142")
+
+// Render
+shape.render();</code></pre>
+
+        <p>2-level mapping:</p>
+
+        <pre><code class="javascript">shape.attr("name1", 1);
+shape.attr("name2", (d) => d.x);
+
+shape.instance((d) => {
+    return {
+        data: d.items,
+        attrs: {
+            "name1": d.length / 13
+        }
+    }
+});
+shape.data(DATA);
+shape.render();</code></pre>
+
+        <h2>About</h2>
+        <p></p>
+    </section>
+    <footer>
+        <p>Copyright Authors, 2016. License: MIT</p>
+    </footer>
+    <script type="text/javascript">
+            hljs.initHighlightingOnLoad();
+        </script>
+</body>
+
 </html>
