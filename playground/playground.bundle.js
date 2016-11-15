@@ -13,6 +13,15 @@ function getBindingValue(value) {
         return value;
     }
 }
+exports.getBindingValue = getBindingValue;
+var ShiftBinding = (function () {
+    function ShiftBinding(name, offset) {
+        this.name = name;
+        this.offset = offset;
+    }
+    return ShiftBinding;
+}());
+exports.ShiftBinding = ShiftBinding;
 // The main binding class.
 var Binding = (function () {
     function Binding(typeName, value) {
@@ -136,7 +145,7 @@ var Binding = (function () {
 }());
 exports.Binding = Binding;
 
-},{"./math":12,"./types":19}],2:[function(require,module,exports){
+},{"./math":12,"./types":21}],2:[function(require,module,exports){
 "use strict";
 var exceptions_1 = require("../exceptions");
 var parser_1 = require("./parser");
@@ -785,6 +794,9 @@ var Compiler = (function () {
                     compileIthCondition_1(0);
                 }
                 break;
+            case "return": {
+                throw new exceptions_1.CompileError("unexpected return statement");
+            }
         }
     };
     return Compiler;
@@ -814,7 +826,7 @@ function compileString(content) {
 }
 exports.compileString = compileString;
 
-},{"../exceptions":7,"../intrinsics":8,"../library/library":9,"../utils":20,"./parser":4}],3:[function(require,module,exports){
+},{"../exceptions":7,"../intrinsics":8,"../library/library":9,"../utils":22,"./parser":4}],3:[function(require,module,exports){
 // Declare shape code with Javascript calls.
 "use strict";
 var utils_1 = require("../utils");
@@ -920,7 +932,7 @@ var CustomShape = (function () {
 }());
 exports.CustomShape = CustomShape;
 
-},{"../utils":20,"./compiler":2}],4:[function(require,module,exports){
+},{"../utils":22,"./compiler":2}],4:[function(require,module,exports){
 "use strict";
 var exceptions_1 = require("../exceptions");
 var parser_pegjs = require("./parser_pegjs");
@@ -5004,7 +5016,7 @@ var Context = (function () {
 }());
 exports.Context = Context;
 
-},{"../exceptions":7,"../intrinsics":8,"../utils":20}],7:[function(require,module,exports){
+},{"../exceptions":7,"../intrinsics":8,"../utils":22}],7:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -5250,6 +5262,7 @@ RegisterConstructor("Color", ["float", "float", "float"], function (r, g, b) { r
 RegisterConstructor("Color", ["float", "float"], function (v, a) { return [v, v, v, a]; });
 RegisterConstructor("Color", ["float"], function (v) { return [v, v, v, 1]; });
 RegisterFunction("lab2rgb", ["Color"], "Color", function (color) { return color; });
+RegisterFunction("hcl2rgb", ["Color"], "Color", function (color) { return color; });
 // Type conversions.
 // We only allow low-precision to high-precision conversions to be automated.
 RegisterTypeConversion("bool", "int", 1, function (a) { return a; });
@@ -5267,7 +5280,7 @@ addConstant("SQRT2", "float", Math.SQRT2);
 addConstant("SQRT1_2", "float", Math.SQRT1_2);
 addConstant("RED", "Color", [1, 0, 0, 1]);
 
-},{"./math":12,"./utils":20}],9:[function(require,module,exports){
+},{"./math":12,"./utils":22}],9:[function(require,module,exports){
 "use strict";
 var parser_1 = require("../compiler/parser");
 var utils_1 = require("../utils");
@@ -5303,9 +5316,9 @@ function forEachModuleFunction(name, callback) {
 }
 exports.forEachModuleFunction = forEachModuleFunction;
 
-},{"../compiler/parser":4,"../utils":20,"./primitives2d":10,"./primitives3d":11}],10:[function(require,module,exports){
+},{"../compiler/parser":4,"../utils":22,"./primitives2d":10,"./primitives3d":11}],10:[function(require,module,exports){
 "use strict";
-exports.primitives = "\n    shape Triangle(\n        Vector2 p1,\n        Vector2 p2,\n        Vector2 p3,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: p1, color: color },\n            { position: p2, color: color },\n            { position: p3, color: color }\n        ];\n    }\n\n    shape Rectangle(\n        Vector2 p1,\n        Vector2 p2,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p2.x, p1.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p1.x, p2.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n    }\n\n    shape OutlinedRectangle(\n        Vector2 p1,\n        Vector2 p2,\n        float width = 1,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        Rectangle(p1, Vector2(p1.x + width, p2.y - width), color);\n        Rectangle(Vector2(p1.x, p2.y - width), Vector2(p2.x - width, p2.y), color);\n        Rectangle(Vector2(p1.x + width, p1.y), Vector2(p2.x, p1.y + width), color);\n        Rectangle(Vector2(p2.x - width, p1.y + width), p2, color);\n    }\n\n    shape Hexagon(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..5) {\n            float a1 = i / 6.0 * PI * 2.0;\n            float a2 = (i + 1) / 6.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle16(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..15) {\n            float a1 = i / 16.0 * PI * 2.0;\n            float a2 = (i + 1) / 16.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..31) {\n            float a1 = i / 32.0 * PI * 2.0;\n            float a2 = (i + 1) / 32.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Line(\n        Vector2 p1,\n        Vector2 p2,\n        float thickness = 1,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        Vector2 d = normalize(p2 - p1);\n        Vector2 t = Vector2(d.y, -d.x) * (thickness / 2);\n        emit [\n            { position: p1 + t, color: color },\n            { position: p1 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n        emit [\n            { position: p1 - t, color: color },\n            { position: p2 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n    }\n";
+exports.primitives = "\n    shape Triangle(\n        Vector2 p1,\n        Vector2 p2,\n        Vector2 p3,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: p1, color: color },\n            { position: p2, color: color },\n            { position: p3, color: color }\n        ];\n    }\n\n    shape Rectangle(\n        Vector2 p1,\n        Vector2 p2,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p2.x, p1.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p1.x, p2.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n    }\n\n    shape OutlinedRectangle(\n        Vector2 p1,\n        Vector2 p2,\n        float width = 1,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        Rectangle(p1, Vector2(p1.x + width, p2.y - width), color);\n        Rectangle(Vector2(p1.x, p2.y - width), Vector2(p2.x - width, p2.y), color);\n        Rectangle(Vector2(p1.x + width, p1.y), Vector2(p2.x, p1.y + width), color);\n        Rectangle(Vector2(p2.x - width, p1.y + width), p2, color);\n    }\n\n    shape Hexagon(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..5) {\n            float a1 = i / 6.0 * PI * 2.0;\n            float a2 = (i + 1) / 6.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle16(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..15) {\n            float a1 = i / 16.0 * PI * 2.0;\n            float a2 = (i + 1) / 16.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..31) {\n            float a1 = i / 32.0 * PI * 2.0;\n            float a2 = (i + 1) / 32.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Line(\n        Vector2 p1,\n        Vector2 p2,\n        float width = 1,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        Vector2 d = normalize(p2 - p1);\n        Vector2 t = Vector2(d.y, -d.x) * (width / 2);\n        emit [\n            { position: p1 + t, color: color },\n            { position: p1 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n        emit [\n            { position: p1 - t, color: color },\n            { position: p2 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n    }\n";
 
 },{}],11:[function(require,module,exports){
 "use strict";
@@ -5511,6 +5524,12 @@ var __extends = (this && this.__extends) || function (d, b) {
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
+var PlatformShapeData = (function () {
+    function PlatformShapeData() {
+    }
+    return PlatformShapeData;
+}());
+exports.PlatformShapeData = PlatformShapeData;
 var PlatformShape = (function () {
     function PlatformShape() {
     }
@@ -5553,7 +5572,6 @@ exports.Platform = Platform;
 
 },{}],14:[function(require,module,exports){
 "use strict";
-var SC = require("./specConstruct");
 var ScaleBinding = (function () {
     function ScaleBinding(scale, returnType, argTypes) {
         var args = [];
@@ -5636,15 +5654,21 @@ var ScaleBinding = (function () {
     return ScaleBinding;
 }());
 exports.ScaleBinding = ScaleBinding;
-var scales;
-(function (scales) {
-    function linear() {
+
+},{}],15:[function(require,module,exports){
+"use strict";
+var scale_1 = require("./scale");
+var SC = require("../specConstruct");
+var scale;
+(function (scale_2) {
+    function linear(valueType) {
+        if (valueType === void 0) { valueType = "float"; }
         var scale = (function () {
             var args = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i - 0] = arguments[_i];
             }
-            return new (ScaleBinding.bind.apply(ScaleBinding, [void 0].concat([scale, "float", ["float"]], args)))();
+            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, valueType, ["float"]], args)))();
         });
         var domain = [0, 1];
         var range = [0, 1];
@@ -5664,10 +5688,10 @@ var scales;
         };
         scale.getAttributes = function () {
             return [
-                { name: "d0", type: "float", binding: domain[0] },
-                { name: "d1", type: "float", binding: domain[1] },
-                { name: "r0", type: "float", binding: range[0] },
-                { name: "r1", type: "float", binding: range[1] }
+                { name: "d0", type: valueType, binding: domain[0] },
+                { name: "d1", type: valueType, binding: domain[1] },
+                { name: "r0", type: valueType, binding: range[0] },
+                { name: "r1", type: valueType, binding: range[1] }
             ];
         };
         scale.getExpression = function (attrs, value) {
@@ -5675,14 +5699,15 @@ var scales;
         };
         return scale;
     }
-    scales.linear = linear;
-    function log() {
+    scale_2.linear = linear;
+    function log(valueType) {
+        if (valueType === void 0) { valueType = "float"; }
         var scale = (function () {
             var args = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i - 0] = arguments[_i];
             }
-            return new (ScaleBinding.bind.apply(ScaleBinding, [void 0].concat([scale, "float", ["float"]], args)))();
+            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, valueType, ["float"]], args)))();
         });
         var domain = [0, 1];
         var range = [0, 1];
@@ -5702,10 +5727,10 @@ var scales;
         };
         scale.getAttributes = function () {
             return [
-                { name: "d0", type: "float", binding: domain[0] },
-                { name: "d1", type: "float", binding: domain[1] },
-                { name: "r0", type: "float", binding: range[0] },
-                { name: "r1", type: "float", binding: range[1] }
+                { name: "d0", type: valueType, binding: domain[0] },
+                { name: "d1", type: valueType, binding: domain[1] },
+                { name: "r0", type: valueType, binding: range[0] },
+                { name: "r1", type: valueType, binding: range[1] }
             ];
         };
         scale.getExpression = function (attrs, value) {
@@ -5713,7 +5738,7 @@ var scales;
         };
         return scale;
     }
-    scales.log = log;
+    scale_2.log = log;
     // Common arithmetics
     function addScale() {
         var scale = (function () {
@@ -5721,7 +5746,7 @@ var scales;
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i - 0] = arguments[_i];
             }
-            return new (ScaleBinding.bind.apply(ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
+            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
         });
         scale.getAttributes = function () { return []; };
         scale.getExpression = function (attrs, value1, value2) {
@@ -5730,84 +5755,104 @@ var scales;
         };
         return scale;
     }
-    scales.addScale = addScale;
+    scale_2.addScale = addScale;
     function subScale() {
         var scale = (function () {
             var args = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i - 0] = arguments[_i];
             }
-            return new (ScaleBinding.bind.apply(ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
+            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
         });
         scale.getAttributes = function () { return []; };
         scale.getExpression = function (attrs, value1, value2) { return SC.sub(value1, value2); };
         return scale;
     }
-    scales.subScale = subScale;
+    scale_2.subScale = subScale;
     function mulScale() {
         var scale = (function () {
             var args = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i - 0] = arguments[_i];
             }
-            return new (ScaleBinding.bind.apply(ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
+            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
         });
         scale.getAttributes = function () { return []; };
         scale.getExpression = function (attrs, value1, value2) { return SC.mul(value1, value2); };
         return scale;
     }
-    scales.mulScale = mulScale;
+    scale_2.mulScale = mulScale;
     function divScale() {
         var scale = (function () {
             var args = [];
             for (var _i = 0; _i < arguments.length; _i++) {
                 args[_i - 0] = arguments[_i];
             }
-            return new (ScaleBinding.bind.apply(ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
+            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
         });
         scale.getAttributes = function () { return []; };
         scale.getExpression = function (attrs, value1, value2) { return SC.div(value1, value2); };
         return scale;
     }
-    scales.divScale = divScale;
+    scale_2.divScale = divScale;
     function add(value1, value2) {
         return addScale()(value1, value2);
     }
-    scales.add = add;
+    scale_2.add = add;
     function sub(value1, value2) {
         return subScale()(value1, value2);
     }
-    scales.sub = sub;
+    scale_2.sub = sub;
     function mul(value1, value2) {
         return mulScale()(value1, value2);
     }
-    scales.mul = mul;
+    scale_2.mul = mul;
     function div(value1, value2) {
         return divScale()(value1, value2);
     }
-    scales.div = div;
-})(scales = exports.scales || (exports.scales = {}));
+    scale_2.div = div;
+})(scale = exports.scale || (exports.scale = {}));
 
-},{"./specConstruct":16}],15:[function(require,module,exports){
+},{"../specConstruct":18,"./scale":14}],16:[function(require,module,exports){
 "use strict";
 var binding_1 = require("./binding");
 var exceptions_1 = require("./exceptions");
 var utils_1 = require("./utils");
-var scales_1 = require("./scales");
+var scale_1 = require("./scale/scale");
+;
 var Shape = (function () {
     function Shape(spec, platform) {
         this._spec = spec;
         this._data = [];
         this._platform = platform;
         this._bindings = new utils_1.Dictionary();
+        this._shiftBindings = new utils_1.Dictionary();
         this._platformShape = null;
         this._shouldUploadData = true;
+        this._instanceFunction = null;
         // Set bindings to default value whenever exists.
         for (var name_1 in this._spec.input) {
             if (this._spec.input.hasOwnProperty(name_1)) {
                 var input = this._spec.input[name_1];
                 if (input.default != null) {
                     this._bindings.set(name_1, new binding_1.Binding(input.type, input.default));
+                }
+            }
+        }
+        // Assign shift bindings based on naming convention.
+        for (var name_2 in this._spec.input) {
+            if (this._spec.input.hasOwnProperty(name_2)) {
+                if (this._spec.input.hasOwnProperty(name_2 + "_pp")) {
+                    this._shiftBindings.set(name_2 + "_pp", new binding_1.ShiftBinding(name_2, -2));
+                }
+                if (this._spec.input.hasOwnProperty(name_2 + "_p")) {
+                    this._shiftBindings.set(name_2 + "_p", new binding_1.ShiftBinding(name_2, -1));
+                }
+                if (this._spec.input.hasOwnProperty(name_2 + "_n")) {
+                    this._shiftBindings.set(name_2 + "_n", new binding_1.ShiftBinding(name_2, +1));
+                }
+                if (this._spec.input.hasOwnProperty(name_2 + "_nn")) {
+                    this._shiftBindings.set(name_2 + "_nn", new binding_1.ShiftBinding(name_2, +2));
                 }
             }
         }
@@ -5836,7 +5881,7 @@ var Shape = (function () {
             if (!this._spec.input.hasOwnProperty(name)) {
                 throw new exceptions_1.RuntimeError("attr '" + name + " is undefined.");
             }
-            if (value instanceof scales_1.ScaleBinding) {
+            if (value instanceof scale_1.ScaleBinding) {
                 if (this._platformShape) {
                     if (this._bindings.get(name) != value) {
                         this._platformShape = null;
@@ -5873,6 +5918,14 @@ var Shape = (function () {
             return this;
         }
     };
+    Shape.prototype.instance = function (func) {
+        if (func === undefined) {
+            return this._instanceFunction;
+        }
+        else {
+            this._instanceFunction = func;
+        }
+    };
     // Make alternative spec to include ScaleBinding values.
     Shape.prototype.prepareSpecification = function () {
         var newSpec = {
@@ -5882,8 +5935,9 @@ var Shape = (function () {
             variables: utils_1.shallowClone(this._spec.variables)
         };
         var newBindings = this._bindings.clone();
+        var shiftBindings = this._shiftBindings.clone();
         this._bindings.forEach(function (binding, name) {
-            if (binding instanceof scales_1.ScaleBinding) {
+            if (binding instanceof scale_1.ScaleBinding) {
                 var attributes = binding.getAttributes();
                 var attrs_1 = {};
                 attributes.forEach(function (attr) {
@@ -5911,12 +5965,12 @@ var Shape = (function () {
                 newBindings.delete(name);
             }
         });
-        return [newSpec, newBindings];
+        return [newSpec, newBindings, shiftBindings];
     };
     Shape.prototype.uploadScaleUniforms = function () {
         var _this = this;
         this._bindings.forEach(function (binding, name) {
-            if (binding instanceof scales_1.ScaleBinding) {
+            if (binding instanceof scale_1.ScaleBinding) {
                 var attributes = binding.getAttributes();
                 var attrs = {};
                 attributes.forEach(function (attr) {
@@ -5926,28 +5980,91 @@ var Shape = (function () {
         });
     };
     Shape.prototype.prepare = function () {
+        var _this = this;
         if (!this._platformShape) {
-            var _a = this.prepareSpecification(), spec = _a[0], binding = _a[1];
-            this._platformShape = this._platform.compile(this, spec, binding);
+            var _a = this.prepareSpecification(), spec = _a[0], binding = _a[1], shiftBinding = _a[2];
+            this._platformShape = this._platform.compile(this, spec, binding, shiftBinding);
             this._shouldUploadData = true;
         }
         if (this._shouldUploadData) {
-            this._platformShape.uploadData(this._data);
+            if (this._instanceFunction == null) {
+                this._platformShapeData = this._platformShape.uploadData(this._data);
+            }
+            else {
+                this._platformShapeData = this._data.map(function (datum, index) {
+                    var info = _this._instanceFunction(datum, index, _this._data);
+                    _this._platformShape.uploadData(info.data);
+                });
+            }
             this._shouldUploadData = false;
         }
         return this;
     };
     Shape.prototype.render = function () {
+        var _this = this;
         this.prepare();
         this.uploadScaleUniforms();
-        this._platformShape.render();
+        if (this._instanceFunction == null) {
+            this._platformShape.render(this._platformShapeData);
+        }
+        else {
+            var datas_1 = this._platformShapeData;
+            this._data.forEach(function (datum, index) {
+                var info = _this._instanceFunction(datum, index, _this._data);
+                for (var attr in info.attrs) {
+                    if (info.attrs.hasOwnProperty(attr)) {
+                        _this._platformShape.updateUniform(attr, binding_1.getBindingValue(info.attrs[attr]));
+                    }
+                }
+                _this._platformShape.render(datas_1[index]);
+            });
+        }
         return this;
     };
     return Shape;
 }());
 exports.Shape = Shape;
 
-},{"./binding":1,"./exceptions":7,"./scales":14,"./utils":20}],16:[function(require,module,exports){
+},{"./binding":1,"./exceptions":7,"./scale/scale":14,"./utils":22}],17:[function(require,module,exports){
+"use strict";
+var compiler_1 = require("./compiler/compiler");
+var declare_1 = require("./compiler/declare");
+var shape_1 = require("./shape");
+var shape;
+(function (shape) {
+    function create(spec, platform) {
+        if (spec instanceof declare_1.CustomShape) {
+            return new shape_1.Shape(spec.compile(), platform);
+        }
+        else {
+            return new shape_1.Shape(spec, platform);
+        }
+    }
+    shape.create = create;
+    function custom() {
+        return new declare_1.CustomShape();
+    }
+    shape.custom = custom;
+    function compile(code) {
+        return compiler_1.compileString(code);
+    }
+    shape.compile = compile;
+    function circle(sides) {
+        if (sides === void 0) { sides = 32; }
+        return shape.compile("\n            shape Circle(\n                Vector2 center,\n                float radius,\n                Color color\n            ) {\n                for(i in 0.." + (sides - 1) + ") {\n                    float a1 = i / " + sides.toFixed(1) + " * PI * 2.0;\n                    float a2 = (i + 1) / " + sides.toFixed(1) + " * PI * 2.0;\n                    Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n                    Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n                    emit [\n                        { position: center + p1, color: color },\n                        { position: center, color: color },\n                        { position: center + p2, color: color }\n                    ];\n                }\n            }\n        ")["Circle"];
+    }
+    shape.circle = circle;
+    function line() {
+        return shape.compile("\n            shape Line(\n                Vector2 p1,\n                Vector2 p2,\n                float width = 1,\n                Color color = [ 0, 0, 0, 1 ]\n            ) {\n                Vector2 d = normalize(p2 - p1);\n                Vector2 t = Vector2(d.y, -d.x) * (width / 2);\n                emit [\n                    { position: p1 + t, color: color },\n                    { position: p1 - t, color: color },\n                    { position: p2 + t, color: color }\n                ];\n                emit [\n                    { position: p1 - t, color: color },\n                    { position: p2 - t, color: color },\n                    { position: p2 + t, color: color }\n                ];\n            }\n        ")["Line"];
+    }
+    shape.line = line;
+    function polyline() {
+        return shape.compile("\n            import Triangle from P2D;\n\n            shape Sector2(\n                Vector2 c,\n                Vector2 p1,\n                Vector2 p2,\n                Color color\n            ) {\n                auto pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Triangle(c, p1, pc, color);\n                Triangle(c, pc, p2, color);\n            }\n\n            shape Sector4(\n                Vector2 c,\n                Vector2 p1,\n                Vector2 p2,\n                Color color\n            ) {\n                auto pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Sector2(c, p1, pc, color);\n                Sector2(c, pc, p2, color);\n            }\n\n            shape PolylineRound(\n                Vector2 p, Vector2 p_p, Vector2 p_n, Vector2 p_nn,\n                float width,\n                Color color = [ 0, 0, 0, 1 ]\n            ) {\n                float EPS = 1e-5;\n                float w = width / 2;\n                Vector2 d = normalize(p - p_n);\n                Vector2 n = Vector2(d.y, -d.x);\n                Vector2 m1;\n                if(length(p - p_p) < EPS) {\n                    m1 = n * w;\n                } else {\n                    m1 = normalize(d + normalize(p - p_p)) * w;\n                }\n                Vector2 m2;\n                if(length(p_n - p_nn) < EPS) {\n                    m2 = -n * w;\n                } else {\n                    m2 = normalize(normalize(p_n - p_nn) - d) * w;\n                }\n                Vector2 c1a;\n                Vector2 c1b;\n                Vector2 a1;\n                Vector2 a2;\n                if(dot(m1, n) > 0) {\n                    c1a = p + m1;\n                    c1b = p + n * w;\n                    a2 = c1b;\n                    a1 = p - m1 * (w / dot(m1, n));\n                } else {\n                    c1a = p + m1;\n                    c1b = p - n * w;\n                    a2 = p + m1 * (w / dot(m1, n));\n                    a1 = c1b;\n                }\n                Vector2 c2a;\n                Vector2 c2b;\n                Vector2 b1;\n                Vector2 b2;\n                if(dot(m2, n) < 0) {\n                    c2a = p_n + m2;\n                    c2b = p_n - n * w;\n                    b1 = c2b;\n                    b2 = p_n + m2 * (w / dot(m2, n));\n                } else {\n                    c2a = p_n + m2;\n                    c2b = p_n + n * w;\n                    b2 = c2b;\n                    b1 = p_n - m2 * (w / dot(m2, n));\n                }\n                Sector4(p, c1a, c1b, color);\n                Sector4(p_n, c2a, c2b, color);\n                Triangle(p, a1, b1, color);\n                Triangle(p, b1, p_n, color);\n                Triangle(p, a2, b2, color);\n                Triangle(p, b2, p_n, color);\n            }\n        ")["PolylineRound"];
+    }
+    shape.polyline = polyline;
+})(shape = exports.shape || (exports.shape = {}));
+
+},{"./compiler/compiler":2,"./compiler/declare":3,"./shape":16}],18:[function(require,module,exports){
 "use strict";
 // Construct part of specification.
 var intrinsics_1 = require("./intrinsics");
@@ -6038,7 +6155,7 @@ function lessThan(a1, a2) {
 }
 exports.lessThan = lessThan;
 
-},{"./intrinsics":8}],17:[function(require,module,exports){
+},{"./intrinsics":8}],19:[function(require,module,exports){
 // Flattener: Resolve emit statements into individual render calls.
 "use strict";
 var SC = require("../specConstruct");
@@ -6198,12 +6315,12 @@ function FlattenEmits(shape) {
 }
 exports.FlattenEmits = FlattenEmits;
 
-},{"../specConstruct":16,"../utils":20}],18:[function(require,module,exports){
+},{"../specConstruct":18,"../utils":22}],20:[function(require,module,exports){
 "use strict";
 var flattener_1 = require("./flattener");
 exports.FlattenEmits = flattener_1.FlattenEmits;
 
-},{"./flattener":17}],19:[function(require,module,exports){
+},{"./flattener":19}],21:[function(require,module,exports){
 // Basic types.
 "use strict";
 function MakeType(name, size, primitive, primitiveCount) {
@@ -6223,7 +6340,7 @@ exports.types = {
     "Color": MakeType("Color", 16, "float", 4)
 };
 
-},{}],20:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 "use strict";
 var Dictionary = (function () {
     function Dictionary() {
@@ -6291,33 +6408,38 @@ function timeTask(name, cb) {
 }
 exports.timeTask = timeTask;
 
-},{}],21:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 "use strict";
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
 exports.version = "0.0.1";
-// Math classes and utilities.
-__export(require("./core/math"));
+// Math classes and utilities
 __export(require("./core/utils"));
-// Shape class and shape specification.
+__export(require("./core/math"));
+// Shape class and shape specification
+__export(require("./core/shapeModule"));
 __export(require("./core/shape"));
 __export(require("./core/binding"));
 __export(require("./core/intrinsics"));
 __export(require("./core/types"));
 __export(require("./core/exceptions"));
-__export(require("./core/transform/transforms"));
-// Parsing and compiling.
+// Parsing and compiling
 __export(require("./core/compiler/parser"));
 __export(require("./core/compiler/compiler"));
 __export(require("./core/compiler/declare"));
-// Javascript context.
+// Code transformation
+__export(require("./core/transform/transforms"));
+// Javascript context
 __export(require("./core/evaluator/evaluator"));
-// Builtin platforms.
+// Platform base class
 __export(require("./core/platform"));
-__export(require("./core/scales"));
+// Scales
+__export(require("./core/scale/scale"));
+var scales_1 = require("./core/scale/scales");
+exports.scale = scales_1.scale;
 
-},{"./core/binding":1,"./core/compiler/compiler":2,"./core/compiler/declare":3,"./core/compiler/parser":4,"./core/evaluator/evaluator":6,"./core/exceptions":7,"./core/intrinsics":8,"./core/math":12,"./core/platform":13,"./core/scales":14,"./core/shape":15,"./core/transform/transforms":18,"./core/types":19,"./core/utils":20}],22:[function(require,module,exports){
+},{"./core/binding":1,"./core/compiler/compiler":2,"./core/compiler/declare":3,"./core/compiler/parser":4,"./core/evaluator/evaluator":6,"./core/exceptions":7,"./core/intrinsics":8,"./core/math":12,"./core/platform":13,"./core/scale/scale":14,"./core/scale/scales":15,"./core/shape":16,"./core/shapeModule":17,"./core/transform/transforms":20,"./core/types":21,"./core/utils":22}],24:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -6353,7 +6475,7 @@ var Compile = (function (_super) {
 }(Action));
 exports.Compile = Compile;
 
-},{"flux":55}],23:[function(require,module,exports){
+},{"flux":57}],25:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -6416,7 +6538,7 @@ var HorizontalDivider = (function (_super) {
 }(React.Component));
 exports.HorizontalDivider = HorizontalDivider;
 
-},{"react":202}],24:[function(require,module,exports){
+},{"react":204}],26:[function(require,module,exports){
 /// <reference path="../../node_modules/monaco-editor/monaco.d.ts" />
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
@@ -6479,7 +6601,7 @@ var MonacoEditor = (function (_super) {
 }(React.Component));
 exports.MonacoEditor = MonacoEditor;
 
-},{"react":202}],25:[function(require,module,exports){
+},{"react":204}],27:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -6515,7 +6637,7 @@ var S3RenderingView = (function (_super) {
     };
     S3RenderingView.prototype.componentDidUpdate = function (prevProps) {
         this._GL.clearColor(this.props.backgroundColor[0], this.props.backgroundColor[1], this.props.backgroundColor[2], 1);
-        if (prevProps.jsCode != this.props.jsCode || prevProps.shapeCode != this.props.shapeCode || prevProps.viewType != this.props.viewType || prevProps.compileIndex != this.props.compileIndex) {
+        if (prevProps.jsCode != this.props.jsCode || prevProps.viewType != this.props.viewType || prevProps.compileIndex != this.props.compileIndex) {
             this.setViewport();
             this.startUserProgram();
         }
@@ -6588,15 +6710,6 @@ var S3RenderingView = (function (_super) {
         var _this = this;
         var GL = this._GL;
         var D3 = d3;
-        var spec;
-        try {
-            spec = Stardust.compileString(this.props.shapeCode);
-        }
-        catch (e) {
-            this.printMessage(e.message);
-            this.printMessage(e.stack);
-            return;
-        }
         var addSlider = function (name, shape, attr, initial, min, max) {
             shape.attr(attr, initial);
             var control = {
@@ -6613,16 +6726,6 @@ var S3RenderingView = (function (_super) {
                 }
             };
             _this.addControl(control);
-        };
-        var createShape = function (name) {
-            try {
-                return new Stardust.Shape(spec[name], _this._platform);
-            }
-            catch (e) {
-                _this.printMessage(e.message);
-                _this.printMessage(e.stack);
-                return null;
-            }
         };
         var userRender;
         var userAnimate = null;
@@ -6644,6 +6747,10 @@ var S3RenderingView = (function (_super) {
             var DATA = data;
             var d3 = D3;
             var s3 = Stardust;
+            window["d3"] = d3;
+            window["Stardust"] = Stardust;
+            window["platform"] = _this._platform;
+            var GL = _this._GL;
             var svg = d3.select(_this.refs.svg);
             var reRender = doRender;
             var print = function (m) { return _this.printMessage(m); };
@@ -6774,7 +6881,7 @@ var S3RenderingView = (function (_super) {
 }(React.Component));
 exports.S3RenderingView = S3RenderingView;
 
-},{"../videoSaver":28,"d3":29,"react":202,"stardust-core":21,"stardust-webgl":209}],26:[function(require,module,exports){
+},{"../videoSaver":30,"d3":31,"react":204,"stardust-core":23,"stardust-webgl":211}],28:[function(require,module,exports){
 "use strict";
 exports.examples = [];
 function removeCommonIndent(code) {
@@ -6798,29 +6905,26 @@ function removeCommonIndent(code) {
     }
     return lines.map(function (x) { return x.substr(commonIndentionLength); }).join("\n").trim();
 }
-function DefineExample(name, viewType, dataFile, s3Code, jsCode) {
+function DefineExample(name, viewType, dataFile, jsCode) {
     exports.examples.push({
         name: name,
         viewType: viewType,
         dataFile: dataFile,
-        s3Code: removeCommonIndent(s3Code),
         jsCode: removeCommonIndent(jsCode)
     });
 }
 exports.DefineExample = DefineExample;
-DefineExample("SPL", "3D", "data/beethoven.json", "\n    import Triangle from P3D;\n\n    shape Point(\n        Vector3 center,\n        float size,\n        Color color\n    ) {\n        Vector3 p1 = Vector3(center.x + size, center.y + size, center.z - size);\n        Vector3 p2 = Vector3(center.x + size, center.y - size, center.z + size);\n        Vector3 p3 = Vector3(center.x - size, center.y + size, center.z + size);\n        Vector3 p4 = Vector3(center.x - size, center.y - size, center.z - size);\n        Triangle(p1, p2, p3, color);\n        Triangle(p4, p1, p2, color);\n        Triangle(p4, p2, p3, color);\n        Triangle(p4, p3, p1, color);\n    }\n\n    shape Line(\n        Vector3 p1, Vector3 p2,\n        float size,\n        Color color\n    ) {\n        Vector3 x1 = Vector3(p1.x, p1.y, p1.z - size);\n        Vector3 x2 = Vector3(p1.x, p1.y, p1.z + size);\n        Vector3 x3 = Vector3(p2.x, p2.y, p2.z + size);\n        Vector3 x4 = Vector3(p2.x, p2.y, p2.z - size);\n        Triangle(x1, x2, x3, color);\n        Triangle(x4, x1, x2, color);\n        Triangle(x4, x2, x3, color);\n        Triangle(x4, x3, x1, color);\n    }\n\n    Vector3 getPosition(float year, float dayOfYear, float secondOfDay) {\n        float angle = dayOfYear / 366 * PI * 2;\n        float dayScaler = (secondOfDay / 86400 - 0.5);\n        float r = (year - 2006) / (2015 - 2006) * 200 + 50 + dayScaler * 50;\n        float x = cos(angle) * r;\n        float y = sin(angle) * r;\n        float z = dayScaler * 50;\n        return Vector3(x, y, z);\n    }\n\n    Vector3 getPosition2(float year, float dayOfYear, float secondOfDay) {\n        float angle = dayOfYear / 366 * PI * 2;\n        float r = secondOfDay / 86400 * 200 + 50;\n        float x = cos(angle) * r;\n        float y = sin(angle) * r;\n        float z = 0;\n        return Vector3(x, y, z);\n    }\n\n    shape Glyph(\n        float year,\n        float dayOfYear,\n        float secondOfDay,\n        float duration,\n        float t,\n        Color color\n        // float inYear,\n        // float inDayOfYear,\n        // float inSecondOfDay\n    ) {\n        Vector3 p = getPosition(year, dayOfYear, secondOfDay);\n        Vector3 p2 = getPosition2(year, dayOfYear, secondOfDay);\n        Point(p * (1 - t) + p2 * t, log(1 + duration) / 2, color = color);\n    }\n\n    shape LineChart(\n        float year1,\n        float dayOfYear1,\n        float secondOfDay1,\n        float year2,\n        float dayOfYear2,\n        float secondOfDay2,\n        float c1,\n        float c2,\n        float t\n    ) {\n        Vector3 p1 = getPosition(year1, dayOfYear1, secondOfDay1);\n        Vector3 p1p = getPosition2(year1, dayOfYear1, secondOfDay1);\n        Vector3 p2 = getPosition(year2, dayOfYear2, secondOfDay2);\n        Vector3 p2p = getPosition2(year2, dayOfYear2, secondOfDay2);\n        p1 = p1 + (p1p - p1) * t;\n        p2 = p2 + (p2p - p2) * t;\n        p1 = Vector3(p1.x, p1.y, c1);\n        p2 = Vector3(p2.x, p2.y, c2);\n        Line(p1, p2, 0.5, Color(0, 0, 0, 0.5));\n    }\n", "\n    let shape = createShape(\"Glyph\");\n    let lineChart =createShape(\"LineChart\");\n    DATA.forEach((d) => {\n        d.duration = (d.checkInFirst - d.checkOut) / 86400;\n        d.checkOut = new Date(d.checkOut * 1000);\n        d.checkIn = new Date(d.checkInFirst * 1000);\n    });\n    DATA = DATA.filter((d) => {\n        if(!d.checkIn || !d.checkOut) return false;\n        if(d.duration > 360) return false;\n        return d.checkOut.getFullYear() >= 2007 && d.checkOut.getFullYear() < 2016 && d.checkIn.getFullYear() >= 2007 && d.checkIn.getFullYear() < 2016;\n    });\n\n    // Daily summary.\n    let days = new Map();\n    DATA.forEach((d) => {\n    let day = Math.floor(d.checkOut.getTime() / 1000 / 86400) * 86400;\n    if(!days.has(day)) days.set(day, 1);\n    else days.set(day, days.get(day) + 1);\n    });\n    let daysArray = [];\n    days.forEach((count, day) => {\n        daysArray.push({ day: new Date(day * 1000), count: count });\n    });\n    daysArray.sort((a, b) => a.day.getTime() - b.day.getTime());\n\n    let colorScale = d3.scale.category10();\n    let color = (d) => {\n        let rgb = d3.rgb(colorScale(d.deweyClass));\n        return [ rgb.r / 255, rgb.g / 255, rgb.b / 255, 0.1 ];\n    };\n\n    let dayOfYear = (d) => {\n        return Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);\n    }\n    let secondOfDay = (d) => {\n        return d.getMinutes() * 60 + d.getHours() * 3600 + d.getSeconds();\n    }\n    shape.attr(\"duration\", (d) => d.duration);\n    shape.attr(\"year\", (d) => d.checkOut.getFullYear());\n    shape.attr(\"dayOfYear\", (d) => dayOfYear(d.checkOut));\n    shape.attr(\"secondOfDay\", (d) => secondOfDay(d.checkOut));\n    shape.attr(\"color\", color);\n    // shape.attr(\"inYear\", (d) => d.checkIn.getFullYear());\n    // shape.attr(\"inDayOfYear\", (d) => dayOfYear(d.checkIn));\n    // shape.attr(\"inSecondOfDay\", (d) => secondOfDay(d.checkIn));\n    shape.data(DATA);\n\n    lineChart.attr(\"year1\", (d) => d.day.getFullYear());\n    lineChart.attr(\"dayOfYear1\", (d) => dayOfYear(d.day));\n    lineChart.attr(\"secondOfDay1\", (d) => secondOfDay(d.day));\n    lineChart.attr(\"year2\", (d, i) => daysArray[i + 1].day.getFullYear());\n    lineChart.attr(\"dayOfYear2\", (d, i) => dayOfYear(daysArray[i + 1].day));\n    lineChart.attr(\"secondOfDay2\", (d, i) => secondOfDay(daysArray[i + 1].day));\n    let zScale = s3.scales.linear().domain([ 0, d3.max(daysArray, (d) => d.count) ]).range([20, 60]);\n    lineChart.attr(\"c1\", zScale((d) => d.count));\n    lineChart.attr(\"c2\", zScale((d, i) => daysArray[i + 1].count));\n    lineChart.data(daysArray.slice(0, -1));\n\n    addSlider(\"t\", shape, \"t\", 0, 0, 1);\n\n    function render() {\n        lineChart.attr(\"t\", shape.attr(\"t\"));\n        lineChart.render();\n        shape.render();\n    }\n");
-DefineExample("DensityPlot", "2D", "data/mnist.csv", "\n    import Triangle from P2D;\n\n    shape PCLine(\n        Vector2 p1,\n        Vector2 p2,\n        float width,\n        Color color\n    ) {\n        float w2 = width / (p1.x - p2.x) * (p1.y - p2.y);\n        float s = sqrt(width * width + w2 * w2) / 2;\n        Vector2 m1 = Vector2(p1.x, p1.y + s);\n        Vector2 m2 = Vector2(p1.x, p1.y - s);\n        Vector2 n1 = Vector2(p2.x, p2.y + s);\n        Vector2 n2 = Vector2(p2.x, p2.y - s);\n        Triangle(m1, m2, n1, color);\n        Triangle(m2, n2, n1, color);\n    }\n\n    shape PC(\n        float x0, float x1, float x2,\n        float y0, float y1, float y2,\n        float alpha,\n        Color color\n    ) {\n        PCLine(Vector2(x0, y0), Vector2(x1, y1), 1, color);\n        PCLine(Vector2(x1, y1), Vector2(x2, y2), 1, color);\n    }\n", "\n    var shape = createShape(\"PC\");\n\n    var instances = DATA.map(function(d) {\n        return {\n            C0: +d.C0, C1: +d.C1, C2: +d.C2, C3: +d.C3, C4: +d.C4,\n            C5: +d.C5, C6: +d.C6, C7: +d.C7, C8: +d.C8, C9: +d.C9,\n            assigned: parseInt(d.Assigned.substr(1))\n        };\n    });\n\n    var colors = [[31,119,180],[255,127,14],[44,160,44],[214,39,40],[148,103,189],[140,86,75],[227,119,194],[127,127,127],[188,189,34],[23,190,207]];\n    colors = colors.map((x) => [ x[0] / 255, x[1] / 255, x[2] / 255, 0.1 ]);\n\n    var mY = s3.scales.log().domain([ 0.01, 1 ]).range([ 500, 100 ]);\n\n    var xScale = d3.scale.linear().domain([ 0, 2 ]).range([ 100, 700 ]);\n    shape.attr(\"y0\", mY((d) => d.C0)).attr(\"x0\", xScale(0));\n    shape.attr(\"y1\", mY((d) => d.C1)).attr(\"x1\", xScale(1));\n    shape.attr(\"y2\", mY((d) => d.C2)).attr(\"x2\", xScale(2));\n    shape.attr(\"color\", (d) => colors[d.assigned]);\n    shape.data(instances);\n\n    addSlider(\"Alpha\", shape, \"alpha\", 0.02, 0, 0.1);\n\n    function render() {\n        shape.render();\n    }\n");
-DefineExample("Sin3D", "3D", "", "\n    import Triangle from P3D;\n\n    float k1;\n    float k2;\n    float k3;\n\n    Vector3 getP(float x) {\n        return Vector3(cos(x * k1), cos(x * k2), cos(x * k3)) * 100;\n    }\n\n    shape Shape(\n        float x\n    ) {\n        float sz = 1;\n        Vector3 p = getP(x);\n        Vector3 n = getP(x + PI * 2 * 20 / 100000);\n        Triangle(\n            p, p + Vector3(sz, 0, 0), n,\n            Color(0, 0, 0, 0.5)\n        );\n    }\n", "\n    var shape = createShape(\"Shape\");\n    shape.attr(\"x\", (d) => d);\n    addSlider(\"k1\", shape, \"k1\", 16.707, 0, 20);\n    addSlider(\"k2\", shape, \"k2\", 14.317, 0, 20);\n    addSlider(\"k3\", shape, \"k3\", 17.049, 0, 20);\n\n    var data = [];\n    var N = 100000;\n    for(var k = 0; k < N; k++) {\n        var x = k / N * Math.PI * 2 * 20;\n        data.push(x);\n    }\n    shape.data(data);\n\n    function render() {\n        shape.render();\n    }\n");
-DefineExample("Squares", "2D", "data/mnist.csv", "\n    import Rectangle, OutlinedRectangle from P2D;\n\n    float size = 2;\n    float spacing = 3;\n    float x0 = 10;\n    float xSpacing = 85;\n    float y1 = 700;\n    float binSpacing = 47;\n\n    float CMsp = 1.6;\n    float CMspacing = 55;\n    float CMx0 = 50;\n    float CMy0 = 110;\n\n    float t = 0;\n\n    float binIx;\n    float binIy;\n    float CMIx;\n    float CMIy;\n    float CMwh;\n    float bin;\n    float assigned;\n    float label;\n    Color color;\n\n    shape BinnedSquare() {\n        float x = x0 + xSpacing * assigned;\n        float y = y1 - bin * binSpacing;\n        float bx = binIx * spacing;\n        float by = binIy * spacing;\n        x = x + bx;\n        y = y + by;\n        Vector2 p1a = Vector2(x, y);\n        Vector2 p2a = Vector2(x + size, y + size);\n        float CMx = CMx0 + assigned * CMspacing;\n        float CMy = CMy0 + label * CMspacing;\n        float dx = CMsp * CMIx;\n        float dy = CMsp * CMIy;\n        CMx = CMx + dx - CMwh / 2 * CMsp;\n        CMy = CMy + dy - CMwh / 2 * CMsp;\n        Vector2 p1b = Vector2(CMx, CMy);\n        Vector2 p2b = Vector2(CMx + size, CMy + size);\n        Rectangle(p1a * (1 - t) + p1b * t, p2a * (1 - t) + p2b * t, color);\n    }\n\n    shape BinnedOutlinedSquare() {\n        float x = x0 + xSpacing * label;\n        float y = y1 - bin * binSpacing;\n        float bx = binIx * spacing;\n        float by = binIy * spacing;\n        x = x - bx - spacing;\n        y = y + by;\n        Vector2 p1a = Vector2(x, y);\n        Vector2 p2a = Vector2(x + size, y + size);\n        float CMx = CMx0 + assigned * CMspacing;\n        float CMy = CMy0 + label * CMspacing;\n        float dx = CMsp * CMIx;\n        float dy = CMsp * CMIy;\n        CMx = CMx + dx - CMwh / 2 * CMsp;\n        CMy = CMy + dy - CMwh / 2 * CMsp;\n        Vector2 p1b = Vector2(CMx, CMy);\n        Vector2 p2b = Vector2(CMx + size, CMy + size);\n        OutlinedRectangle(p1a * (1 - t) + p1b * t, p2a * (1 - t) + p2b * t, 0.5, color);\n    }\n", "\n    var Nbins = 15;\n    var Nclasses = 10;\n    var CM = [];\n    var CMBin = [];\n\n    var instances = DATA.map(function(d) {\n        return {\n            label: parseInt(d.Label.substr(1)),\n            assigned: parseInt(d.Assigned.substr(1)),\n            score: d[d.Assigned],\n            scoreBin: Math.min(Nbins - 1, Math.max(0, Math.floor(parseFloat(d[d.Assigned]) * Nbins)))\n        };\n    });\n\n    for(var i = 0; i < Nclasses; i++) {\n        CM[i] = [];\n        CMBin[i] = [];\n        for(var j = 0; j < Nclasses; j++) {\n            CM[i][j] = 0;\n            CMBin[i][j] = [];\n            for(var k = 0; k < Nbins; k++) {\n                CMBin[i][j][k] = 0;\n            }\n        }\n    }\n\n    instances.sort(function(a, b) {\n        if(a.label == a.assigned) return b.label == b.assigned ? 0 : +1;\n        if(b.label == b.assigned) return a.label == a.assigned ? 0 : -1;\n        if(a.assigned != b.assigned)\n            return a.assigned - b.assigned;\n        if(a.label != b.label)\n            return a.label - b.label;\n        return a.score - b.score;\n    })\n\n    instances.forEach(function(d) {\n        d.CMIndex = CM[d.label][d.assigned];\n        CM[d.label][d.assigned] += 1;\n        d.binIndex = CMBin[0][d.assigned][d.scoreBin];\n        CMBin[0][d.assigned][d.scoreBin] += 1;\n    });\n\n    instances.sort(function(a, b) {\n        if(a.label == a.assigned) return b.label == b.assigned ? 0 : +1;\n        if(b.label == b.assigned) return a.label == a.assigned ? 0 : -1;\n        if(a.assigned != b.assigned)\n            return -(a.assigned - b.assigned);\n        if(a.label != b.label)\n            return a.label - b.label;\n        return a.score - b.score;\n    })\n\n    instances.forEach(function(d) {\n        d.binIndex2 = CMBin[1][d.label][d.scoreBin];\n        CMBin[1][d.label][d.scoreBin] += 1;\n    });\n\n    instances.forEach(function(d) {\n        d.CMCount = CM[d.label][d.assigned];\n    });\n\n    var colors = [[31,119,180],[255,127,14],[44,160,44],[214,39,40],[148,103,189],[140,86,75],[227,119,194],[127,127,127],[188,189,34],[23,190,207]];\n    colors = colors.map((x) => [ x[0] / 255, x[1] / 255, x[2] / 255, 1 ]);\n\n    var shape = createShape(\"BinnedSquare\");\n    shape.attr(\"color\", (d) => colors[d.label]);\n    shape.attr(\"label\", (d) => d.label);\n    shape.attr(\"assigned\", (d) => d.assigned);\n    shape.attr(\"binIx\", (d) => Math.floor(d.binIndex / 15));\n    shape.attr(\"binIy\", (d) => d.binIndex % 15);\n    shape.attr(\"CMwh\", (d) => Math.ceil(Math.sqrt(d.CMCount)));\n    shape.attr(\"CMIx\", (d) => Math.floor(d.CMIndex / shape.attr(\"CMwh\")(d)));\n    shape.attr(\"CMIy\", (d) => d.CMIndex % shape.attr(\"CMwh\")(d));\n    shape.attr(\"bin\", (d) => d.scoreBin);\n\n    var shape2 = createShape(\"BinnedOutlinedSquare\");\n    shape2.attr(\"color\", (d) => colors[d.assigned]);\n    shape2.attr(\"label\", (d) => d.label);\n    shape2.attr(\"assigned\", (d) => d.assigned);\n    shape2.attr(\"binIx\", (d) => Math.floor(d.binIndex2 / 15));\n    shape2.attr(\"binIy\", (d) => d.binIndex2 % 15);\n    shape2.attr(\"CMwh\", (d) => Math.ceil(Math.sqrt(d.CMCount)));\n    shape2.attr(\"CMIx\", (d) => Math.floor(d.CMIndex / shape2.attr(\"CMwh\")(d)));\n    shape2.attr(\"CMIy\", (d) => d.CMIndex % shape2.attr(\"CMwh\")(d));\n    shape2.attr(\"bin\", (d) => d.scoreBin);\n\n    addSlider(\"t\", shape, \"t\", 0, 0, 1);\n\n    shape.data(instances);\n    shape2.data(instances.filter((d) => d.label != d.assigned));\n\n    function render() {\n        shape2.attr(\"t\", shape.attr(\"t\"));\n        shape2.render();\n        shape.render();\n    }\n");
-DefineExample("Sincos 2D Plot", "2D", "", "\n    import Hexagon from P2D;\n\n    shape Shape(\n        float x,\n        float k,\n        float k2,\n        float k3,\n        float size = 0.3\n    ) {\n        Hexagon(\n            center = Vector2(cos(k2 * x) * 5 + cos(x * k) * size, sin(x * k) * size + sin(x * k3) * 5) * 30 + Vector2(250, 250),\n            radius = 1,\n            color = Color(0, 0, 0, 0.1)\n        );\n    }\n", "\n    var shape = createShape(\"Shape\");\n    shape.attr(\"x\", (d) => d);\n\n    addSlider(\"k\", shape, \"k\", 101, 1, 200);\n    addSlider(\"k2\", shape, \"k2\", 3, 0, 20);\n    addSlider(\"k3\", shape, \"k3\", 13, 0, 20);\n\n    var data = [];\n    var N = 100000;\n    for(var k = 0; k < N; k++) {\n        var x = k / N * Math.PI * 2 * 20;\n        data.push(x);\n    }\n    shape.data(data);\n\n    function render() {\n        shape.render();\n    }\n    function animate(t) {\n        shape.attr(\"size\", Math.sin(t) * 0.5);\n    }\n");
-DefineExample("Lines", "2D", "", "\n    import Line from P2D;\n\n    shape ScaledLine(\n        Vector2 p1, Vector2 p2,\n        Vector2 origin, float scaleX, float scaleY\n    ) {\n        Vector2 scale = Vector2(scaleX, scaleY);\n        Line(p1 * scale + origin, p2 * scale + origin);\n    }\n", "\n    var line = createShape(\"ScaledLine\");\n\n    var data = [];\n    var N = 100000;\n    for(let i = 0; i < N; i++) {\n        let t = i / (N - 1);\n        data.push({ y: Math.sin(t * 120) + Math.sin(t * 320), x: t });\n    }\n\n    var pairs = data.slice(0, data.length - 1).map((d, i) => [ d, data[i + 1] ]);\n\n    line.attr(\"p1\", (d) => [ d[0].x, d[0].y ]);\n    line.attr(\"p2\", (d) => [ d[1].x, d[1].y ]);\n    line.attr(\"origin\", [ 100, 250 ]);\n    line.attr(\"scaleX\", 500);\n    line.attr(\"scaleY\", 50);\n    addSlider(\"Scale Y\", line, \"scaleY\", 50, 1, 200);\n    line.data(pairs);\n\n    function render() {\n        line.render();\n    }\n");
-DefineExample("Simple Bar Chart", "2D", "", "\n    import Rectangle from P2D;\n\n    shape Bar(\n        float index,\n        float height,\n        float N,\n        float x0 = -1, float x1 = 1, float ratio = 0.9,\n        float scale = 1,\n        float y0 = 0\n    ) {\n        float step = (x1 - x0) / N;\n        float c = x0 + index * step + step / 2;\n        Rectangle(\n            Vector2(c - step * ratio / 2, y0),\n            Vector2(c + step * ratio / 2, y0 - height * scale)\n        );\n    }\n", "\n    var area = createShape(\"Bar\");\n    area.attr(\"index\", (d, i) => i);\n    area.attr(\"height\", (d, i) => d);\n    area.attr(\"x0\", 10.5);\n    area.attr(\"x1\", 490.5);\n    area.attr(\"N\", 6);\n    area.attr(\"y0\", 200);\n    area.attr(\"ratio\", 1);\n    area.attr(\"scale\", 2);\n\n    addSlider(\"Scale\", area, \"scale\", 30, 1, 100);\n\n    let array = [];\n\n    for(let i = 0; i < 100000; i++) array.push(Math.cos(i / 2534) + Math.sin(i /  534));\n\n    area.attr(\"N\", array.length);\n    area.data(array);\n\n    var bar = createShape(\"Bar\");\n    bar.attr(\"index\", (d, i) => i);\n    bar.attr(\"height\", (d, i) => d);\n    bar.attr(\"x0\", 10);\n    bar.attr(\"x1\", 490);\n    bar.attr(\"N\", 6);\n    bar.attr(\"ratio\", 0.9);\n    bar.attr(\"scale\", 30);\n    bar.attr(\"y0\", 400);\n\n    array = [];\n    for(let i = 0; i < 20; i++) array.push(Math.cos(i) + 2);\n    bar.attr(\"N\", array.length);\n    bar.data(array);\n\n    function render() {\n        area.render();\n        bar.render();\n    }\n");
-DefineExample("Binning", "2D", "", "\n    import Rectangle from P2D;\n\n    shape BinnedSquare(\n        float binID1,\n        float index1,\n        float binStart1 = 10,\n        float binSpacing1 = 49,\n        float binY1 = 450,\n        float spacing1 = 3,\n        float xcount1 = 15,\n        float size1 = 2,\n        float binID2,\n        float index2,\n        float binStart2 = 50,\n        float binSpacing2 = 0,\n        float binY2 = 450,\n        float spacing2 = 3,\n        float xcount2 = 100,\n        float size2 = 2,\n        float t = 0.5\n    ) {\n        float yIndex1 = floor(index1 / xcount1);\n        float xIndex1 = index1 % xcount1;\n        Vector2 s1 = Vector2(binStart1 + binSpacing1 * binID1 + xIndex1 * spacing1, binY1 - yIndex1 * spacing1);\n        float yIndex2 = floor(index2 / xcount2);\n        float xIndex2 = index2 % xcount2;\n        Vector2 s2 = Vector2(binStart2 + binSpacing2 * binID2 + xIndex2 * spacing2, binY2 - yIndex2 * spacing2);\n        Vector2 p1 = s1 * Vector2(1 - t, 1 - t) + s2 * Vector2(t, t);\n        float size = size1 * (1 - t) + size2 * t;\n        Rectangle(p1, p1 + Vector2(size, size));\n    }\n", "\n    var shape = createShape(\"BinnedSquare\");\n    shape.attr(\"index1\", (d) => d.index);\n    shape.attr(\"binID1\", (d) => d.binID);\n    shape.attr(\"index2\", (d, i) => i);\n    shape.attr(\"binID2\", 0);\n\n    addSlider(\"t\", shape, \"t\", 0, 0, 1);\n\n    var data = [];\n    var N = 10000;\n    var bins = new Array(10);\n    for(var i = 0; i < bins.length; i++) bins[i] = 0;\n    for(var k = 0; k < N; k++) {\n        var t = k / (N - 1);\n        var x = t;\n        for(var w = 0; w < 50; w++)\n            x = 4 * x * (1 - x);\n        var binID = Math.floor(x * bins.length);\n        if(binID >= bins.length) binID = bins.length - 1;\n        if(binID < 0) binID = 0;\n        data.push({ binID: binID, index: bins[binID]++ });\n    }\n    shape.data(data);\n\n    function render() {\n        shape.render();\n    }\n");
-DefineExample("Graph", "2D", "", "\n    import Hexagon from P2D;\n    import Line from P2D;\n\n    shape Node(\n        float x, float y\n    ) {\n        Hexagon(Vector2(x, y), 1, Color(0, 0, 0, 1));\n    }\n    shape Edge(\n        float x1, float y1,\n        float x2, float y2\n    ) {\n        Line(Vector2(x1, y1), Vector2(x2, y2), 1, Color(0, 0, 0, 0.5));\n    }\n", "\n    var snodes = createShape(\"Node\");\n    var sedges = createShape(\"Edge\");\n\n    var width = 600;\n    var height = 600;\n\n    var nodes = [];\n    var K = 100;\n\n    for(var i = 0; i < K * K; i++) {\n        nodes.push({\n            x: Math.random() * width,\n            y: Math.random() * height\n        })\n    }\n    var edges = [];\n\n    // Create a 2D grid.\n    for(var i = 0; i < K - 1; i++) {\n        for(var j = 0; j < K - 1; j++) {\n            edges.push({\n                source: i * K + j,\n                target: (i + 1) * K + j\n            });\n            edges.push({\n                source: i * K + j,\n                target: i * K + (j + 1)\n            });\n        }\n        edges.push({\n            source: (K - 1) * K + i,\n            target: (K - 1) * K + i + 1\n        });\n        edges.push({\n            source: i * K + K - 1,\n            target: (i + 1) * K + K - 1\n        });\n    }\n\n    for(var i = 0; i < K; i++) {\n        edges.push({\n            source: Math.floor(Math.random() * nodes.length),\n            target: Math.floor(Math.random() * nodes.length)\n        });\n    }\n\n    snodes.attr(\"x\", (d) => d.x);\n    snodes.attr(\"y\", (d) => d.y);\n    sedges.attr(\"x1\", (d) => d.source.x);\n    sedges.attr(\"y1\", (d) => d.source.y);\n    sedges.attr(\"x2\", (d) => d.target.x);\n    sedges.attr(\"y2\", (d) => d.target.y);\n\n    var force = d3.layout.force()\n        .size([ width, height ])\n        .nodes(nodes)\n        .links(edges);\n\n    force.linkStrength(8);\n    force.gravity(5);\n    force.linkDistance(0);\n\n    function animate() {\n        force.start();\n        force.tick();\n        force.stop();\n        snodes.data(nodes);\n        sedges.data(edges);\n    }\n\n    function render() {\n        sedges.render();\n        snodes.render();\n    }\n");
-DefineExample("Facebook Graph", "2D", "data/facebook_1912.json", "\n    import Hexagon from P2D;\n    import Line from P2D;\n\n    shape Node(\n        float x, float y\n    ) {\n        Hexagon(Vector2(x, y), 1.5, Color(0, 0, 0, 1));\n        Hexagon(Vector2(x, y), 1, Color(255, 255, 255, 1));\n    }\n    shape Edge(\n        float x1, float y1,\n        float x2, float y2\n    ) {\n        Line(Vector2(x1, y1), Vector2(x2, y2), 1, Color(0, 0, 0, 0.02));\n    }\n", "\n    var snodes = createShape(\"Node\");\n    var sedges = createShape(\"Edge\");\n\n    var width = 600;\n    var height = 600;\n\n    var nodes = DATA.nodes;\n    var edges = DATA.edges;\n    var N = nodes.length;\n\n    for(var i = 0; i < N; i++) {\n        nodes[i].x = Math.random() * width;\n        nodes[i].y = Math.random() * height;\n    }\n\n    snodes.attr(\"x\", (d) => d.x);\n    snodes.attr(\"y\", (d) => d.y);\n    sedges.attr(\"x1\", (d) => d.source.x);\n    sedges.attr(\"y1\", (d) => d.source.y);\n    sedges.attr(\"x2\", (d) => d.target.x);\n    sedges.attr(\"y2\", (d) => d.target.y);\n\n    var force = d3.layout.force()\n        .size([ width, height ])\n        .nodes(nodes)\n        .links(edges);\n\n    force.linkStrength(0.05);\n    force.gravity(0.2);\n    force.linkDistance(100);\n    force.start();\n    force.on(\"tick\", () => {\n        snodes.data(nodes);\n        sedges.data(edges);\n        reRender();\n    });\n\n    function render() {\n        sedges.render();\n        snodes.render();\n    }\n\n    function finalize() {\n        force.stop();\n    }\n\n    print(`${nodes.length} nodes, ${edges.length} edges.`);\n");
-DefineExample("Facebook Graph D3 SVG", "2D", "data/facebook_1912.json", "\n    // Shape3D is not used in this example.\n", "\n    var width = 600;\n    var height = 600;\n\n    var nodes = DATA.nodes;\n    var edges = DATA.edges;\n    var N = nodes.length;\n\n    for(var i = 0; i < N; i++) {\n        nodes[i].x = Math.random() * width;\n        nodes[i].y = Math.random() * height;\n    }\n\n    var sedges = svg.selectAll(\"line\").data(edges);\n    sedges.enter().append(\"line\");\n    var snodes = svg.selectAll(\"circle\").data(nodes);\n    snodes.enter().append(\"circle\");\n\n    snodes.attr(\"cx\", (d) => d.x);\n    snodes.attr(\"cy\", (d) => d.y);\n    snodes.attr(\"r\", 1.25);\n    sedges.attr(\"x1\", (d) => d.source.x);\n    sedges.attr(\"y1\", (d) => d.source.y);\n    sedges.attr(\"x2\", (d) => d.target.x);\n    sedges.attr(\"y2\", (d) => d.target.y);\n\n    snodes.style({ \"fill\": \"white\", \"stroke\": \"black\", \"stroke-width\": 0.5 });\n    sedges.style({ \"stroke\": \"rgba(0, 0, 0, 0.02)\" });\n\n    var force = d3.layout.force()\n        .size([ width, height ])\n        .nodes(nodes)\n        .links(edges);\n\n    force.linkStrength(0.05);\n    force.gravity(0.2);\n    force.linkDistance(100);\n    force.start();\n    force.on(\"tick\", () => {\n        //reRender();\n    });\n\n    function render() {\n        snodes.attr(\"cx\", (d) => d.x);\n        snodes.attr(\"cy\", (d) => d.y);\n        sedges.attr(\"x1\", (d) => d.source.x);\n        sedges.attr(\"y1\", (d) => d.source.y);\n        sedges.attr(\"x2\", (d) => d.target.x);\n        sedges.attr(\"y2\", (d) => d.target.y);\n    }\n\n    function finalize() {\n        force.stop();\n    }\n\n    print(`${nodes.length} nodes, ${edges.length} edges.`);\n");
+DefineExample("SPL", "3D", "data/beethoven.json", "\n    let shapes = Stardust.shape.compile(`\n        import Triangle from P3D;\n\n        shape Point(\n            Vector3 center,\n            float size,\n            Color color\n        ) {\n            Vector3 p1 = Vector3(center.x + size, center.y + size, center.z - size);\n            Vector3 p2 = Vector3(center.x + size, center.y - size, center.z + size);\n            Vector3 p3 = Vector3(center.x - size, center.y + size, center.z + size);\n            Vector3 p4 = Vector3(center.x - size, center.y - size, center.z - size);\n            Triangle(p1, p2, p3, color);\n            Triangle(p4, p1, p2, color);\n            Triangle(p4, p2, p3, color);\n            Triangle(p4, p3, p1, color);\n        }\n\n        shape Line(\n            Vector3 p1, Vector3 p2,\n            float size,\n            Color color\n        ) {\n            Vector3 x1 = Vector3(p1.x, p1.y, p1.z - size);\n            Vector3 x2 = Vector3(p1.x, p1.y, p1.z + size);\n            Vector3 x3 = Vector3(p2.x, p2.y, p2.z + size);\n            Vector3 x4 = Vector3(p2.x, p2.y, p2.z - size);\n            Triangle(x1, x2, x3, color);\n            Triangle(x4, x1, x2, color);\n            Triangle(x4, x2, x3, color);\n            Triangle(x4, x3, x1, color);\n        }\n\n        Vector3 getPosition(float year, float dayOfYear, float secondOfDay) {\n            float angle = dayOfYear / 366 * PI * 2;\n            float dayScaler = (secondOfDay / 86400 - 0.5);\n            float r = (year - 2006) / (2015 - 2006) * 200 + 50 + dayScaler * 50;\n            float x = cos(angle) * r;\n            float y = sin(angle) * r;\n            float z = dayScaler * 50;\n            return Vector3(x, y, z);\n        }\n\n        Vector3 getPosition2(float year, float dayOfYear, float secondOfDay) {\n            float angle = dayOfYear / 366 * PI * 2;\n            float r = secondOfDay / 86400 * 200 + 50;\n            float x = cos(angle) * r;\n            float y = sin(angle) * r;\n            float z = 0;\n            return Vector3(x, y, z);\n        }\n\n        shape Glyph(\n            float year,\n            float dayOfYear,\n            float secondOfDay,\n            float duration,\n            float t,\n            Color color\n            // float inYear,\n            // float inDayOfYear,\n            // float inSecondOfDay\n        ) {\n            Vector3 p = getPosition(year, dayOfYear, secondOfDay);\n            Vector3 p2 = getPosition2(year, dayOfYear, secondOfDay);\n            Point(p * (1 - t) + p2 * t, log(1 + duration) / 2, color = color);\n        }\n\n        shape LineChart(\n            float year1,\n            float dayOfYear1,\n            float secondOfDay1,\n            float year2,\n            float dayOfYear2,\n            float secondOfDay2,\n            float c1,\n            float c2,\n            float t\n        ) {\n            Vector3 p1 = getPosition(year1, dayOfYear1, secondOfDay1);\n            Vector3 p1p = getPosition2(year1, dayOfYear1, secondOfDay1);\n            Vector3 p2 = getPosition(year2, dayOfYear2, secondOfDay2);\n            Vector3 p2p = getPosition2(year2, dayOfYear2, secondOfDay2);\n            p1 = p1 + (p1p - p1) * t;\n            p2 = p2 + (p2p - p2) * t;\n            p1 = Vector3(p1.x, p1.y, c1);\n            p2 = Vector3(p2.x, p2.y, c2);\n            Line(p1, p2, 0.5, Color(0, 0, 0, 0.5));\n        }\n    `);\n    let shape = Stardust.shape.create(shapes.Glyph, platform);\n    let lineChart = Stardust.shape.create(shapes.LineChart, platform);\n\n    DATA.forEach((d) => {\n        d.duration = (d.checkInFirst - d.checkOut) / 86400;\n        d.checkOut = new Date(d.checkOut * 1000);\n        d.checkIn = new Date(d.checkInFirst * 1000);\n    });\n    DATA = DATA.filter((d) => {\n        if(!d.checkIn || !d.checkOut) return false;\n        if(d.duration > 360) return false;\n        return d.checkOut.getFullYear() >= 2007 && d.checkOut.getFullYear() < 2016 && d.checkIn.getFullYear() >= 2007 && d.checkIn.getFullYear() < 2016;\n    });\n\n    // Daily summary.\n    let days = new Map();\n    DATA.forEach((d) => {\n    let day = Math.floor(d.checkOut.getTime() / 1000 / 86400) * 86400;\n    if(!days.has(day)) days.set(day, 1);\n    else days.set(day, days.get(day) + 1);\n    });\n    let daysArray = [];\n    days.forEach((count, day) => {\n        daysArray.push({ day: new Date(day * 1000), count: count });\n    });\n    daysArray.sort((a, b) => a.day.getTime() - b.day.getTime());\n\n    let colorScale = d3.scale.category10();\n    let color = (d) => {\n        let rgb = d3.rgb(colorScale(d.deweyClass));\n        return [ rgb.r / 255, rgb.g / 255, rgb.b / 255, 0.1 ];\n    };\n\n    let dayOfYear = (d) => {\n        return Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);\n    }\n    let secondOfDay = (d) => {\n        return d.getMinutes() * 60 + d.getHours() * 3600 + d.getSeconds();\n    }\n    shape.attr(\"duration\", (d) => d.duration);\n    shape.attr(\"year\", (d) => d.checkOut.getFullYear());\n    shape.attr(\"dayOfYear\", (d) => dayOfYear(d.checkOut));\n    shape.attr(\"secondOfDay\", (d) => secondOfDay(d.checkOut));\n    shape.attr(\"color\", color);\n    // shape.attr(\"inYear\", (d) => d.checkIn.getFullYear());\n    // shape.attr(\"inDayOfYear\", (d) => dayOfYear(d.checkIn));\n    // shape.attr(\"inSecondOfDay\", (d) => secondOfDay(d.checkIn));\n    shape.data(DATA);\n\n    lineChart.attr(\"year1\", (d) => d.day.getFullYear());\n    lineChart.attr(\"dayOfYear1\", (d) => dayOfYear(d.day));\n    lineChart.attr(\"secondOfDay1\", (d) => secondOfDay(d.day));\n    lineChart.attr(\"year2\", (d, i) => daysArray[i + 1].day.getFullYear());\n    lineChart.attr(\"dayOfYear2\", (d, i) => dayOfYear(daysArray[i + 1].day));\n    lineChart.attr(\"secondOfDay2\", (d, i) => secondOfDay(daysArray[i + 1].day));\n    let zScale = Stardust.scale.linear().domain([ 0, d3.max(daysArray, (d) => d.count) ]).range([20, 60]);\n    lineChart.attr(\"c1\", zScale((d) => d.count));\n    lineChart.attr(\"c2\", zScale((d, i) => daysArray[i + 1].count));\n    lineChart.data(daysArray.slice(0, -1));\n\n    addSlider(\"t\", shape, \"t\", 0, 0, 1);\n\n    function render() {\n        lineChart.attr(\"t\", shape.attr(\"t\"));\n        lineChart.render();\n        shape.render();\n    }\n");
+DefineExample("DensityPlot", "2D", "data/mnist.csv", "\n    var shapes = Stardust.shape.compile(`\n        import Triangle from P2D;\n\n        shape PCLine(\n            Vector2 p1,\n            Vector2 p2,\n            float width,\n            Color color\n        ) {\n            float w2 = width / (p1.x - p2.x) * (p1.y - p2.y);\n            float s = sqrt(width * width + w2 * w2) / 2;\n            Vector2 m1 = Vector2(p1.x, p1.y + s);\n            Vector2 m2 = Vector2(p1.x, p1.y - s);\n            Vector2 n1 = Vector2(p2.x, p2.y + s);\n            Vector2 n2 = Vector2(p2.x, p2.y - s);\n            Triangle(m1, m2, n1, color);\n            Triangle(m2, n2, n1, color);\n        }\n\n        shape PC(\n            float x0, float x1, float x2,\n            float y0, float y1, float y2,\n            float alpha,\n            Color color\n        ) {\n            PCLine(Vector2(x0, y0), Vector2(x1, y1), 1, color);\n            PCLine(Vector2(x1, y1), Vector2(x2, y2), 1, color);\n        }\n    `);\n    var shape = Stardust.shape.create(shapes.PC, platform);\n\n    var instances = DATA.map(function(d) {\n        return {\n            C0: +d.C0, C1: +d.C1, C2: +d.C2, C3: +d.C3, C4: +d.C4,\n            C5: +d.C5, C6: +d.C6, C7: +d.C7, C8: +d.C8, C9: +d.C9,\n            assigned: parseInt(d.Assigned.substr(1))\n        };\n    });\n\n    var colors = [[31,119,180],[255,127,14],[44,160,44],[214,39,40],[148,103,189],[140,86,75],[227,119,194],[127,127,127],[188,189,34],[23,190,207]];\n    colors = colors.map((x) => [ x[0] / 255, x[1] / 255, x[2] / 255, 0.1 ]);\n\n    var mY = Stardust.scale.log().domain([ 0.01, 1 ]).range([ 500, 100 ]);\n\n    var xScale = d3.scale.linear().domain([ 0, 2 ]).range([ 100, 700 ]);\n    shape.attr(\"y0\", mY((d) => d.C0)).attr(\"x0\", xScale(0));\n    shape.attr(\"y1\", mY((d) => d.C1)).attr(\"x1\", xScale(1));\n    shape.attr(\"y2\", mY((d) => d.C2)).attr(\"x2\", xScale(2));\n    shape.attr(\"color\", (d) => colors[d.assigned]);\n    shape.data(instances);\n\n    addSlider(\"Alpha\", shape, \"alpha\", 0.02, 0, 0.1);\n\n    function render() {\n        shape.render();\n    }\n");
+DefineExample("Sin3D", "3D", "", "\n    var shapes = Stardust.shape.compile(`\n        import Triangle from P3D;\n\n        float k1;\n        float k2;\n        float k3;\n\n        Vector3 getP(float x) {\n            return Vector3(cos(x * k1), cos(x * k2), cos(x * k3)) * 100;\n        }\n\n        shape Shape(\n            float x\n        ) {\n            float sz = 1;\n            Vector3 p = getP(x);\n            Vector3 n = getP(x + PI * 2 * 20 / 100000);\n            Triangle(\n                p, p + Vector3(sz, 0, 0), n,\n                Color(0, 0, 0, 0.5)\n            );\n        }\n    `);\n    var shape = Stardust.shape.create(shapes.Shape, platform);\n    shape.attr(\"x\", (d) => d);\n    addSlider(\"k1\", shape, \"k1\", 16.707, 0, 20);\n    addSlider(\"k2\", shape, \"k2\", 14.317, 0, 20);\n    addSlider(\"k3\", shape, \"k3\", 17.049, 0, 20);\n\n    var data = [];\n    var N = 100000;\n    for(var k = 0; k < N; k++) {\n        var x = k / N * Math.PI * 2 * 20;\n        data.push(x);\n    }\n    shape.data(data);\n\n    function render() {\n        shape.render();\n    }\n");
+DefineExample("Squares", "2D", "data/mnist.csv", "\n    var shapes = Stardust.shape.compile(`\n        import Rectangle, OutlinedRectangle from P2D;\n\n        float size = 2;\n        float spacing = 3;\n        float x0 = 10;\n        float xSpacing = 85;\n        float y1 = 700;\n        float binSpacing = 47;\n\n        float CMsp = 1.6;\n        float CMspacing = 55;\n        float CMx0 = 50;\n        float CMy0 = 110;\n\n        float t = 0;\n\n        float binIx;\n        float binIy;\n        float CMIx;\n        float CMIy;\n        float CMwh;\n        float bin;\n        float assigned;\n        float label;\n        Color color;\n\n        shape BinnedSquare() {\n            float x = x0 + xSpacing * assigned;\n            float y = y1 - bin * binSpacing;\n            float bx = binIx * spacing;\n            float by = binIy * spacing;\n            x = x + bx;\n            y = y + by;\n            Vector2 p1a = Vector2(x, y);\n            Vector2 p2a = Vector2(x + size, y + size);\n            float CMx = CMx0 + assigned * CMspacing;\n            float CMy = CMy0 + label * CMspacing;\n            float dx = CMsp * CMIx;\n            float dy = CMsp * CMIy;\n            CMx = CMx + dx - CMwh / 2 * CMsp;\n            CMy = CMy + dy - CMwh / 2 * CMsp;\n            Vector2 p1b = Vector2(CMx, CMy);\n            Vector2 p2b = Vector2(CMx + size, CMy + size);\n            Rectangle(p1a * (1 - t) + p1b * t, p2a * (1 - t) + p2b * t, color);\n        }\n\n        shape BinnedOutlinedSquare() {\n            float x = x0 + xSpacing * label;\n            float y = y1 - bin * binSpacing;\n            float bx = binIx * spacing;\n            float by = binIy * spacing;\n            x = x - bx - spacing;\n            y = y + by;\n            Vector2 p1a = Vector2(x, y);\n            Vector2 p2a = Vector2(x + size, y + size);\n            float CMx = CMx0 + assigned * CMspacing;\n            float CMy = CMy0 + label * CMspacing;\n            float dx = CMsp * CMIx;\n            float dy = CMsp * CMIy;\n            CMx = CMx + dx - CMwh / 2 * CMsp;\n            CMy = CMy + dy - CMwh / 2 * CMsp;\n            Vector2 p1b = Vector2(CMx, CMy);\n            Vector2 p2b = Vector2(CMx + size, CMy + size);\n            OutlinedRectangle(p1a * (1 - t) + p1b * t, p2a * (1 - t) + p2b * t, 0.5, color);\n        }\n    `);\n    var Nbins = 15;\n    var Nclasses = 10;\n    var CM = [];\n    var CMBin = [];\n\n    var instances = DATA.map(function(d) {\n        return {\n            label: parseInt(d.Label.substr(1)),\n            assigned: parseInt(d.Assigned.substr(1)),\n            score: d[d.Assigned],\n            scoreBin: Math.min(Nbins - 1, Math.max(0, Math.floor(parseFloat(d[d.Assigned]) * Nbins)))\n        };\n    });\n\n    for(var i = 0; i < Nclasses; i++) {\n        CM[i] = [];\n        CMBin[i] = [];\n        for(var j = 0; j < Nclasses; j++) {\n            CM[i][j] = 0;\n            CMBin[i][j] = [];\n            for(var k = 0; k < Nbins; k++) {\n                CMBin[i][j][k] = 0;\n            }\n        }\n    }\n\n    instances.sort(function(a, b) {\n        if(a.label == a.assigned) return b.label == b.assigned ? 0 : +1;\n        if(b.label == b.assigned) return a.label == a.assigned ? 0 : -1;\n        if(a.assigned != b.assigned)\n            return a.assigned - b.assigned;\n        if(a.label != b.label)\n            return a.label - b.label;\n        return a.score - b.score;\n    })\n\n    instances.forEach(function(d) {\n        d.CMIndex = CM[d.label][d.assigned];\n        CM[d.label][d.assigned] += 1;\n        d.binIndex = CMBin[0][d.assigned][d.scoreBin];\n        CMBin[0][d.assigned][d.scoreBin] += 1;\n    });\n\n    instances.sort(function(a, b) {\n        if(a.label == a.assigned) return b.label == b.assigned ? 0 : +1;\n        if(b.label == b.assigned) return a.label == a.assigned ? 0 : -1;\n        if(a.assigned != b.assigned)\n            return -(a.assigned - b.assigned);\n        if(a.label != b.label)\n            return a.label - b.label;\n        return a.score - b.score;\n    })\n\n    instances.forEach(function(d) {\n        d.binIndex2 = CMBin[1][d.label][d.scoreBin];\n        CMBin[1][d.label][d.scoreBin] += 1;\n    });\n\n    instances.forEach(function(d) {\n        d.CMCount = CM[d.label][d.assigned];\n    });\n\n    var colors = [[31,119,180],[255,127,14],[44,160,44],[214,39,40],[148,103,189],[140,86,75],[227,119,194],[127,127,127],[188,189,34],[23,190,207]];\n    colors = colors.map((x) => [ x[0] / 255, x[1] / 255, x[2] / 255, 1 ]);\n\n    var shape = Stardust.shape.create(shapes.BinnedSquare, platform);\n    shape.attr(\"color\", (d) => colors[d.label]);\n    shape.attr(\"label\", (d) => d.label);\n    shape.attr(\"assigned\", (d) => d.assigned);\n    shape.attr(\"binIx\", (d) => Math.floor(d.binIndex / 15));\n    shape.attr(\"binIy\", (d) => d.binIndex % 15);\n    shape.attr(\"CMwh\", (d) => Math.ceil(Math.sqrt(d.CMCount)));\n    shape.attr(\"CMIx\", (d) => Math.floor(d.CMIndex / shape.attr(\"CMwh\")(d)));\n    shape.attr(\"CMIy\", (d) => d.CMIndex % shape.attr(\"CMwh\")(d));\n    shape.attr(\"bin\", (d) => d.scoreBin);\n\n    var shape2 = Stardust.shape.create(shapes.BinnedOutlinedSquare, platform);\n    shape2.attr(\"color\", (d) => colors[d.assigned]);\n    shape2.attr(\"label\", (d) => d.label);\n    shape2.attr(\"assigned\", (d) => d.assigned);\n    shape2.attr(\"binIx\", (d) => Math.floor(d.binIndex2 / 15));\n    shape2.attr(\"binIy\", (d) => d.binIndex2 % 15);\n    shape2.attr(\"CMwh\", (d) => Math.ceil(Math.sqrt(d.CMCount)));\n    shape2.attr(\"CMIx\", (d) => Math.floor(d.CMIndex / shape2.attr(\"CMwh\")(d)));\n    shape2.attr(\"CMIy\", (d) => d.CMIndex % shape2.attr(\"CMwh\")(d));\n    shape2.attr(\"bin\", (d) => d.scoreBin);\n\n    addSlider(\"t\", shape, \"t\", 0, 0, 1);\n\n    shape.data(instances);\n    shape2.data(instances.filter((d) => d.label != d.assigned));\n\n    function render() {\n        shape2.attr(\"t\", shape.attr(\"t\"));\n        shape2.render();\n        shape.render();\n    }\n");
+DefineExample("Sincos 2D Plot", "2D", "", "\n    var shape = Stardust.shape.custom()\n        .input(\"x\", \"float\")\n        .input(\"k\", \"float\")\n        .input(\"k2\", \"float\")\n        .input(\"k3\", \"float\")\n        .input(\"size\", \"float\", \"0.3\");\n    shape.add(\"P2D.Hexagon\")\n        .attr(\"center\", \"Vector2(cos(k2 * x) * 5 + cos(x * k) * size, sin(x * k) * size + sin(x * k3) * 5) * 30 + Vector2(250, 250)\")\n        .attr(\"radius\", 1)\n        .attr(\"color\", \"Color(0, 0, 0, 0.1)\");\n\n    shape = Stardust.shape.create(shape, platform);\n\n    shape.attr(\"x\", (d) => d);\n    addSlider(\"k\", shape, \"k\", 101, 1, 200);\n    addSlider(\"k2\", shape, \"k2\", 3, 0, 20);\n    addSlider(\"k3\", shape, \"k3\", 13, 0, 20);\n\n    var data = [];\n    var N = 100000;\n    for(var k = 0; k < N; k++) {\n        var x = k / N * Math.PI * 2 * 20;\n        data.push(x);\n    }\n    shape.data(data);\n\n    function render() {\n        shape.render();\n    }\n    function animate(t) {\n        shape.attr(\"size\", Math.sin(t) * 0.5);\n    }\n");
+DefineExample("Simple Bar Chart", "2D", "", "\n    var shapes = Stardust.shape.compile(`\n        import Rectangle from P2D;\n\n        shape Bar(\n            float index,\n            float height,\n            float N,\n            float x0 = -1, float x1 = 1, float ratio = 0.9,\n            float scale = 1,\n            float y0 = 0\n        ) {\n            float step = (x1 - x0) / N;\n            float c = x0 + index * step + step / 2;\n            Rectangle(\n                Vector2(c - step * ratio / 2, y0),\n                Vector2(c + step * ratio / 2, y0 - height * scale)\n            );\n        }\n    `);\n    var area = Stardust.shape.create(shapes.Bar, platform);\n    area.attr(\"index\", (d, i) => i);\n    area.attr(\"height\", (d, i) => d);\n    area.attr(\"x0\", 10.5);\n    area.attr(\"x1\", 490.5);\n    area.attr(\"N\", 6);\n    area.attr(\"y0\", 200);\n    area.attr(\"ratio\", 1);\n    area.attr(\"scale\", 2);\n\n    addSlider(\"Scale\", area, \"scale\", 30, 1, 100);\n\n    let array = [];\n\n    for(let i = 0; i < 100000; i++) array.push(Math.cos(i / 2534) + Math.sin(i /  534));\n\n    area.attr(\"N\", array.length);\n    area.data(array);\n\n    var bar = Stardust.shape.create(shapes.Bar, platform);\n    bar.attr(\"index\", (d, i) => i);\n    bar.attr(\"height\", (d, i) => d);\n    bar.attr(\"x0\", 10);\n    bar.attr(\"x1\", 490);\n    bar.attr(\"N\", 6);\n    bar.attr(\"ratio\", 0.9);\n    bar.attr(\"scale\", 30);\n    bar.attr(\"y0\", 400);\n\n    array = [];\n    for(let i = 0; i < 20; i++) array.push(Math.cos(i) + 2);\n    bar.attr(\"N\", array.length);\n    bar.data(array);\n\n    function render() {\n        area.render();\n        bar.render();\n    }\n");
+DefineExample("Graph", "2D", "", "\n    var snodes = Stardust.shape.create(Stardust.shape.circle(8), platform);\n    var sedges = Stardust.shape.create(Stardust.shape.line(), platform);\n\n    var width = 600;\n    var height = 600;\n\n    var nodes = [];\n    var K = 100;\n\n    for(var i = 0; i < K * K; i++) {\n        nodes.push({\n            x: Math.random() * width,\n            y: Math.random() * height\n        })\n    }\n    var edges = [];\n\n    // Create a 2D grid.\n    for(var i = 0; i < K - 1; i++) {\n        for(var j = 0; j < K - 1; j++) {\n            edges.push({\n                source: i * K + j,\n                target: (i + 1) * K + j\n            });\n            edges.push({\n                source: i * K + j,\n                target: i * K + (j + 1)\n            });\n        }\n        edges.push({\n            source: (K - 1) * K + i,\n            target: (K - 1) * K + i + 1\n        });\n        edges.push({\n            source: i * K + K - 1,\n            target: (i + 1) * K + K - 1\n        });\n    }\n\n    for(var i = 0; i < K; i++) {\n        edges.push({\n            source: Math.floor(Math.random() * nodes.length),\n            target: Math.floor(Math.random() * nodes.length)\n        });\n    }\n\n    snodes.attr(\"center\", (d) => [ d.x, d.y ]);\n    snodes.attr(\"radius\", 2);\n    snodes.attr(\"color\", [ 0, 0, 0, 0.5 ]);\n    sedges.attr(\"p1\", (d) => [ d.source.x, d.source.y ]);\n    sedges.attr(\"p2\", (d) => [ d.target.x, d.target.y ]);\n    sedges.attr(\"color\", [ 0, 0, 0, 0.02 ]);\n\n    var force = d3.layout.force()\n        .size([ width, height ])\n        .nodes(nodes)\n        .links(edges);\n\n    force.linkStrength(8);\n    force.gravity(5);\n    force.linkDistance(0);\n\n    function animate() {\n        force.start();\n        force.tick();\n        force.stop();\n        snodes.data(nodes);\n        sedges.data(edges);\n    }\n\n    function render() {\n        sedges.render();\n        snodes.render();\n    }\n");
+DefineExample("Facebook Graph", "2D", "data/facebook_1912.json", "\n    var snodes = Stardust.shape.create(Stardust.shape.circle(8), platform);\n    var sedges = Stardust.shape.create(Stardust.shape.line(), platform);\n\n    var width = 600;\n    var height = 600;\n\n    var nodes = DATA.nodes;\n    var edges = DATA.edges;\n    var N = nodes.length;\n\n    for(var i = 0; i < N; i++) {\n        nodes[i].x = Math.random() * width;\n        nodes[i].y = Math.random() * height;\n    }\n\n    snodes.attr(\"center\", (d) => [ d.x, d.y ]);\n    snodes.attr(\"radius\", 3);\n    snodes.attr(\"color\", [ 0, 0, 0, 0.5 ]);\n    sedges.attr(\"p1\", (d) => [ d.source.x, d.source.y ]);\n    sedges.attr(\"p2\", (d) => [ d.target.x, d.target.y ]);\n    sedges.attr(\"color\", [ 0, 0, 0, 0.02 ]);\n\n    var force = d3.layout.force()\n        .size([ width, height ])\n        .nodes(nodes)\n        .links(edges);\n\n    force.linkStrength(0.05);\n    force.gravity(0.2);\n    force.linkDistance(100);\n    force.start();\n    force.on(\"tick\", () => {\n        snodes.data(nodes);\n        sedges.data(edges);\n        reRender();\n    });\n\n    function render() {\n        sedges.render();\n        snodes.render();\n    }\n\n    function finalize() {\n        force.stop();\n    }\n\n    print(`${nodes.length} nodes, ${edges.length} edges.`);\n");
+DefineExample("Facebook Graph D3 SVG", "2D", "data/facebook_1912.json", "\n    var width = 600;\n    var height = 600;\n\n    var nodes = DATA.nodes;\n    var edges = DATA.edges;\n    var N = nodes.length;\n\n    for(var i = 0; i < N; i++) {\n        nodes[i].x = Math.random() * width;\n        nodes[i].y = Math.random() * height;\n    }\n\n    var sedges = svg.selectAll(\"line\").data(edges);\n    sedges.enter().append(\"line\");\n    var snodes = svg.selectAll(\"circle\").data(nodes);\n    snodes.enter().append(\"circle\");\n\n    snodes.attr(\"cx\", (d) => d.x);\n    snodes.attr(\"cy\", (d) => d.y);\n    snodes.attr(\"r\", 2);\n    sedges.attr(\"x1\", (d) => d.source.x);\n    sedges.attr(\"y1\", (d) => d.source.y);\n    sedges.attr(\"x2\", (d) => d.target.x);\n    sedges.attr(\"y2\", (d) => d.target.y);\n\n    snodes.style(\"fill\", \"rgba(0, 0, 0, 0.5)\");\n    sedges.style(\"stroke\", \"rgba(0, 0, 0, 0.02)\");\n\n    var force = d3.layout.force()\n        .size([ width, height ])\n        .nodes(nodes)\n        .links(edges);\n\n    force.linkStrength(0.05);\n    force.gravity(0.2);\n    force.linkDistance(100);\n    force.start();\n    force.on(\"tick\", () => {\n        //reRender();\n    });\n\n    function render() {\n        snodes.attr(\"cx\", (d) => d.x);\n        snodes.attr(\"cy\", (d) => d.y);\n        sedges.attr(\"x1\", (d) => d.source.x);\n        sedges.attr(\"y1\", (d) => d.source.y);\n        sedges.attr(\"x2\", (d) => d.target.x);\n        sedges.attr(\"y2\", (d) => d.target.y);\n    }\n\n    function finalize() {\n        force.stop();\n    }\n\n    print(`${nodes.length} nodes, ${edges.length} edges.`);\n");
 
-},{}],27:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -6852,7 +6956,9 @@ var ToolbarView = (function (_super) {
     ToolbarView.prototype.render = function () {
         var _this = this;
         return (React.createElement("div", {className: "toolbar"}, 
-            React.createElement("span", {className: "title"}, "Shape3D Playground"), 
+            React.createElement("span", {className: "title"}, 
+                React.createElement("a", {href: "https://stardust-vis.github.io/"}, "Stardust"), 
+                " Playground"), 
             "Load example: ", 
             React.createElement("select", {ref: "selectExample", onChange: function (event) { return new Actions.LoadExample(_this.refs.selectExample.value).dispatch(); }}, examples_1.examples.map(function (example, index) { return React.createElement("option", {key: index, value: example.name}, example.name); })), 
             " ", 
@@ -6868,7 +6974,6 @@ var PlaygroundRootView = (function (_super) {
         this.state = {
             viewType: "2D",
             dataFile: "",
-            shapeCode: "",
             jsCode: "",
             backgroundColor: [1, 1, 1],
             compiled: null,
@@ -6894,7 +6999,6 @@ var PlaygroundRootView = (function (_super) {
                 _this.setState({
                     dataFile: example.dataFile,
                     viewType: example.viewType,
-                    shapeCode: example.s3Code,
                     jsCode: example.jsCode
                 });
             }
@@ -6903,7 +7007,6 @@ var PlaygroundRootView = (function (_super) {
                     compiled: {
                         dataFile: _this.state.dataFile,
                         viewType: _this.state.viewType,
-                        shapeCode: _this.state.shapeCode,
                         backgroundColor: _this.state.backgroundColor,
                         jsCode: _this.state.jsCode,
                         compileIndex: new Date().getTime()
@@ -6931,15 +7034,12 @@ var PlaygroundRootView = (function (_super) {
                     "Background: ", 
                     React.createElement("input", {ref: "inputColor", type: "color", value: getCSSColor(this.state.backgroundColor), onChange: function (event) { return _this.setState({ backgroundColor: parseCSSColor(_this.refs.inputColor.value) }); }})), 
                 React.createElement("div", {className: "editors"}, 
-                    React.createElement("div", {className: "editor", style: { height: this.state.shapeCodeHeight }}, 
-                        React.createElement(editor_1.MonacoEditor, {ref: "shapeCodeEditor", value: this.state.shapeCode, language: "cpp", onChange: function (value) { return _this.setState({ shapeCode: value }); }})
-                    ), 
-                    React.createElement(divider_1.HorizontalDivider, {top: this.state.shapeCodeHeight, onDrag: function (newTop) { return _this.setState({ shapeCodeHeight: newTop }); }}), 
-                    React.createElement("div", {className: "editor", style: { top: this.state.shapeCodeHeight + 5, bottom: 0 }}, 
+                    React.createElement("div", {className: "editor", style: { top: 0, bottom: 0 }}, 
                         React.createElement(editor_1.MonacoEditor, {ref: "jsCodeEditor", value: this.state.jsCode, language: "javascript", onChange: function (value) { return _this.setState({ jsCode: value }); }})
-                    ))), 
+                    )
+                )), 
             React.createElement(divider_1.VerticalDivider, {left: this.state.panelWidth, onDrag: function (newLeft) { return _this.setState({ panelWidth: Math.min(_this.state.width - 30, Math.max(30, newLeft)) }); }}), 
-            React.createElement("div", {className: "s3rendering-container", style: { left: this.state.panelWidth + 5 + "px" }}, this.state.compiled ? React.createElement(s3rendering_1.S3RenderingView, {dataFile: this.state.dataFile, viewType: this.state.compiled.viewType, shapeCode: this.state.compiled.shapeCode, jsCode: this.state.compiled.jsCode, width: this.state.width - 5 - this.state.panelWidth, height: this.state.height - 30, compileIndex: this.state.compiled.compileIndex, backgroundColor: this.state.compiled.backgroundColor}) : null)));
+            React.createElement("div", {className: "s3rendering-container", style: { left: this.state.panelWidth + 5 + "px" }}, this.state.compiled ? React.createElement(s3rendering_1.S3RenderingView, {dataFile: this.state.dataFile, viewType: this.state.compiled.viewType, jsCode: this.state.compiled.jsCode, width: this.state.width - 5 - this.state.panelWidth, height: this.state.height - 30, compileIndex: this.state.compiled.compileIndex, backgroundColor: this.state.compiled.backgroundColor}) : null)));
     };
     return PlaygroundRootView;
 }(React.Component));
@@ -6949,7 +7049,7 @@ window["playgroundInitialize"] = function () {
     ReactDom.render(React.createElement(PlaygroundRootView, null), document.getElementById("root"));
 };
 
-},{"./actions":22,"./components/divider":23,"./components/editor":24,"./components/s3rendering":25,"./examples":26,"d3":29,"react":202,"react-dom":59}],28:[function(require,module,exports){
+},{"./actions":24,"./components/divider":25,"./components/editor":26,"./components/s3rendering":27,"./examples":28,"d3":31,"react":204,"react-dom":61}],30:[function(require,module,exports){
 "use strict";
 var d3 = require("d3");
 var VideoSaver = (function () {
@@ -6981,7 +7081,7 @@ var VideoSaver = (function () {
 }());
 exports.VideoSaver = VideoSaver;
 
-},{"d3":29}],29:[function(require,module,exports){
+},{"d3":31}],31:[function(require,module,exports){
 !function() {
   var d3 = {
     version: "3.5.17"
@@ -16536,7 +16636,7 @@ exports.VideoSaver = VideoSaver;
   });
   if (typeof define === "function" && define.amd) this.d3 = d3, define(d3); else if (typeof module === "object" && module.exports) module.exports = d3; else this.d3 = d3;
 }();
-},{}],30:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -16622,7 +16722,7 @@ var EventListener = {
 
 module.exports = EventListener;
 }).call(this,require('_process'))
-},{"./emptyFunction":37,"_process":58}],31:[function(require,module,exports){
+},{"./emptyFunction":39,"_process":60}],33:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -16658,7 +16758,7 @@ var ExecutionEnvironment = {
 };
 
 module.exports = ExecutionEnvironment;
-},{}],32:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 "use strict";
 
 /**
@@ -16690,7 +16790,7 @@ function camelize(string) {
 }
 
 module.exports = camelize;
-},{}],33:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -16730,7 +16830,7 @@ function camelizeStyleName(string) {
 }
 
 module.exports = camelizeStyleName;
-},{"./camelize":32}],34:[function(require,module,exports){
+},{"./camelize":34}],36:[function(require,module,exports){
 'use strict';
 
 /**
@@ -16770,7 +16870,7 @@ function containsNode(outerNode, innerNode) {
 }
 
 module.exports = containsNode;
-},{"./isTextNode":47}],35:[function(require,module,exports){
+},{"./isTextNode":49}],37:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -16899,7 +16999,7 @@ function createArrayFromMixed(obj) {
 
 module.exports = createArrayFromMixed;
 }).call(this,require('_process'))
-},{"./invariant":45,"_process":58}],36:[function(require,module,exports){
+},{"./invariant":47,"_process":60}],38:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -16985,7 +17085,7 @@ function createNodesFromMarkup(markup, handleScript) {
 
 module.exports = createNodesFromMarkup;
 }).call(this,require('_process'))
-},{"./ExecutionEnvironment":31,"./createArrayFromMixed":35,"./getMarkupWrap":41,"./invariant":45,"_process":58}],37:[function(require,module,exports){
+},{"./ExecutionEnvironment":33,"./createArrayFromMixed":37,"./getMarkupWrap":43,"./invariant":47,"_process":60}],39:[function(require,module,exports){
 "use strict";
 
 /**
@@ -17024,7 +17124,7 @@ emptyFunction.thatReturnsArgument = function (arg) {
 };
 
 module.exports = emptyFunction;
-},{}],38:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -17046,7 +17146,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = emptyObject;
 }).call(this,require('_process'))
-},{"_process":58}],39:[function(require,module,exports){
+},{"_process":60}],41:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -17073,7 +17173,7 @@ function focusNode(node) {
 }
 
 module.exports = focusNode;
-},{}],40:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 'use strict';
 
 /**
@@ -17108,7 +17208,7 @@ function getActiveElement() /*?DOMElement*/{
 }
 
 module.exports = getActiveElement;
-},{}],41:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -17205,7 +17305,7 @@ function getMarkupWrap(nodeName) {
 
 module.exports = getMarkupWrap;
 }).call(this,require('_process'))
-},{"./ExecutionEnvironment":31,"./invariant":45,"_process":58}],42:[function(require,module,exports){
+},{"./ExecutionEnvironment":33,"./invariant":47,"_process":60}],44:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -17244,7 +17344,7 @@ function getUnboundedScrollPosition(scrollable) {
 }
 
 module.exports = getUnboundedScrollPosition;
-},{}],43:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 'use strict';
 
 /**
@@ -17277,7 +17377,7 @@ function hyphenate(string) {
 }
 
 module.exports = hyphenate;
-},{}],44:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -17316,7 +17416,7 @@ function hyphenateStyleName(string) {
 }
 
 module.exports = hyphenateStyleName;
-},{"./hyphenate":43}],45:[function(require,module,exports){
+},{"./hyphenate":45}],47:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -17368,7 +17468,7 @@ function invariant(condition, format, a, b, c, d, e, f) {
 
 module.exports = invariant;
 }).call(this,require('_process'))
-},{"_process":58}],46:[function(require,module,exports){
+},{"_process":60}],48:[function(require,module,exports){
 'use strict';
 
 /**
@@ -17391,7 +17491,7 @@ function isNode(object) {
 }
 
 module.exports = isNode;
-},{}],47:[function(require,module,exports){
+},{}],49:[function(require,module,exports){
 'use strict';
 
 /**
@@ -17416,7 +17516,7 @@ function isTextNode(object) {
 }
 
 module.exports = isTextNode;
-},{"./isNode":46}],48:[function(require,module,exports){
+},{"./isNode":48}],50:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -17466,7 +17566,7 @@ var keyMirror = function keyMirror(obj) {
 
 module.exports = keyMirror;
 }).call(this,require('_process'))
-},{"./invariant":45,"_process":58}],49:[function(require,module,exports){
+},{"./invariant":47,"_process":60}],51:[function(require,module,exports){
 "use strict";
 
 /**
@@ -17501,7 +17601,7 @@ var keyOf = function keyOf(oneKeyObj) {
 };
 
 module.exports = keyOf;
-},{}],50:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -17531,7 +17631,7 @@ function memoizeStringOnly(callback) {
 }
 
 module.exports = memoizeStringOnly;
-},{}],51:[function(require,module,exports){
+},{}],53:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -17554,7 +17654,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = performance || {};
-},{"./ExecutionEnvironment":31}],52:[function(require,module,exports){
+},{"./ExecutionEnvironment":33}],54:[function(require,module,exports){
 'use strict';
 
 /**
@@ -17588,7 +17688,7 @@ if (performance.now) {
 }
 
 module.exports = performanceNow;
-},{"./performance":51}],53:[function(require,module,exports){
+},{"./performance":53}],55:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -17656,7 +17756,7 @@ function shallowEqual(objA, objB) {
 }
 
 module.exports = shallowEqual;
-},{}],54:[function(require,module,exports){
+},{}],56:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -17725,7 +17825,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = warning;
 }).call(this,require('_process'))
-},{"./emptyFunction":37,"_process":58}],55:[function(require,module,exports){
+},{"./emptyFunction":39,"_process":60}],57:[function(require,module,exports){
 /**
  * Copyright (c) 2014-2015, Facebook, Inc.
  * All rights reserved.
@@ -17737,7 +17837,7 @@ module.exports = warning;
 
 module.exports.Dispatcher = require('./lib/Dispatcher');
 
-},{"./lib/Dispatcher":56}],56:[function(require,module,exports){
+},{"./lib/Dispatcher":58}],58:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2014-2015, Facebook, Inc.
@@ -17971,7 +18071,7 @@ var Dispatcher = (function () {
 
 module.exports = Dispatcher;
 }).call(this,require('_process'))
-},{"_process":58,"fbjs/lib/invariant":45}],57:[function(require,module,exports){
+},{"_process":60,"fbjs/lib/invariant":47}],59:[function(require,module,exports){
 'use strict';
 /* eslint-disable no-unused-vars */
 var hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -18056,7 +18156,7 @@ module.exports = shouldUseNative() ? Object.assign : function (target, source) {
 	return to;
 };
 
-},{}],58:[function(require,module,exports){
+},{}],60:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -18238,12 +18338,12 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],59:[function(require,module,exports){
+},{}],61:[function(require,module,exports){
 'use strict';
 
 module.exports = require('react/lib/ReactDOM');
 
-},{"react/lib/ReactDOM":97}],60:[function(require,module,exports){
+},{"react/lib/ReactDOM":99}],62:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -18268,7 +18368,7 @@ var AutoFocusUtils = {
 };
 
 module.exports = AutoFocusUtils;
-},{"./ReactDOMComponentTree":101,"fbjs/lib/focusNode":39}],61:[function(require,module,exports){
+},{"./ReactDOMComponentTree":103,"fbjs/lib/focusNode":41}],63:[function(require,module,exports){
 /**
  * Copyright 2013-present Facebook, Inc.
  * All rights reserved.
@@ -18659,7 +18759,7 @@ var BeforeInputEventPlugin = {
 };
 
 module.exports = BeforeInputEventPlugin;
-},{"./EventConstants":75,"./EventPropagators":79,"./FallbackCompositionState":80,"./SyntheticCompositionEvent":158,"./SyntheticInputEvent":162,"fbjs/lib/ExecutionEnvironment":31,"fbjs/lib/keyOf":49}],62:[function(require,module,exports){
+},{"./EventConstants":77,"./EventPropagators":81,"./FallbackCompositionState":82,"./SyntheticCompositionEvent":160,"./SyntheticInputEvent":164,"fbjs/lib/ExecutionEnvironment":33,"fbjs/lib/keyOf":51}],64:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -18808,7 +18908,7 @@ var CSSProperty = {
 };
 
 module.exports = CSSProperty;
-},{}],63:[function(require,module,exports){
+},{}],65:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -19016,7 +19116,7 @@ var CSSPropertyOperations = {
 
 module.exports = CSSPropertyOperations;
 }).call(this,require('_process'))
-},{"./CSSProperty":62,"./ReactInstrumentation":131,"./dangerousStyleValue":176,"_process":58,"fbjs/lib/ExecutionEnvironment":31,"fbjs/lib/camelizeStyleName":33,"fbjs/lib/hyphenateStyleName":44,"fbjs/lib/memoizeStringOnly":50,"fbjs/lib/warning":54}],64:[function(require,module,exports){
+},{"./CSSProperty":64,"./ReactInstrumentation":133,"./dangerousStyleValue":178,"_process":60,"fbjs/lib/ExecutionEnvironment":33,"fbjs/lib/camelizeStyleName":35,"fbjs/lib/hyphenateStyleName":46,"fbjs/lib/memoizeStringOnly":52,"fbjs/lib/warning":56}],66:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -19125,7 +19225,7 @@ PooledClass.addPoolingTo(CallbackQueue);
 
 module.exports = CallbackQueue;
 }).call(this,require('_process'))
-},{"./PooledClass":84,"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45,"object-assign":57}],65:[function(require,module,exports){
+},{"./PooledClass":86,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"object-assign":59}],67:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -19451,7 +19551,7 @@ var ChangeEventPlugin = {
 };
 
 module.exports = ChangeEventPlugin;
-},{"./EventConstants":75,"./EventPluginHub":76,"./EventPropagators":79,"./ReactDOMComponentTree":101,"./ReactUpdates":151,"./SyntheticEvent":160,"./getEventTarget":184,"./isEventSupported":191,"./isTextInputElement":192,"fbjs/lib/ExecutionEnvironment":31,"fbjs/lib/keyOf":49}],66:[function(require,module,exports){
+},{"./EventConstants":77,"./EventPluginHub":78,"./EventPropagators":81,"./ReactDOMComponentTree":103,"./ReactUpdates":153,"./SyntheticEvent":162,"./getEventTarget":186,"./isEventSupported":193,"./isTextInputElement":194,"fbjs/lib/ExecutionEnvironment":33,"fbjs/lib/keyOf":51}],68:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -19648,7 +19748,7 @@ var DOMChildrenOperations = {
 
 module.exports = DOMChildrenOperations;
 }).call(this,require('_process'))
-},{"./DOMLazyTree":67,"./Danger":71,"./ReactDOMComponentTree":101,"./ReactInstrumentation":131,"./ReactMultiChildUpdateTypes":136,"./createMicrosoftUnsafeLocalFunction":175,"./setInnerHTML":197,"./setTextContent":198,"_process":58}],67:[function(require,module,exports){
+},{"./DOMLazyTree":69,"./Danger":73,"./ReactDOMComponentTree":103,"./ReactInstrumentation":133,"./ReactMultiChildUpdateTypes":138,"./createMicrosoftUnsafeLocalFunction":177,"./setInnerHTML":199,"./setTextContent":200,"_process":60}],69:[function(require,module,exports){
 /**
  * Copyright 2015-present, Facebook, Inc.
  * All rights reserved.
@@ -19767,7 +19867,7 @@ DOMLazyTree.queueHTML = queueHTML;
 DOMLazyTree.queueText = queueText;
 
 module.exports = DOMLazyTree;
-},{"./DOMNamespaces":68,"./createMicrosoftUnsafeLocalFunction":175,"./setInnerHTML":197,"./setTextContent":198}],68:[function(require,module,exports){
+},{"./DOMNamespaces":70,"./createMicrosoftUnsafeLocalFunction":177,"./setInnerHTML":199,"./setTextContent":200}],70:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -19788,7 +19888,7 @@ var DOMNamespaces = {
 };
 
 module.exports = DOMNamespaces;
-},{}],69:[function(require,module,exports){
+},{}],71:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -19997,7 +20097,7 @@ var DOMProperty = {
 
 module.exports = DOMProperty;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45}],70:[function(require,module,exports){
+},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],72:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -20221,7 +20321,7 @@ var DOMPropertyOperations = {
 
 module.exports = DOMPropertyOperations;
 }).call(this,require('_process'))
-},{"./DOMProperty":69,"./ReactDOMComponentTree":101,"./ReactInstrumentation":131,"./quoteAttributeValueForBrowser":194,"_process":58,"fbjs/lib/warning":54}],71:[function(require,module,exports){
+},{"./DOMProperty":71,"./ReactDOMComponentTree":103,"./ReactInstrumentation":133,"./quoteAttributeValueForBrowser":196,"_process":60,"fbjs/lib/warning":56}],73:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -20272,7 +20372,7 @@ var Danger = {
 
 module.exports = Danger;
 }).call(this,require('_process'))
-},{"./DOMLazyTree":67,"./reactProdInvariant":195,"_process":58,"fbjs/lib/ExecutionEnvironment":31,"fbjs/lib/createNodesFromMarkup":36,"fbjs/lib/emptyFunction":37,"fbjs/lib/invariant":45}],72:[function(require,module,exports){
+},{"./DOMLazyTree":69,"./reactProdInvariant":197,"_process":60,"fbjs/lib/ExecutionEnvironment":33,"fbjs/lib/createNodesFromMarkup":38,"fbjs/lib/emptyFunction":39,"fbjs/lib/invariant":47}],74:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -20300,7 +20400,7 @@ var keyOf = require('fbjs/lib/keyOf');
 var DefaultEventPluginOrder = [keyOf({ ResponderEventPlugin: null }), keyOf({ SimpleEventPlugin: null }), keyOf({ TapEventPlugin: null }), keyOf({ EnterLeaveEventPlugin: null }), keyOf({ ChangeEventPlugin: null }), keyOf({ SelectEventPlugin: null }), keyOf({ BeforeInputEventPlugin: null })];
 
 module.exports = DefaultEventPluginOrder;
-},{"fbjs/lib/keyOf":49}],73:[function(require,module,exports){
+},{"fbjs/lib/keyOf":51}],75:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -20351,7 +20451,7 @@ var DisabledInputUtils = {
 };
 
 module.exports = DisabledInputUtils;
-},{}],74:[function(require,module,exports){
+},{}],76:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -20457,7 +20557,7 @@ var EnterLeaveEventPlugin = {
 };
 
 module.exports = EnterLeaveEventPlugin;
-},{"./EventConstants":75,"./EventPropagators":79,"./ReactDOMComponentTree":101,"./SyntheticMouseEvent":164,"fbjs/lib/keyOf":49}],75:[function(require,module,exports){
+},{"./EventConstants":77,"./EventPropagators":81,"./ReactDOMComponentTree":103,"./SyntheticMouseEvent":166,"fbjs/lib/keyOf":51}],77:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -20555,7 +20655,7 @@ var EventConstants = {
 };
 
 module.exports = EventConstants;
-},{"fbjs/lib/keyMirror":48}],76:[function(require,module,exports){
+},{"fbjs/lib/keyMirror":50}],78:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -20809,7 +20909,7 @@ var EventPluginHub = {
 
 module.exports = EventPluginHub;
 }).call(this,require('_process'))
-},{"./EventPluginRegistry":77,"./EventPluginUtils":78,"./ReactErrorUtils":122,"./accumulateInto":171,"./forEachAccumulated":180,"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45}],77:[function(require,module,exports){
+},{"./EventPluginRegistry":79,"./EventPluginUtils":80,"./ReactErrorUtils":124,"./accumulateInto":173,"./forEachAccumulated":182,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],79:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -21059,7 +21159,7 @@ var EventPluginRegistry = {
 
 module.exports = EventPluginRegistry;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45}],78:[function(require,module,exports){
+},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],80:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -21291,7 +21391,7 @@ var EventPluginUtils = {
 
 module.exports = EventPluginUtils;
 }).call(this,require('_process'))
-},{"./EventConstants":75,"./ReactErrorUtils":122,"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45,"fbjs/lib/warning":54}],79:[function(require,module,exports){
+},{"./EventConstants":77,"./ReactErrorUtils":124,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],81:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -21431,7 +21531,7 @@ var EventPropagators = {
 
 module.exports = EventPropagators;
 }).call(this,require('_process'))
-},{"./EventConstants":75,"./EventPluginHub":76,"./EventPluginUtils":78,"./accumulateInto":171,"./forEachAccumulated":180,"_process":58,"fbjs/lib/warning":54}],80:[function(require,module,exports){
+},{"./EventConstants":77,"./EventPluginHub":78,"./EventPluginUtils":80,"./accumulateInto":173,"./forEachAccumulated":182,"_process":60,"fbjs/lib/warning":56}],82:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -21527,7 +21627,7 @@ _assign(FallbackCompositionState.prototype, {
 PooledClass.addPoolingTo(FallbackCompositionState);
 
 module.exports = FallbackCompositionState;
-},{"./PooledClass":84,"./getTextContentAccessor":188,"object-assign":57}],81:[function(require,module,exports){
+},{"./PooledClass":86,"./getTextContentAccessor":190,"object-assign":59}],83:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -21740,7 +21840,7 @@ var HTMLDOMPropertyConfig = {
 };
 
 module.exports = HTMLDOMPropertyConfig;
-},{"./DOMProperty":69}],82:[function(require,module,exports){
+},{"./DOMProperty":71}],84:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -21800,7 +21900,7 @@ var KeyEscapeUtils = {
 };
 
 module.exports = KeyEscapeUtils;
-},{}],83:[function(require,module,exports){
+},{}],85:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -21939,7 +22039,7 @@ var LinkedValueUtils = {
 
 module.exports = LinkedValueUtils;
 }).call(this,require('_process'))
-},{"./ReactPropTypeLocations":141,"./ReactPropTypes":142,"./ReactPropTypesSecret":143,"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45,"fbjs/lib/warning":54}],84:[function(require,module,exports){
+},{"./ReactPropTypeLocations":143,"./ReactPropTypes":144,"./ReactPropTypesSecret":145,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],86:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -22063,7 +22163,7 @@ var PooledClass = {
 
 module.exports = PooledClass;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45}],85:[function(require,module,exports){
+},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],87:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -22155,7 +22255,7 @@ var React = {
 
 module.exports = React;
 }).call(this,require('_process'))
-},{"./ReactChildren":88,"./ReactClass":90,"./ReactComponent":91,"./ReactDOMFactories":104,"./ReactElement":119,"./ReactElementValidator":120,"./ReactPropTypes":142,"./ReactPureComponent":144,"./ReactVersion":152,"./onlyChild":193,"_process":58,"fbjs/lib/warning":54,"object-assign":57}],86:[function(require,module,exports){
+},{"./ReactChildren":90,"./ReactClass":92,"./ReactComponent":93,"./ReactDOMFactories":106,"./ReactElement":121,"./ReactElementValidator":122,"./ReactPropTypes":144,"./ReactPureComponent":146,"./ReactVersion":154,"./onlyChild":195,"_process":60,"fbjs/lib/warning":56,"object-assign":59}],88:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -22486,7 +22586,7 @@ var ReactBrowserEventEmitter = _assign({}, ReactEventEmitterMixin, {
 });
 
 module.exports = ReactBrowserEventEmitter;
-},{"./EventConstants":75,"./EventPluginRegistry":77,"./ReactEventEmitterMixin":123,"./ViewportMetrics":170,"./getVendorPrefixedEventName":189,"./isEventSupported":191,"object-assign":57}],87:[function(require,module,exports){
+},{"./EventConstants":77,"./EventPluginRegistry":79,"./ReactEventEmitterMixin":125,"./ViewportMetrics":172,"./getVendorPrefixedEventName":191,"./isEventSupported":193,"object-assign":59}],89:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-present, Facebook, Inc.
@@ -22643,7 +22743,7 @@ var ReactChildReconciler = {
 
 module.exports = ReactChildReconciler;
 }).call(this,require('_process'))
-},{"./KeyEscapeUtils":82,"./ReactComponentTreeHook":94,"./ReactReconciler":146,"./instantiateReactComponent":190,"./shouldUpdateReactComponent":199,"./traverseAllChildren":200,"_process":58,"fbjs/lib/warning":54}],88:[function(require,module,exports){
+},{"./KeyEscapeUtils":84,"./ReactComponentTreeHook":96,"./ReactReconciler":148,"./instantiateReactComponent":192,"./shouldUpdateReactComponent":201,"./traverseAllChildren":202,"_process":60,"fbjs/lib/warning":56}],90:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -22835,7 +22935,7 @@ var ReactChildren = {
 };
 
 module.exports = ReactChildren;
-},{"./PooledClass":84,"./ReactElement":119,"./traverseAllChildren":200,"fbjs/lib/emptyFunction":37}],89:[function(require,module,exports){
+},{"./PooledClass":86,"./ReactElement":121,"./traverseAllChildren":202,"fbjs/lib/emptyFunction":39}],91:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -22892,7 +22992,7 @@ var ReactChildrenMutationWarningHook = {
 
 module.exports = ReactChildrenMutationWarningHook;
 }).call(this,require('_process'))
-},{"./ReactComponentTreeHook":94,"_process":58,"fbjs/lib/warning":54}],90:[function(require,module,exports){
+},{"./ReactComponentTreeHook":96,"_process":60,"fbjs/lib/warning":56}],92:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -23627,7 +23727,7 @@ var ReactClass = {
 
 module.exports = ReactClass;
 }).call(this,require('_process'))
-},{"./ReactComponent":91,"./ReactElement":119,"./ReactNoopUpdateQueue":138,"./ReactPropTypeLocationNames":140,"./ReactPropTypeLocations":141,"./reactProdInvariant":195,"_process":58,"fbjs/lib/emptyObject":38,"fbjs/lib/invariant":45,"fbjs/lib/keyMirror":48,"fbjs/lib/keyOf":49,"fbjs/lib/warning":54,"object-assign":57}],91:[function(require,module,exports){
+},{"./ReactComponent":93,"./ReactElement":121,"./ReactNoopUpdateQueue":140,"./ReactPropTypeLocationNames":142,"./ReactPropTypeLocations":143,"./reactProdInvariant":197,"_process":60,"fbjs/lib/emptyObject":40,"fbjs/lib/invariant":47,"fbjs/lib/keyMirror":50,"fbjs/lib/keyOf":51,"fbjs/lib/warning":56,"object-assign":59}],93:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -23748,7 +23848,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactComponent;
 }).call(this,require('_process'))
-},{"./ReactNoopUpdateQueue":138,"./canDefineProperty":173,"./reactProdInvariant":195,"_process":58,"fbjs/lib/emptyObject":38,"fbjs/lib/invariant":45,"fbjs/lib/warning":54}],92:[function(require,module,exports){
+},{"./ReactNoopUpdateQueue":140,"./canDefineProperty":175,"./reactProdInvariant":197,"_process":60,"fbjs/lib/emptyObject":40,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],94:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -23779,7 +23879,7 @@ var ReactComponentBrowserEnvironment = {
 };
 
 module.exports = ReactComponentBrowserEnvironment;
-},{"./DOMChildrenOperations":66,"./ReactDOMIDOperations":106}],93:[function(require,module,exports){
+},{"./DOMChildrenOperations":68,"./ReactDOMIDOperations":108}],95:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-present, Facebook, Inc.
@@ -23827,7 +23927,7 @@ var ReactComponentEnvironment = {
 
 module.exports = ReactComponentEnvironment;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45}],94:[function(require,module,exports){
+},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],96:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2016-present, Facebook, Inc.
@@ -24172,7 +24272,7 @@ var ReactComponentTreeHook = {
 
 module.exports = ReactComponentTreeHook;
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":96,"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45,"fbjs/lib/warning":54}],95:[function(require,module,exports){
+},{"./ReactCurrentOwner":98,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],97:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -25079,7 +25179,7 @@ var ReactCompositeComponent = {
 
 module.exports = ReactCompositeComponent;
 }).call(this,require('_process'))
-},{"./ReactComponentEnvironment":93,"./ReactCurrentOwner":96,"./ReactElement":119,"./ReactErrorUtils":122,"./ReactInstanceMap":130,"./ReactInstrumentation":131,"./ReactNodeTypes":137,"./ReactPropTypeLocations":141,"./ReactReconciler":146,"./checkReactTypeSpec":174,"./reactProdInvariant":195,"./shouldUpdateReactComponent":199,"_process":58,"fbjs/lib/emptyObject":38,"fbjs/lib/invariant":45,"fbjs/lib/shallowEqual":53,"fbjs/lib/warning":54,"object-assign":57}],96:[function(require,module,exports){
+},{"./ReactComponentEnvironment":95,"./ReactCurrentOwner":98,"./ReactElement":121,"./ReactErrorUtils":124,"./ReactInstanceMap":132,"./ReactInstrumentation":133,"./ReactNodeTypes":139,"./ReactPropTypeLocations":143,"./ReactReconciler":148,"./checkReactTypeSpec":176,"./reactProdInvariant":197,"./shouldUpdateReactComponent":201,"_process":60,"fbjs/lib/emptyObject":40,"fbjs/lib/invariant":47,"fbjs/lib/shallowEqual":55,"fbjs/lib/warning":56,"object-assign":59}],98:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -25111,7 +25211,7 @@ var ReactCurrentOwner = {
 };
 
 module.exports = ReactCurrentOwner;
-},{}],97:[function(require,module,exports){
+},{}],99:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -25224,7 +25324,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactDOM;
 }).call(this,require('_process'))
-},{"./ReactDOMComponentTree":101,"./ReactDOMNullInputValuePropHook":108,"./ReactDOMUnknownPropertyHook":115,"./ReactDefaultInjection":118,"./ReactInstrumentation":131,"./ReactMount":134,"./ReactReconciler":146,"./ReactUpdates":151,"./ReactVersion":152,"./findDOMNode":178,"./getHostComponentFromComposite":185,"./renderSubtreeIntoContainer":196,"_process":58,"fbjs/lib/ExecutionEnvironment":31,"fbjs/lib/warning":54}],98:[function(require,module,exports){
+},{"./ReactDOMComponentTree":103,"./ReactDOMNullInputValuePropHook":110,"./ReactDOMUnknownPropertyHook":117,"./ReactDefaultInjection":120,"./ReactInstrumentation":133,"./ReactMount":136,"./ReactReconciler":148,"./ReactUpdates":153,"./ReactVersion":154,"./findDOMNode":180,"./getHostComponentFromComposite":187,"./renderSubtreeIntoContainer":198,"_process":60,"fbjs/lib/ExecutionEnvironment":33,"fbjs/lib/warning":56}],100:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -25249,7 +25349,7 @@ var ReactDOMButton = {
 };
 
 module.exports = ReactDOMButton;
-},{"./DisabledInputUtils":73}],99:[function(require,module,exports){
+},{"./DisabledInputUtils":75}],101:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -26258,7 +26358,7 @@ _assign(ReactDOMComponent.prototype, ReactDOMComponent.Mixin, ReactMultiChild.Mi
 
 module.exports = ReactDOMComponent;
 }).call(this,require('_process'))
-},{"./AutoFocusUtils":60,"./CSSPropertyOperations":63,"./DOMLazyTree":67,"./DOMNamespaces":68,"./DOMProperty":69,"./DOMPropertyOperations":70,"./EventConstants":75,"./EventPluginHub":76,"./EventPluginRegistry":77,"./ReactBrowserEventEmitter":86,"./ReactDOMButton":98,"./ReactDOMComponentFlags":100,"./ReactDOMComponentTree":101,"./ReactDOMInput":107,"./ReactDOMOption":109,"./ReactDOMSelect":110,"./ReactDOMTextarea":113,"./ReactInstrumentation":131,"./ReactMultiChild":135,"./ReactServerRenderingTransaction":148,"./escapeTextContentForBrowser":177,"./isEventSupported":191,"./reactProdInvariant":195,"./validateDOMNesting":201,"_process":58,"fbjs/lib/emptyFunction":37,"fbjs/lib/invariant":45,"fbjs/lib/keyOf":49,"fbjs/lib/shallowEqual":53,"fbjs/lib/warning":54,"object-assign":57}],100:[function(require,module,exports){
+},{"./AutoFocusUtils":62,"./CSSPropertyOperations":65,"./DOMLazyTree":69,"./DOMNamespaces":70,"./DOMProperty":71,"./DOMPropertyOperations":72,"./EventConstants":77,"./EventPluginHub":78,"./EventPluginRegistry":79,"./ReactBrowserEventEmitter":88,"./ReactDOMButton":100,"./ReactDOMComponentFlags":102,"./ReactDOMComponentTree":103,"./ReactDOMInput":109,"./ReactDOMOption":111,"./ReactDOMSelect":112,"./ReactDOMTextarea":115,"./ReactInstrumentation":133,"./ReactMultiChild":137,"./ReactServerRenderingTransaction":150,"./escapeTextContentForBrowser":179,"./isEventSupported":193,"./reactProdInvariant":197,"./validateDOMNesting":203,"_process":60,"fbjs/lib/emptyFunction":39,"fbjs/lib/invariant":47,"fbjs/lib/keyOf":51,"fbjs/lib/shallowEqual":55,"fbjs/lib/warning":56,"object-assign":59}],102:[function(require,module,exports){
 /**
  * Copyright 2015-present, Facebook, Inc.
  * All rights reserved.
@@ -26277,7 +26377,7 @@ var ReactDOMComponentFlags = {
 };
 
 module.exports = ReactDOMComponentFlags;
-},{}],101:[function(require,module,exports){
+},{}],103:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -26468,7 +26568,7 @@ var ReactDOMComponentTree = {
 
 module.exports = ReactDOMComponentTree;
 }).call(this,require('_process'))
-},{"./DOMProperty":69,"./ReactDOMComponentFlags":100,"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45}],102:[function(require,module,exports){
+},{"./DOMProperty":71,"./ReactDOMComponentFlags":102,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],104:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -26504,7 +26604,7 @@ function ReactDOMContainerInfo(topLevelWrapper, node) {
 
 module.exports = ReactDOMContainerInfo;
 }).call(this,require('_process'))
-},{"./validateDOMNesting":201,"_process":58}],103:[function(require,module,exports){
+},{"./validateDOMNesting":203,"_process":60}],105:[function(require,module,exports){
 /**
  * Copyright 2014-present, Facebook, Inc.
  * All rights reserved.
@@ -26565,7 +26665,7 @@ _assign(ReactDOMEmptyComponent.prototype, {
 });
 
 module.exports = ReactDOMEmptyComponent;
-},{"./DOMLazyTree":67,"./ReactDOMComponentTree":101,"object-assign":57}],104:[function(require,module,exports){
+},{"./DOMLazyTree":69,"./ReactDOMComponentTree":103,"object-assign":59}],106:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -26738,7 +26838,7 @@ var ReactDOMFactories = {
 
 module.exports = ReactDOMFactories;
 }).call(this,require('_process'))
-},{"./ReactElement":119,"./ReactElementValidator":120,"_process":58}],105:[function(require,module,exports){
+},{"./ReactElement":121,"./ReactElementValidator":122,"_process":60}],107:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -26757,7 +26857,7 @@ var ReactDOMFeatureFlags = {
 };
 
 module.exports = ReactDOMFeatureFlags;
-},{}],106:[function(require,module,exports){
+},{}],108:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -26792,7 +26892,7 @@ var ReactDOMIDOperations = {
 };
 
 module.exports = ReactDOMIDOperations;
-},{"./DOMChildrenOperations":66,"./ReactDOMComponentTree":101}],107:[function(require,module,exports){
+},{"./DOMChildrenOperations":68,"./ReactDOMComponentTree":103}],109:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -27064,7 +27164,7 @@ function _handleChange(event) {
 
 module.exports = ReactDOMInput;
 }).call(this,require('_process'))
-},{"./DOMPropertyOperations":70,"./DisabledInputUtils":73,"./LinkedValueUtils":83,"./ReactDOMComponentTree":101,"./ReactUpdates":151,"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45,"fbjs/lib/warning":54,"object-assign":57}],108:[function(require,module,exports){
+},{"./DOMPropertyOperations":72,"./DisabledInputUtils":75,"./LinkedValueUtils":85,"./ReactDOMComponentTree":103,"./ReactUpdates":153,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56,"object-assign":59}],110:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -27110,7 +27210,7 @@ var ReactDOMNullInputValuePropHook = {
 
 module.exports = ReactDOMNullInputValuePropHook;
 }).call(this,require('_process'))
-},{"./ReactComponentTreeHook":94,"_process":58,"fbjs/lib/warning":54}],109:[function(require,module,exports){
+},{"./ReactComponentTreeHook":96,"_process":60,"fbjs/lib/warning":56}],111:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -27236,7 +27336,7 @@ var ReactDOMOption = {
 
 module.exports = ReactDOMOption;
 }).call(this,require('_process'))
-},{"./ReactChildren":88,"./ReactDOMComponentTree":101,"./ReactDOMSelect":110,"_process":58,"fbjs/lib/warning":54,"object-assign":57}],110:[function(require,module,exports){
+},{"./ReactChildren":90,"./ReactDOMComponentTree":103,"./ReactDOMSelect":112,"_process":60,"fbjs/lib/warning":56,"object-assign":59}],112:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -27440,7 +27540,7 @@ function _handleChange(event) {
 
 module.exports = ReactDOMSelect;
 }).call(this,require('_process'))
-},{"./DisabledInputUtils":73,"./LinkedValueUtils":83,"./ReactDOMComponentTree":101,"./ReactUpdates":151,"_process":58,"fbjs/lib/warning":54,"object-assign":57}],111:[function(require,module,exports){
+},{"./DisabledInputUtils":75,"./LinkedValueUtils":85,"./ReactDOMComponentTree":103,"./ReactUpdates":153,"_process":60,"fbjs/lib/warning":56,"object-assign":59}],113:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -27653,7 +27753,7 @@ var ReactDOMSelection = {
 };
 
 module.exports = ReactDOMSelection;
-},{"./getNodeForCharacterOffset":187,"./getTextContentAccessor":188,"fbjs/lib/ExecutionEnvironment":31}],112:[function(require,module,exports){
+},{"./getNodeForCharacterOffset":189,"./getTextContentAccessor":190,"fbjs/lib/ExecutionEnvironment":33}],114:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -27820,7 +27920,7 @@ _assign(ReactDOMTextComponent.prototype, {
 
 module.exports = ReactDOMTextComponent;
 }).call(this,require('_process'))
-},{"./DOMChildrenOperations":66,"./DOMLazyTree":67,"./ReactDOMComponentTree":101,"./escapeTextContentForBrowser":177,"./reactProdInvariant":195,"./validateDOMNesting":201,"_process":58,"fbjs/lib/invariant":45,"object-assign":57}],113:[function(require,module,exports){
+},{"./DOMChildrenOperations":68,"./DOMLazyTree":69,"./ReactDOMComponentTree":103,"./escapeTextContentForBrowser":179,"./reactProdInvariant":197,"./validateDOMNesting":203,"_process":60,"fbjs/lib/invariant":47,"object-assign":59}],115:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -27978,7 +28078,7 @@ function _handleChange(event) {
 
 module.exports = ReactDOMTextarea;
 }).call(this,require('_process'))
-},{"./DisabledInputUtils":73,"./LinkedValueUtils":83,"./ReactDOMComponentTree":101,"./ReactUpdates":151,"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45,"fbjs/lib/warning":54,"object-assign":57}],114:[function(require,module,exports){
+},{"./DisabledInputUtils":75,"./LinkedValueUtils":85,"./ReactDOMComponentTree":103,"./ReactUpdates":153,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56,"object-assign":59}],116:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015-present, Facebook, Inc.
@@ -28117,7 +28217,7 @@ module.exports = {
   traverseEnterLeave: traverseEnterLeave
 };
 }).call(this,require('_process'))
-},{"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45}],115:[function(require,module,exports){
+},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],117:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -28232,7 +28332,7 @@ var ReactDOMUnknownPropertyHook = {
 
 module.exports = ReactDOMUnknownPropertyHook;
 }).call(this,require('_process'))
-},{"./DOMProperty":69,"./EventPluginRegistry":77,"./ReactComponentTreeHook":94,"_process":58,"fbjs/lib/warning":54}],116:[function(require,module,exports){
+},{"./DOMProperty":71,"./EventPluginRegistry":79,"./ReactComponentTreeHook":96,"_process":60,"fbjs/lib/warning":56}],118:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2016-present, Facebook, Inc.
@@ -28536,7 +28636,7 @@ if (/[?&]react_perf\b/.test(url)) {
 
 module.exports = ReactDebugTool;
 }).call(this,require('_process'))
-},{"./ReactChildrenMutationWarningHook":89,"./ReactComponentTreeHook":94,"./ReactHostOperationHistoryHook":127,"./ReactInvalidSetStateWarningHook":132,"_process":58,"fbjs/lib/ExecutionEnvironment":31,"fbjs/lib/performanceNow":52,"fbjs/lib/warning":54}],117:[function(require,module,exports){
+},{"./ReactChildrenMutationWarningHook":91,"./ReactComponentTreeHook":96,"./ReactHostOperationHistoryHook":129,"./ReactInvalidSetStateWarningHook":134,"_process":60,"fbjs/lib/ExecutionEnvironment":33,"fbjs/lib/performanceNow":54,"fbjs/lib/warning":56}],119:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -28605,7 +28705,7 @@ var ReactDefaultBatchingStrategy = {
 };
 
 module.exports = ReactDefaultBatchingStrategy;
-},{"./ReactUpdates":151,"./Transaction":169,"fbjs/lib/emptyFunction":37,"object-assign":57}],118:[function(require,module,exports){
+},{"./ReactUpdates":153,"./Transaction":171,"fbjs/lib/emptyFunction":39,"object-assign":59}],120:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -28690,7 +28790,7 @@ function inject() {
 module.exports = {
   inject: inject
 };
-},{"./BeforeInputEventPlugin":61,"./ChangeEventPlugin":65,"./DefaultEventPluginOrder":72,"./EnterLeaveEventPlugin":74,"./HTMLDOMPropertyConfig":81,"./ReactComponentBrowserEnvironment":92,"./ReactDOMComponent":99,"./ReactDOMComponentTree":101,"./ReactDOMEmptyComponent":103,"./ReactDOMTextComponent":112,"./ReactDOMTreeTraversal":114,"./ReactDefaultBatchingStrategy":117,"./ReactEventListener":124,"./ReactInjection":128,"./ReactReconcileTransaction":145,"./SVGDOMPropertyConfig":153,"./SelectEventPlugin":154,"./SimpleEventPlugin":155}],119:[function(require,module,exports){
+},{"./BeforeInputEventPlugin":63,"./ChangeEventPlugin":67,"./DefaultEventPluginOrder":74,"./EnterLeaveEventPlugin":76,"./HTMLDOMPropertyConfig":83,"./ReactComponentBrowserEnvironment":94,"./ReactDOMComponent":101,"./ReactDOMComponentTree":103,"./ReactDOMEmptyComponent":105,"./ReactDOMTextComponent":114,"./ReactDOMTreeTraversal":116,"./ReactDefaultBatchingStrategy":119,"./ReactEventListener":126,"./ReactInjection":130,"./ReactReconcileTransaction":147,"./SVGDOMPropertyConfig":155,"./SelectEventPlugin":156,"./SimpleEventPlugin":157}],121:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-present, Facebook, Inc.
@@ -29041,7 +29141,7 @@ ReactElement.REACT_ELEMENT_TYPE = REACT_ELEMENT_TYPE;
 
 module.exports = ReactElement;
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":96,"./canDefineProperty":173,"_process":58,"fbjs/lib/warning":54,"object-assign":57}],120:[function(require,module,exports){
+},{"./ReactCurrentOwner":98,"./canDefineProperty":175,"_process":60,"fbjs/lib/warning":56,"object-assign":59}],122:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-present, Facebook, Inc.
@@ -29272,7 +29372,7 @@ var ReactElementValidator = {
 
 module.exports = ReactElementValidator;
 }).call(this,require('_process'))
-},{"./ReactComponentTreeHook":94,"./ReactCurrentOwner":96,"./ReactElement":119,"./ReactPropTypeLocations":141,"./canDefineProperty":173,"./checkReactTypeSpec":174,"./getIteratorFn":186,"_process":58,"fbjs/lib/warning":54}],121:[function(require,module,exports){
+},{"./ReactComponentTreeHook":96,"./ReactCurrentOwner":98,"./ReactElement":121,"./ReactPropTypeLocations":143,"./canDefineProperty":175,"./checkReactTypeSpec":176,"./getIteratorFn":188,"_process":60,"fbjs/lib/warning":56}],123:[function(require,module,exports){
 /**
  * Copyright 2014-present, Facebook, Inc.
  * All rights reserved.
@@ -29303,7 +29403,7 @@ var ReactEmptyComponent = {
 ReactEmptyComponent.injection = ReactEmptyComponentInjection;
 
 module.exports = ReactEmptyComponent;
-},{}],122:[function(require,module,exports){
+},{}],124:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -29382,7 +29482,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactErrorUtils;
 }).call(this,require('_process'))
-},{"_process":58}],123:[function(require,module,exports){
+},{"_process":60}],125:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -29416,7 +29516,7 @@ var ReactEventEmitterMixin = {
 };
 
 module.exports = ReactEventEmitterMixin;
-},{"./EventPluginHub":76}],124:[function(require,module,exports){
+},{"./EventPluginHub":78}],126:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -29574,7 +29674,7 @@ var ReactEventListener = {
 };
 
 module.exports = ReactEventListener;
-},{"./PooledClass":84,"./ReactDOMComponentTree":101,"./ReactUpdates":151,"./getEventTarget":184,"fbjs/lib/EventListener":30,"fbjs/lib/ExecutionEnvironment":31,"fbjs/lib/getUnboundedScrollPosition":42,"object-assign":57}],125:[function(require,module,exports){
+},{"./PooledClass":86,"./ReactDOMComponentTree":103,"./ReactUpdates":153,"./getEventTarget":186,"fbjs/lib/EventListener":32,"fbjs/lib/ExecutionEnvironment":33,"fbjs/lib/getUnboundedScrollPosition":44,"object-assign":59}],127:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -29597,7 +29697,7 @@ var ReactFeatureFlags = {
 };
 
 module.exports = ReactFeatureFlags;
-},{}],126:[function(require,module,exports){
+},{}],128:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-present, Facebook, Inc.
@@ -29676,7 +29776,7 @@ var ReactHostComponent = {
 
 module.exports = ReactHostComponent;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45,"object-assign":57}],127:[function(require,module,exports){
+},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"object-assign":59}],129:[function(require,module,exports){
 /**
  * Copyright 2016-present, Facebook, Inc.
  * All rights reserved.
@@ -29714,7 +29814,7 @@ var ReactHostOperationHistoryHook = {
 };
 
 module.exports = ReactHostOperationHistoryHook;
-},{}],128:[function(require,module,exports){
+},{}],130:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -29751,7 +29851,7 @@ var ReactInjection = {
 };
 
 module.exports = ReactInjection;
-},{"./DOMProperty":69,"./EventPluginHub":76,"./EventPluginUtils":78,"./ReactBrowserEventEmitter":86,"./ReactClass":90,"./ReactComponentEnvironment":93,"./ReactEmptyComponent":121,"./ReactHostComponent":126,"./ReactUpdates":151}],129:[function(require,module,exports){
+},{"./DOMProperty":71,"./EventPluginHub":78,"./EventPluginUtils":80,"./ReactBrowserEventEmitter":88,"./ReactClass":92,"./ReactComponentEnvironment":95,"./ReactEmptyComponent":123,"./ReactHostComponent":128,"./ReactUpdates":153}],131:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -29876,7 +29976,7 @@ var ReactInputSelection = {
 };
 
 module.exports = ReactInputSelection;
-},{"./ReactDOMSelection":111,"fbjs/lib/containsNode":34,"fbjs/lib/focusNode":39,"fbjs/lib/getActiveElement":40}],130:[function(require,module,exports){
+},{"./ReactDOMSelection":113,"fbjs/lib/containsNode":36,"fbjs/lib/focusNode":41,"fbjs/lib/getActiveElement":42}],132:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -29925,7 +30025,7 @@ var ReactInstanceMap = {
 };
 
 module.exports = ReactInstanceMap;
-},{}],131:[function(require,module,exports){
+},{}],133:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2016-present, Facebook, Inc.
@@ -29949,7 +30049,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = { debugTool: debugTool };
 }).call(this,require('_process'))
-},{"./ReactDebugTool":116,"_process":58}],132:[function(require,module,exports){
+},{"./ReactDebugTool":118,"_process":60}],134:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2016-present, Facebook, Inc.
@@ -29988,7 +30088,7 @@ var ReactInvalidSetStateWarningHook = {
 
 module.exports = ReactInvalidSetStateWarningHook;
 }).call(this,require('_process'))
-},{"_process":58,"fbjs/lib/warning":54}],133:[function(require,module,exports){
+},{"_process":60,"fbjs/lib/warning":56}],135:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -30039,7 +30139,7 @@ var ReactMarkupChecksum = {
 };
 
 module.exports = ReactMarkupChecksum;
-},{"./adler32":172}],134:[function(require,module,exports){
+},{"./adler32":174}],136:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -30576,7 +30676,7 @@ var ReactMount = {
 
 module.exports = ReactMount;
 }).call(this,require('_process'))
-},{"./DOMLazyTree":67,"./DOMProperty":69,"./ReactBrowserEventEmitter":86,"./ReactCurrentOwner":96,"./ReactDOMComponentTree":101,"./ReactDOMContainerInfo":102,"./ReactDOMFeatureFlags":105,"./ReactElement":119,"./ReactFeatureFlags":125,"./ReactInstanceMap":130,"./ReactInstrumentation":131,"./ReactMarkupChecksum":133,"./ReactReconciler":146,"./ReactUpdateQueue":150,"./ReactUpdates":151,"./instantiateReactComponent":190,"./reactProdInvariant":195,"./setInnerHTML":197,"./shouldUpdateReactComponent":199,"_process":58,"fbjs/lib/emptyObject":38,"fbjs/lib/invariant":45,"fbjs/lib/warning":54}],135:[function(require,module,exports){
+},{"./DOMLazyTree":69,"./DOMProperty":71,"./ReactBrowserEventEmitter":88,"./ReactCurrentOwner":98,"./ReactDOMComponentTree":103,"./ReactDOMContainerInfo":104,"./ReactDOMFeatureFlags":107,"./ReactElement":121,"./ReactFeatureFlags":127,"./ReactInstanceMap":132,"./ReactInstrumentation":133,"./ReactMarkupChecksum":135,"./ReactReconciler":148,"./ReactUpdateQueue":152,"./ReactUpdates":153,"./instantiateReactComponent":192,"./reactProdInvariant":197,"./setInnerHTML":199,"./shouldUpdateReactComponent":201,"_process":60,"fbjs/lib/emptyObject":40,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],137:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -31030,7 +31130,7 @@ var ReactMultiChild = {
 
 module.exports = ReactMultiChild;
 }).call(this,require('_process'))
-},{"./ReactChildReconciler":87,"./ReactComponentEnvironment":93,"./ReactCurrentOwner":96,"./ReactInstanceMap":130,"./ReactInstrumentation":131,"./ReactMultiChildUpdateTypes":136,"./ReactReconciler":146,"./flattenChildren":179,"./reactProdInvariant":195,"_process":58,"fbjs/lib/emptyFunction":37,"fbjs/lib/invariant":45}],136:[function(require,module,exports){
+},{"./ReactChildReconciler":89,"./ReactComponentEnvironment":95,"./ReactCurrentOwner":98,"./ReactInstanceMap":132,"./ReactInstrumentation":133,"./ReactMultiChildUpdateTypes":138,"./ReactReconciler":148,"./flattenChildren":181,"./reactProdInvariant":197,"_process":60,"fbjs/lib/emptyFunction":39,"fbjs/lib/invariant":47}],138:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -31063,7 +31163,7 @@ var ReactMultiChildUpdateTypes = keyMirror({
 });
 
 module.exports = ReactMultiChildUpdateTypes;
-},{"fbjs/lib/keyMirror":48}],137:[function(require,module,exports){
+},{"fbjs/lib/keyMirror":50}],139:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -31106,7 +31206,7 @@ var ReactNodeTypes = {
 
 module.exports = ReactNodeTypes;
 }).call(this,require('_process'))
-},{"./ReactElement":119,"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45}],138:[function(require,module,exports){
+},{"./ReactElement":121,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],140:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015-present, Facebook, Inc.
@@ -31205,7 +31305,7 @@ var ReactNoopUpdateQueue = {
 
 module.exports = ReactNoopUpdateQueue;
 }).call(this,require('_process'))
-},{"_process":58,"fbjs/lib/warning":54}],139:[function(require,module,exports){
+},{"_process":60,"fbjs/lib/warning":56}],141:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -31302,7 +31402,7 @@ var ReactOwner = {
 
 module.exports = ReactOwner;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45}],140:[function(require,module,exports){
+},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],142:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -31329,7 +31429,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactPropTypeLocationNames;
 }).call(this,require('_process'))
-},{"_process":58}],141:[function(require,module,exports){
+},{"_process":60}],143:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -31352,7 +31452,7 @@ var ReactPropTypeLocations = keyMirror({
 });
 
 module.exports = ReactPropTypeLocations;
-},{"fbjs/lib/keyMirror":48}],142:[function(require,module,exports){
+},{"fbjs/lib/keyMirror":50}],144:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -31786,7 +31886,7 @@ function getClassName(propValue) {
 
 module.exports = ReactPropTypes;
 }).call(this,require('_process'))
-},{"./ReactElement":119,"./ReactPropTypeLocationNames":140,"./ReactPropTypesSecret":143,"./getIteratorFn":186,"_process":58,"fbjs/lib/emptyFunction":37,"fbjs/lib/warning":54}],143:[function(require,module,exports){
+},{"./ReactElement":121,"./ReactPropTypeLocationNames":142,"./ReactPropTypesSecret":145,"./getIteratorFn":188,"_process":60,"fbjs/lib/emptyFunction":39,"fbjs/lib/warning":56}],145:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -31803,7 +31903,7 @@ module.exports = ReactPropTypes;
 var ReactPropTypesSecret = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
 
 module.exports = ReactPropTypesSecret;
-},{}],144:[function(require,module,exports){
+},{}],146:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -31846,7 +31946,7 @@ _assign(ReactPureComponent.prototype, ReactComponent.prototype);
 ReactPureComponent.prototype.isPureReactComponent = true;
 
 module.exports = ReactPureComponent;
-},{"./ReactComponent":91,"./ReactNoopUpdateQueue":138,"fbjs/lib/emptyObject":38,"object-assign":57}],145:[function(require,module,exports){
+},{"./ReactComponent":93,"./ReactNoopUpdateQueue":140,"fbjs/lib/emptyObject":40,"object-assign":59}],147:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -32027,7 +32127,7 @@ PooledClass.addPoolingTo(ReactReconcileTransaction);
 
 module.exports = ReactReconcileTransaction;
 }).call(this,require('_process'))
-},{"./CallbackQueue":64,"./PooledClass":84,"./ReactBrowserEventEmitter":86,"./ReactInputSelection":129,"./ReactInstrumentation":131,"./ReactUpdateQueue":150,"./Transaction":169,"_process":58,"object-assign":57}],146:[function(require,module,exports){
+},{"./CallbackQueue":66,"./PooledClass":86,"./ReactBrowserEventEmitter":88,"./ReactInputSelection":131,"./ReactInstrumentation":133,"./ReactUpdateQueue":152,"./Transaction":171,"_process":60,"object-assign":59}],148:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -32198,7 +32298,7 @@ var ReactReconciler = {
 
 module.exports = ReactReconciler;
 }).call(this,require('_process'))
-},{"./ReactInstrumentation":131,"./ReactRef":147,"_process":58,"fbjs/lib/warning":54}],147:[function(require,module,exports){
+},{"./ReactInstrumentation":133,"./ReactRef":149,"_process":60,"fbjs/lib/warning":56}],149:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -32279,7 +32379,7 @@ ReactRef.detachRefs = function (instance, element) {
 };
 
 module.exports = ReactRef;
-},{"./ReactOwner":139}],148:[function(require,module,exports){
+},{"./ReactOwner":141}],150:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-present, Facebook, Inc.
@@ -32372,7 +32472,7 @@ PooledClass.addPoolingTo(ReactServerRenderingTransaction);
 
 module.exports = ReactServerRenderingTransaction;
 }).call(this,require('_process'))
-},{"./PooledClass":84,"./ReactInstrumentation":131,"./ReactServerUpdateQueue":149,"./Transaction":169,"_process":58,"object-assign":57}],149:[function(require,module,exports){
+},{"./PooledClass":86,"./ReactInstrumentation":133,"./ReactServerUpdateQueue":151,"./Transaction":171,"_process":60,"object-assign":59}],151:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015-present, Facebook, Inc.
@@ -32516,7 +32616,7 @@ var ReactServerUpdateQueue = function () {
 
 module.exports = ReactServerUpdateQueue;
 }).call(this,require('_process'))
-},{"./ReactUpdateQueue":150,"./Transaction":169,"_process":58,"fbjs/lib/warning":54}],150:[function(require,module,exports){
+},{"./ReactUpdateQueue":152,"./Transaction":171,"_process":60,"fbjs/lib/warning":56}],152:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015-present, Facebook, Inc.
@@ -32745,7 +32845,7 @@ var ReactUpdateQueue = {
 
 module.exports = ReactUpdateQueue;
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":96,"./ReactInstanceMap":130,"./ReactInstrumentation":131,"./ReactUpdates":151,"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45,"fbjs/lib/warning":54}],151:[function(require,module,exports){
+},{"./ReactCurrentOwner":98,"./ReactInstanceMap":132,"./ReactInstrumentation":133,"./ReactUpdates":153,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],153:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -32999,7 +33099,7 @@ var ReactUpdates = {
 
 module.exports = ReactUpdates;
 }).call(this,require('_process'))
-},{"./CallbackQueue":64,"./PooledClass":84,"./ReactFeatureFlags":125,"./ReactReconciler":146,"./Transaction":169,"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45,"object-assign":57}],152:[function(require,module,exports){
+},{"./CallbackQueue":66,"./PooledClass":86,"./ReactFeatureFlags":127,"./ReactReconciler":148,"./Transaction":171,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"object-assign":59}],154:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -33014,7 +33114,7 @@ module.exports = ReactUpdates;
 'use strict';
 
 module.exports = '15.3.2';
-},{}],153:[function(require,module,exports){
+},{}],155:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -33317,7 +33417,7 @@ Object.keys(ATTRS).forEach(function (key) {
 });
 
 module.exports = SVGDOMPropertyConfig;
-},{}],154:[function(require,module,exports){
+},{}],156:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -33514,7 +33614,7 @@ var SelectEventPlugin = {
 };
 
 module.exports = SelectEventPlugin;
-},{"./EventConstants":75,"./EventPropagators":79,"./ReactDOMComponentTree":101,"./ReactInputSelection":129,"./SyntheticEvent":160,"./isTextInputElement":192,"fbjs/lib/ExecutionEnvironment":31,"fbjs/lib/getActiveElement":40,"fbjs/lib/keyOf":49,"fbjs/lib/shallowEqual":53}],155:[function(require,module,exports){
+},{"./EventConstants":77,"./EventPropagators":81,"./ReactDOMComponentTree":103,"./ReactInputSelection":131,"./SyntheticEvent":162,"./isTextInputElement":194,"fbjs/lib/ExecutionEnvironment":33,"fbjs/lib/getActiveElement":42,"fbjs/lib/keyOf":51,"fbjs/lib/shallowEqual":55}],157:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -34152,7 +34252,7 @@ var SimpleEventPlugin = {
 
 module.exports = SimpleEventPlugin;
 }).call(this,require('_process'))
-},{"./EventConstants":75,"./EventPropagators":79,"./ReactDOMComponentTree":101,"./SyntheticAnimationEvent":156,"./SyntheticClipboardEvent":157,"./SyntheticDragEvent":159,"./SyntheticEvent":160,"./SyntheticFocusEvent":161,"./SyntheticKeyboardEvent":163,"./SyntheticMouseEvent":164,"./SyntheticTouchEvent":165,"./SyntheticTransitionEvent":166,"./SyntheticUIEvent":167,"./SyntheticWheelEvent":168,"./getEventCharCode":181,"./reactProdInvariant":195,"_process":58,"fbjs/lib/EventListener":30,"fbjs/lib/emptyFunction":37,"fbjs/lib/invariant":45,"fbjs/lib/keyOf":49}],156:[function(require,module,exports){
+},{"./EventConstants":77,"./EventPropagators":81,"./ReactDOMComponentTree":103,"./SyntheticAnimationEvent":158,"./SyntheticClipboardEvent":159,"./SyntheticDragEvent":161,"./SyntheticEvent":162,"./SyntheticFocusEvent":163,"./SyntheticKeyboardEvent":165,"./SyntheticMouseEvent":166,"./SyntheticTouchEvent":167,"./SyntheticTransitionEvent":168,"./SyntheticUIEvent":169,"./SyntheticWheelEvent":170,"./getEventCharCode":183,"./reactProdInvariant":197,"_process":60,"fbjs/lib/EventListener":32,"fbjs/lib/emptyFunction":39,"fbjs/lib/invariant":47,"fbjs/lib/keyOf":51}],158:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34192,7 +34292,7 @@ function SyntheticAnimationEvent(dispatchConfig, dispatchMarker, nativeEvent, na
 SyntheticEvent.augmentClass(SyntheticAnimationEvent, AnimationEventInterface);
 
 module.exports = SyntheticAnimationEvent;
-},{"./SyntheticEvent":160}],157:[function(require,module,exports){
+},{"./SyntheticEvent":162}],159:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34231,7 +34331,7 @@ function SyntheticClipboardEvent(dispatchConfig, dispatchMarker, nativeEvent, na
 SyntheticEvent.augmentClass(SyntheticClipboardEvent, ClipboardEventInterface);
 
 module.exports = SyntheticClipboardEvent;
-},{"./SyntheticEvent":160}],158:[function(require,module,exports){
+},{"./SyntheticEvent":162}],160:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34268,7 +34368,7 @@ function SyntheticCompositionEvent(dispatchConfig, dispatchMarker, nativeEvent, 
 SyntheticEvent.augmentClass(SyntheticCompositionEvent, CompositionEventInterface);
 
 module.exports = SyntheticCompositionEvent;
-},{"./SyntheticEvent":160}],159:[function(require,module,exports){
+},{"./SyntheticEvent":162}],161:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34305,7 +34405,7 @@ function SyntheticDragEvent(dispatchConfig, dispatchMarker, nativeEvent, nativeE
 SyntheticMouseEvent.augmentClass(SyntheticDragEvent, DragEventInterface);
 
 module.exports = SyntheticDragEvent;
-},{"./SyntheticMouseEvent":164}],160:[function(require,module,exports){
+},{"./SyntheticMouseEvent":166}],162:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -34576,7 +34676,7 @@ function getPooledWarningPropertyDefinition(propName, getVal) {
   }
 }
 }).call(this,require('_process'))
-},{"./PooledClass":84,"_process":58,"fbjs/lib/emptyFunction":37,"fbjs/lib/warning":54,"object-assign":57}],161:[function(require,module,exports){
+},{"./PooledClass":86,"_process":60,"fbjs/lib/emptyFunction":39,"fbjs/lib/warning":56,"object-assign":59}],163:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34613,7 +34713,7 @@ function SyntheticFocusEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticFocusEvent, FocusEventInterface);
 
 module.exports = SyntheticFocusEvent;
-},{"./SyntheticUIEvent":167}],162:[function(require,module,exports){
+},{"./SyntheticUIEvent":169}],164:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34651,7 +34751,7 @@ function SyntheticInputEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticEvent.augmentClass(SyntheticInputEvent, InputEventInterface);
 
 module.exports = SyntheticInputEvent;
-},{"./SyntheticEvent":160}],163:[function(require,module,exports){
+},{"./SyntheticEvent":162}],165:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34736,7 +34836,7 @@ function SyntheticKeyboardEvent(dispatchConfig, dispatchMarker, nativeEvent, nat
 SyntheticUIEvent.augmentClass(SyntheticKeyboardEvent, KeyboardEventInterface);
 
 module.exports = SyntheticKeyboardEvent;
-},{"./SyntheticUIEvent":167,"./getEventCharCode":181,"./getEventKey":182,"./getEventModifierState":183}],164:[function(require,module,exports){
+},{"./SyntheticUIEvent":169,"./getEventCharCode":183,"./getEventKey":184,"./getEventModifierState":185}],166:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34809,7 +34909,7 @@ function SyntheticMouseEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticMouseEvent, MouseEventInterface);
 
 module.exports = SyntheticMouseEvent;
-},{"./SyntheticUIEvent":167,"./ViewportMetrics":170,"./getEventModifierState":183}],165:[function(require,module,exports){
+},{"./SyntheticUIEvent":169,"./ViewportMetrics":172,"./getEventModifierState":185}],167:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34855,7 +34955,7 @@ function SyntheticTouchEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticTouchEvent, TouchEventInterface);
 
 module.exports = SyntheticTouchEvent;
-},{"./SyntheticUIEvent":167,"./getEventModifierState":183}],166:[function(require,module,exports){
+},{"./SyntheticUIEvent":169,"./getEventModifierState":185}],168:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34895,7 +34995,7 @@ function SyntheticTransitionEvent(dispatchConfig, dispatchMarker, nativeEvent, n
 SyntheticEvent.augmentClass(SyntheticTransitionEvent, TransitionEventInterface);
 
 module.exports = SyntheticTransitionEvent;
-},{"./SyntheticEvent":160}],167:[function(require,module,exports){
+},{"./SyntheticEvent":162}],169:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34955,7 +35055,7 @@ function SyntheticUIEvent(dispatchConfig, dispatchMarker, nativeEvent, nativeEve
 SyntheticEvent.augmentClass(SyntheticUIEvent, UIEventInterface);
 
 module.exports = SyntheticUIEvent;
-},{"./SyntheticEvent":160,"./getEventTarget":184}],168:[function(require,module,exports){
+},{"./SyntheticEvent":162,"./getEventTarget":186}],170:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -35010,7 +35110,7 @@ function SyntheticWheelEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticMouseEvent.augmentClass(SyntheticWheelEvent, WheelEventInterface);
 
 module.exports = SyntheticWheelEvent;
-},{"./SyntheticMouseEvent":164}],169:[function(require,module,exports){
+},{"./SyntheticMouseEvent":166}],171:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -35246,7 +35346,7 @@ var Transaction = {
 
 module.exports = Transaction;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45}],170:[function(require,module,exports){
+},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],172:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -35274,7 +35374,7 @@ var ViewportMetrics = {
 };
 
 module.exports = ViewportMetrics;
-},{}],171:[function(require,module,exports){
+},{}],173:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-present, Facebook, Inc.
@@ -35335,7 +35435,7 @@ function accumulateInto(current, next) {
 
 module.exports = accumulateInto;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45}],172:[function(require,module,exports){
+},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],174:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -35380,7 +35480,7 @@ function adler32(data) {
 }
 
 module.exports = adler32;
-},{}],173:[function(require,module,exports){
+},{}],175:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -35407,7 +35507,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = canDefineProperty;
 }).call(this,require('_process'))
-},{"_process":58}],174:[function(require,module,exports){
+},{"_process":60}],176:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -35497,7 +35597,7 @@ function checkReactTypeSpec(typeSpecs, values, location, componentName, element,
 
 module.exports = checkReactTypeSpec;
 }).call(this,require('_process'))
-},{"./ReactComponentTreeHook":94,"./ReactPropTypeLocationNames":140,"./ReactPropTypesSecret":143,"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45,"fbjs/lib/warning":54}],175:[function(require,module,exports){
+},{"./ReactComponentTreeHook":96,"./ReactPropTypeLocationNames":142,"./ReactPropTypesSecret":145,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],177:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -35530,7 +35630,7 @@ var createMicrosoftUnsafeLocalFunction = function (func) {
 };
 
 module.exports = createMicrosoftUnsafeLocalFunction;
-},{}],176:[function(require,module,exports){
+},{}],178:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -35612,7 +35712,7 @@ function dangerousStyleValue(name, value, component) {
 
 module.exports = dangerousStyleValue;
 }).call(this,require('_process'))
-},{"./CSSProperty":62,"_process":58,"fbjs/lib/warning":54}],177:[function(require,module,exports){
+},{"./CSSProperty":64,"_process":60,"fbjs/lib/warning":56}],179:[function(require,module,exports){
 /**
  * Copyright 2016-present, Facebook, Inc.
  * All rights reserved.
@@ -35736,7 +35836,7 @@ function escapeTextContentForBrowser(text) {
 }
 
 module.exports = escapeTextContentForBrowser;
-},{}],178:[function(require,module,exports){
+},{}],180:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -35799,7 +35899,7 @@ function findDOMNode(componentOrElement) {
 
 module.exports = findDOMNode;
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":96,"./ReactDOMComponentTree":101,"./ReactInstanceMap":130,"./getHostComponentFromComposite":185,"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45,"fbjs/lib/warning":54}],179:[function(require,module,exports){
+},{"./ReactCurrentOwner":98,"./ReactDOMComponentTree":103,"./ReactInstanceMap":132,"./getHostComponentFromComposite":187,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],181:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -35878,7 +35978,7 @@ function flattenChildren(children, selfDebugID) {
 
 module.exports = flattenChildren;
 }).call(this,require('_process'))
-},{"./KeyEscapeUtils":82,"./ReactComponentTreeHook":94,"./traverseAllChildren":200,"_process":58,"fbjs/lib/warning":54}],180:[function(require,module,exports){
+},{"./KeyEscapeUtils":84,"./ReactComponentTreeHook":96,"./traverseAllChildren":202,"_process":60,"fbjs/lib/warning":56}],182:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -35910,7 +36010,7 @@ function forEachAccumulated(arr, cb, scope) {
 }
 
 module.exports = forEachAccumulated;
-},{}],181:[function(require,module,exports){
+},{}],183:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -35961,7 +36061,7 @@ function getEventCharCode(nativeEvent) {
 }
 
 module.exports = getEventCharCode;
-},{}],182:[function(require,module,exports){
+},{}],184:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36064,7 +36164,7 @@ function getEventKey(nativeEvent) {
 }
 
 module.exports = getEventKey;
-},{"./getEventCharCode":181}],183:[function(require,module,exports){
+},{"./getEventCharCode":183}],185:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36108,7 +36208,7 @@ function getEventModifierState(nativeEvent) {
 }
 
 module.exports = getEventModifierState;
-},{}],184:[function(require,module,exports){
+},{}],186:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36144,7 +36244,7 @@ function getEventTarget(nativeEvent) {
 }
 
 module.exports = getEventTarget;
-},{}],185:[function(require,module,exports){
+},{}],187:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36175,7 +36275,7 @@ function getHostComponentFromComposite(inst) {
 }
 
 module.exports = getHostComponentFromComposite;
-},{"./ReactNodeTypes":137}],186:[function(require,module,exports){
+},{"./ReactNodeTypes":139}],188:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36217,7 +36317,7 @@ function getIteratorFn(maybeIterable) {
 }
 
 module.exports = getIteratorFn;
-},{}],187:[function(require,module,exports){
+},{}],189:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36292,7 +36392,7 @@ function getNodeForCharacterOffset(root, offset) {
 }
 
 module.exports = getNodeForCharacterOffset;
-},{}],188:[function(require,module,exports){
+},{}],190:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36326,7 +36426,7 @@ function getTextContentAccessor() {
 }
 
 module.exports = getTextContentAccessor;
-},{"fbjs/lib/ExecutionEnvironment":31}],189:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":33}],191:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36428,7 +36528,7 @@ function getVendorPrefixedEventName(eventName) {
 }
 
 module.exports = getVendorPrefixedEventName;
-},{"fbjs/lib/ExecutionEnvironment":31}],190:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":33}],192:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -36550,7 +36650,7 @@ function instantiateReactComponent(node, shouldHaveDebugID) {
 
 module.exports = instantiateReactComponent;
 }).call(this,require('_process'))
-},{"./ReactCompositeComponent":95,"./ReactEmptyComponent":121,"./ReactHostComponent":126,"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45,"fbjs/lib/warning":54,"object-assign":57}],191:[function(require,module,exports){
+},{"./ReactCompositeComponent":97,"./ReactEmptyComponent":123,"./ReactHostComponent":128,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56,"object-assign":59}],193:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36611,7 +36711,7 @@ function isEventSupported(eventNameSuffix, capture) {
 }
 
 module.exports = isEventSupported;
-},{"fbjs/lib/ExecutionEnvironment":31}],192:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":33}],194:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36663,7 +36763,7 @@ function isTextInputElement(elem) {
 }
 
 module.exports = isTextInputElement;
-},{}],193:[function(require,module,exports){
+},{}],195:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -36704,7 +36804,7 @@ function onlyChild(children) {
 
 module.exports = onlyChild;
 }).call(this,require('_process'))
-},{"./ReactElement":119,"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45}],194:[function(require,module,exports){
+},{"./ReactElement":121,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],196:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36731,7 +36831,7 @@ function quoteAttributeValueForBrowser(value) {
 }
 
 module.exports = quoteAttributeValueForBrowser;
-},{"./escapeTextContentForBrowser":177}],195:[function(require,module,exports){
+},{"./escapeTextContentForBrowser":179}],197:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36771,7 +36871,7 @@ function reactProdInvariant(code) {
 }
 
 module.exports = reactProdInvariant;
-},{}],196:[function(require,module,exports){
+},{}],198:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36788,7 +36888,7 @@ module.exports = reactProdInvariant;
 var ReactMount = require('./ReactMount');
 
 module.exports = ReactMount.renderSubtreeIntoContainer;
-},{"./ReactMount":134}],197:[function(require,module,exports){
+},{"./ReactMount":136}],199:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36887,7 +36987,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = setInnerHTML;
-},{"./DOMNamespaces":68,"./createMicrosoftUnsafeLocalFunction":175,"fbjs/lib/ExecutionEnvironment":31}],198:[function(require,module,exports){
+},{"./DOMNamespaces":70,"./createMicrosoftUnsafeLocalFunction":177,"fbjs/lib/ExecutionEnvironment":33}],200:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36936,7 +37036,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = setTextContent;
-},{"./escapeTextContentForBrowser":177,"./setInnerHTML":197,"fbjs/lib/ExecutionEnvironment":31}],199:[function(require,module,exports){
+},{"./escapeTextContentForBrowser":179,"./setInnerHTML":199,"fbjs/lib/ExecutionEnvironment":33}],201:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36979,7 +37079,7 @@ function shouldUpdateReactComponent(prevElement, nextElement) {
 }
 
 module.exports = shouldUpdateReactComponent;
-},{}],200:[function(require,module,exports){
+},{}],202:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -37149,7 +37249,7 @@ function traverseAllChildren(children, callback, traverseContext) {
 
 module.exports = traverseAllChildren;
 }).call(this,require('_process'))
-},{"./KeyEscapeUtils":82,"./ReactCurrentOwner":96,"./ReactElement":119,"./getIteratorFn":186,"./reactProdInvariant":195,"_process":58,"fbjs/lib/invariant":45,"fbjs/lib/warning":54}],201:[function(require,module,exports){
+},{"./KeyEscapeUtils":84,"./ReactCurrentOwner":98,"./ReactElement":121,"./getIteratorFn":188,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],203:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015-present, Facebook, Inc.
@@ -37534,17 +37634,17 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = validateDOMNesting;
 }).call(this,require('_process'))
-},{"_process":58,"fbjs/lib/emptyFunction":37,"fbjs/lib/warning":54,"object-assign":57}],202:[function(require,module,exports){
+},{"_process":60,"fbjs/lib/emptyFunction":39,"fbjs/lib/warning":56,"object-assign":59}],204:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib/React');
 
-},{"./lib/React":85}],203:[function(require,module,exports){
+},{"./lib/React":87}],205:[function(require,module,exports){
 "use strict";
 var webgl_1 = require("./webgl/webgl");
 exports.WebGLPlatform = webgl_1.WebGLPlatform;
 
-},{"./webgl/webgl":207}],204:[function(require,module,exports){
+},{"./webgl/webgl":209}],206:[function(require,module,exports){
 "use strict";
 var types_1 = require("./types");
 var intrinsics_1 = require("./intrinsics");
@@ -37793,7 +37893,7 @@ var Generator = (function () {
 }());
 exports.Generator = Generator;
 
-},{"./intrinsics":205,"./types":206}],205:[function(require,module,exports){
+},{"./intrinsics":207,"./types":208}],207:[function(require,module,exports){
 "use strict";
 var stardust_core_1 = require("stardust-core");
 var stardust_core_2 = require("stardust-core");
@@ -37877,7 +37977,9 @@ ImplementSimpleFunction("length", ["Quaternion"], "float", "length");
 ImplementSimpleFunction("cross", ["Vector3", "Vector3"], "Vector3", "cross");
 ImplementSimpleFunction("quat_mul", ["Quaternion", "Quaternion"], "Quaternion", "s3_quat_mul", "\n    vec4 s3_quat_mul(vec4 q1, vec4 q2) {\n        return vec4(\n            q1.w * q2.xyz + q2.w * q1.xyz + cross(q1.xyz, q2.xyz),\n            q1.w * q2.w - dot(q1.xyz, q2.xyz)\n        );\n    }\n");
 ImplementSimpleFunction("quat_rotate", ["Quaternion", "Vector3"], "Vector3", "s3_quat_rotate", "\n    vec3 s3_quat_rotate(vec4 q, vec3 v) {\n        float d = dot(q.xyz, v);\n        vec3 c = cross(q.xyz, v);\n        return q.w * q.w * v + (q.w + q.w) * c + d * q.xyz - cross(c, q.xyz);\n    }\n");
-ImplementSimpleFunction("lab2rgb", ["Color"], "Color", "s3_lab2rgb", "\n    vec3 s3_lab2rgb_curve(float v) {\n        float p = pow(v, 3);\n        if(p > 0.008856) {\n            return p;\n        } else {\n            return (v - 16.0 / 116.0) / 7.787;\n        }\n    }\n    vec3 s3_lab2rgb_curve2(float v) {\n        if(v > 0.0031308) {\n            return 1.055 * pow(v , (1 / 2.4)) - 0.055;\n        } else {\n            return 12.92 * var_R;\n        }\n    }\n    vec4 s3_lab2rgb(vec4 lab) {\n        float var_Y = (lab.x + 16.0) / 116.0;\n        float var_X = lab.y / 500.0 + var_Y;\n        float var_Z = var_Y - lab.z / 200.0;\n\n        var_X = s3_lab2rgb_curve(var_X) * 0.95047;\n        var_Y = s3_lab2rgb_curve(var_Y);\n        var_Z = s3_lab2rgb_curve(var_Z) * 1.08883;\n\n        float var_R = var_X *  3.2406 + var_Y * -1.5372 + var_Z * -0.4986;\n        float var_G = var_X * -0.9689 + var_Y *  1.8758 + var_Z *  0.0415;\n        float var_B = var_X *  0.0557 + var_Y * -0.2040 + var_Z *  1.0570;\n\n        var_R = s3_lab2rgb_curve2(var_R);\n        var_G = s3_lab2rgb_curve2(var_G);\n        var_B = s3_lab2rgb_curve2(var_B);\n\n        return vec3(var_R, var_G, var_B, lab.a);\n    }\n");
+var colorCode = "\n    float s3_lab2rgb_curve(float v) {\n        float p = pow(v, 3.0);\n        if(p > 0.008856) {\n            return p;\n        } else {\n            return (v - 16.0 / 116.0) / 7.787;\n        }\n    }\n    float s3_lab2rgb_curve2(float v) {\n        if(v > 0.0031308) {\n            return 1.055 * pow(v , (1.0 / 2.4)) - 0.055;\n        } else {\n            return 12.92 * v;\n        }\n    }\n    vec4 s3_lab2rgb(vec4 lab) {\n        float var_Y = (lab.x + 0.160) / 1.160;\n        float var_X = lab.y / 5.0 + var_Y;\n        float var_Z = var_Y - lab.z / 2.0;\n\n        var_X = s3_lab2rgb_curve(var_X) * 0.95047;\n        var_Y = s3_lab2rgb_curve(var_Y);\n        var_Z = s3_lab2rgb_curve(var_Z) * 1.08883;\n\n        float var_R = var_X *  3.2406 + var_Y * -1.5372 + var_Z * -0.4986;\n        float var_G = var_X * -0.9689 + var_Y *  1.8758 + var_Z *  0.0415;\n        float var_B = var_X *  0.0557 + var_Y * -0.2040 + var_Z *  1.0570;\n\n        var_R = s3_lab2rgb_curve2(var_R);\n        var_G = s3_lab2rgb_curve2(var_G);\n        var_B = s3_lab2rgb_curve2(var_B);\n\n        return vec4(var_R, var_G, var_B, lab.a);\n    }\n    vec4 s3_hcl2rgb(vec4 hcl) {\n        vec4 lab = vec4(hcl.z, hcl.y * cos(hcl.x), hcl.y * sin(hcl.x), hcl.a);\n        return s3_lab2rgb(lab);\n    }\n";
+ImplementSimpleFunction("lab2rgb", ["Color"], "Color", "s3_lab2rgb", colorCode);
+ImplementSimpleFunction("hcl2rgb", ["Color"], "Color", "s3_hcl2rgb", colorCode);
 ImplementSimpleFunction("sqrt", ["float"], "float", "sqrt");
 ImplementSimpleFunction("exp", ["float"], "float", "exp");
 ImplementSimpleFunction("log", ["float"], "float", "log");
@@ -37910,7 +38012,7 @@ function generateIntrinsicFunction(name, args) {
 }
 exports.generateIntrinsicFunction = generateIntrinsicFunction;
 
-},{"stardust-core":21}],206:[function(require,module,exports){
+},{"stardust-core":23}],208:[function(require,module,exports){
 "use strict";
 var typeName2WebGLTypeName = {
     "float": "float",
@@ -37951,7 +38053,7 @@ function convertConstant(type, value) {
 }
 exports.convertConstant = convertConstant;
 
-},{}],207:[function(require,module,exports){
+},{}],209:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -38041,15 +38143,24 @@ var WebGLPlatformShapeProgram = (function () {
     };
     return WebGLPlatformShapeProgram;
 }());
+var WebGLPlatformShapeData = (function (_super) {
+    __extends(WebGLPlatformShapeData, _super);
+    function WebGLPlatformShapeData() {
+        _super.apply(this, arguments);
+    }
+    return WebGLPlatformShapeData;
+}(stardust_core_1.PlatformShapeData));
+exports.WebGLPlatformShapeData = WebGLPlatformShapeData;
 var WebGLPlatformShape = (function (_super) {
     __extends(WebGLPlatformShape, _super);
-    function WebGLPlatformShape(platform, GL, shape, spec, bindings) {
+    function WebGLPlatformShape(platform, GL, shape, spec, bindings, shiftBindings) {
         var _this = this;
         _super.call(this);
         this._platform = platform;
         this._GL = GL;
         this._shape = shape;
         this._bindings = bindings;
+        this._shiftBindings = shiftBindings;
         this._spec = spec;
         var flattenedInfo = stardust_core_2.FlattenEmits(spec);
         this._specFlattened = flattenedInfo.specification;
@@ -38057,26 +38168,35 @@ var WebGLPlatformShape = (function (_super) {
         this._flattenedVertexCount = flattenedInfo.count;
         this._program = new WebGLPlatformShapeProgram(GL, this._specFlattened, function (name) { return _this.isUniform(name); }, this._platform.viewInfo.type, generator_1.GenerateMode.NORMAL);
         this._programPick = new WebGLPlatformShapeProgram(GL, this._specFlattened, function (name) { return _this.isUniform(name); }, this._platform.viewInfo.type, generator_1.GenerateMode.PICK);
-        this.initializeBuffers();
+        this.initializeUniforms();
     }
-    WebGLPlatformShape.prototype.initializeBuffers = function () {
-        var GL = this._GL;
-        this._buffers = new stardust_core_3.Dictionary();
+    WebGLPlatformShape.prototype.initializeUniforms = function () {
         for (var name_1 in this._specFlattened.input) {
             if (this.isUniform(name_1)) {
                 this.updateUniform(name_1, this._bindings.get(name_1).specValue);
             }
-            else {
-                var location_3 = this._program.getAttribLocation(name_1);
+        }
+    };
+    WebGLPlatformShape.prototype.initializeBuffers = function () {
+        var _this = this;
+        var GL = this._GL;
+        var data = new WebGLPlatformShapeData();
+        data.buffers = new stardust_core_3.Dictionary();
+        ;
+        this._bindings.forEach(function (binding, name) {
+            if (!_this.isUniform(name)) {
+                var location_3 = _this._program.getAttribLocation(name);
                 if (location_3 != null) {
-                    this._buffers.set(name_1, GL.createBuffer());
+                    data.buffers.set(name, GL.createBuffer());
                 }
             }
-        }
+        });
+        data.buffers.set(this._flattenedVertexIndexVariable, GL.createBuffer());
         if (this._programPick) {
-            this._buffers.set("s3_pick_index", GL.createBuffer());
+            data.buffers.set("s3_pick_index", GL.createBuffer());
         }
-        this._vertexCount = 0;
+        data.vertexCount = 0;
+        return data;
     };
     // Is the input attribute compiled as uniform?
     WebGLPlatformShape.prototype.isUniform = function (name) {
@@ -38084,10 +38204,18 @@ var WebGLPlatformShape = (function (_super) {
         if (name == this._flattenedVertexIndexVariable)
             return false;
         if (this._bindings.get(name) == null) {
-            throw new stardust_core_4.RuntimeError("attribute " + name + " is not specified.");
+            console.log(this._shiftBindings, name);
+            if (this._shiftBindings.get(name) == null) {
+                throw new stardust_core_4.RuntimeError("attribute " + name + " is not specified.");
+            }
+            else {
+                return false;
+            }
         }
-        // Look at the binding to determine.
-        return !this._bindings.get(name).isFunction;
+        else {
+            // Look at the binding to determine.
+            return !this._bindings.get(name).isFunction;
+        }
     };
     WebGLPlatformShape.prototype.updateUniform = function (name, value) {
         var binding = this._bindings.get(name);
@@ -38100,13 +38228,13 @@ var WebGLPlatformShape = (function (_super) {
         }
     };
     WebGLPlatformShape.prototype.uploadData = function (data) {
-        var _this = this;
+        var buffers = this.initializeBuffers();
         var n = data.length;
         var GL = this._GL;
         var bindings = this._bindings;
         var rep = this._flattenedVertexCount;
         this._bindings.forEach(function (binding, name) {
-            var buffer = _this._buffers.get(name);
+            var buffer = buffers.buffers.get(name);
             if (buffer == null)
                 return;
             var type = binding.type;
@@ -38120,7 +38248,7 @@ var WebGLPlatformShape = (function (_super) {
         for (var i = 0; i < n * rep; i++) {
             array[i] = i % rep;
         }
-        GL.bindBuffer(GL.ARRAY_BUFFER, this._buffers.get(this._flattenedVertexIndexVariable));
+        GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get(this._flattenedVertexIndexVariable));
         GL.bufferData(GL.ARRAY_BUFFER, array, GL.STATIC_DRAW);
         // The pick index attribute.
         if (this._programPick) {
@@ -38132,43 +38260,64 @@ var WebGLPlatformShape = (function (_super) {
                 array_1[i * 4 + 2] = ((index & 0xff0000) >> 16) / 255.0;
                 array_1[i * 4 + 3] = ((index & 0xff000000) >> 24) / 255.0;
             }
-            GL.bindBuffer(GL.ARRAY_BUFFER, this._buffers.get("s3_pick_index"));
+            GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get("s3_pick_index"));
             GL.bufferData(GL.ARRAY_BUFFER, array_1, GL.STATIC_DRAW);
         }
-        this._vertexCount = n * rep;
+        buffers.vertexCount = n * rep;
+        return buffers;
     };
     // Render the graphics.
-    WebGLPlatformShape.prototype.renderBase = function (mode) {
-        if (this._vertexCount > 0) {
+    WebGLPlatformShape.prototype.renderBase = function (buffers, mode) {
+        if (buffers.vertexCount > 0) {
             var GL = this._GL;
             var spec = this._specFlattened;
             var bindings = this._bindings;
+            // Decide which program to use
             var program = this._program;
             if (mode == generator_1.GenerateMode.PICK) {
                 program = this._programPick;
             }
             program.use();
+            var minOffset_1 = 0;
+            var maxOffset_1 = 0;
+            this._shiftBindings.forEach(function (shift, name) {
+                if (shift.offset > maxOffset_1)
+                    maxOffset_1 = shift.offset;
+                if (shift.offset < minOffset_1)
+                    minOffset_1 = shift.offset;
+            });
+            // Assign attributes to buffers
             for (var name_2 in spec.input) {
                 var attributeLocation = program.getAttribLocation(name_2);
                 if (attributeLocation == null)
                     continue;
-                GL.bindBuffer(GL.ARRAY_BUFFER, this._buffers.get(name_2));
-                GL.enableVertexAttribArray(attributeLocation);
-                if (name_2 == this._flattenedVertexIndexVariable) {
-                    GL.vertexAttribPointer(attributeLocation, 1, GL.FLOAT, false, 0, 0);
+                if (this._shiftBindings.has(name_2)) {
+                    var shift = this._shiftBindings.get(name_2);
+                    GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get(shift.name));
+                    GL.enableVertexAttribArray(attributeLocation);
+                    var type = bindings.get(shift.name).type;
+                    GL.vertexAttribPointer(attributeLocation, type.primitiveCount, type.primitive == "float" ? GL.FLOAT : GL.INT, false, 0, type.size * (shift.offset - minOffset_1) * this._flattenedVertexCount);
                 }
                 else {
-                    var type = bindings.get(name_2).type;
-                    GL.vertexAttribPointer(attributeLocation, type.primitiveCount, type.primitive == "float" ? GL.FLOAT : GL.INT, false, 0, 0);
+                    GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get(name_2));
+                    GL.enableVertexAttribArray(attributeLocation);
+                    if (name_2 == this._flattenedVertexIndexVariable) {
+                        GL.vertexAttribPointer(attributeLocation, 1, GL.FLOAT, false, 0, 4 * (-minOffset_1) * this._flattenedVertexCount);
+                    }
+                    else {
+                        var type = bindings.get(name_2).type;
+                        GL.vertexAttribPointer(attributeLocation, type.primitiveCount, type.primitive == "float" ? GL.FLOAT : GL.INT, false, 0, type.size * (-minOffset_1) * this._flattenedVertexCount);
+                    }
                 }
             }
+            // For pick mode, assign the pick index buffer
             if (mode == generator_1.GenerateMode.PICK) {
                 var attributeLocation = program.getAttribLocation("s3_pick_index");
-                GL.bindBuffer(GL.ARRAY_BUFFER, this._buffers.get("s3_pick_index"));
+                GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get("s3_pick_index"));
                 GL.enableVertexAttribArray(attributeLocation);
                 GL.vertexAttribPointer(attributeLocation, 4, GL.FLOAT, false, 0, 0);
             }
-            // Set view uniforms.
+            // Set view uniforms
             var viewInfo = this._platform.viewInfo;
             var pose = this._platform.pose;
             switch (viewInfo.type) {
@@ -38192,16 +38341,20 @@ var WebGLPlatformShape = (function (_super) {
                     }
                     break;
             }
+            // For pick, set the shape index
             if (mode == generator_1.GenerateMode.PICK) {
                 GL.uniform1f(program.getUniformLocation("s3_pick_index_alpha"), this._pickIndex / 255.0);
             }
-            GL.drawArrays(GL.TRIANGLES, 0, this._vertexCount);
+            // Draw arrays
+            GL.drawArrays(GL.TRIANGLES, 0, buffers.vertexCount - (maxOffset_1 - minOffset_1) * this._flattenedVertexCount);
+            // Unbind attributes
             for (var name_3 in spec.input) {
                 var attributeLocation = program.getAttribLocation(name_3);
                 if (attributeLocation != null) {
                     GL.disableVertexAttribArray(attributeLocation);
                 }
             }
+            // Unbind the pick index buffer
             if (mode == generator_1.GenerateMode.PICK) {
                 var attributeLocation = program.getAttribLocation("s3_pick_index");
                 GL.disableVertexAttribArray(attributeLocation);
@@ -38211,11 +38364,11 @@ var WebGLPlatformShape = (function (_super) {
     WebGLPlatformShape.prototype.setPickIndex = function (index) {
         this._pickIndex = index;
     };
-    WebGLPlatformShape.prototype.render = function () {
+    WebGLPlatformShape.prototype.render = function (buffers) {
         if (this._platform.renderMode == generator_1.GenerateMode.PICK) {
             this.setPickIndex(this._platform.assignPickIndex(this._shape));
         }
-        this.renderBase(this._platform.renderMode);
+        this.renderBase(buffers, this._platform.renderMode);
     };
     return WebGLPlatformShape;
 }(stardust_core_1.PlatformShape));
@@ -38328,14 +38481,14 @@ var WebGLPlatform = (function (_super) {
     WebGLPlatform.prototype.setPose = function (pose) {
         this._pose = pose;
     };
-    WebGLPlatform.prototype.compile = function (shape, spec, bindings) {
-        return new WebGLPlatformShape(this, this._GL, shape, spec, bindings);
+    WebGLPlatform.prototype.compile = function (shape, spec, bindings, shiftBindings) {
+        return new WebGLPlatformShape(this, this._GL, shape, spec, bindings, shiftBindings);
     };
     return WebGLPlatform;
 }(stardust_core_1.Platform));
 exports.WebGLPlatform = WebGLPlatform;
 
-},{"./generator":204,"./webglutils":208,"stardust-core":21}],208:[function(require,module,exports){
+},{"./generator":206,"./webglutils":210,"stardust-core":23}],210:[function(require,module,exports){
 "use strict";
 var stardust_core_1 = require("stardust-core");
 function compileProgram(GL, vsCode, fsCode) {
@@ -38369,10 +38522,10 @@ function compileProgram(GL, vsCode, fsCode) {
 }
 exports.compileProgram = compileProgram;
 
-},{"stardust-core":21}],209:[function(require,module,exports){
+},{"stardust-core":23}],211:[function(require,module,exports){
 "use strict";
 exports.version = "0.0.1";
 var platforms_1 = require("./platforms/platforms");
 exports.WebGLPlatform = platforms_1.WebGLPlatform;
 
-},{"./platforms/platforms":203}]},{},[27]);
+},{"./platforms/platforms":205}]},{},[29]);

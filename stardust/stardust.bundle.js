@@ -7,7 +7,7 @@ __export(require("stardust-core"));
 var stardust_webgl_1 = require("stardust-webgl");
 exports.WebGLPlatform = stardust_webgl_1.WebGLPlatform;
 
-},{"stardust-core":23,"stardust-webgl":30}],2:[function(require,module,exports){
+},{"stardust-core":24,"stardust-webgl":31}],2:[function(require,module,exports){
 // binding.js:
 // Take care of data binding.
 "use strict";
@@ -23,6 +23,14 @@ function getBindingValue(value) {
     }
 }
 exports.getBindingValue = getBindingValue;
+var ShiftBinding = (function () {
+    function ShiftBinding(name, offset) {
+        this.name = name;
+        this.offset = offset;
+    }
+    return ShiftBinding;
+}());
+exports.ShiftBinding = ShiftBinding;
 // The main binding class.
 var Binding = (function () {
     function Binding(typeName, value) {
@@ -146,7 +154,7 @@ var Binding = (function () {
 }());
 exports.Binding = Binding;
 
-},{"./math":13,"./types":21}],3:[function(require,module,exports){
+},{"./math":13,"./types":22}],3:[function(require,module,exports){
 "use strict";
 var exceptions_1 = require("../exceptions");
 var parser_1 = require("./parser");
@@ -795,6 +803,9 @@ var Compiler = (function () {
                     compileIthCondition_1(0);
                 }
                 break;
+            case "return": {
+                throw new exceptions_1.CompileError("unexpected return statement");
+            }
         }
     };
     return Compiler;
@@ -824,7 +835,7 @@ function compileString(content) {
 }
 exports.compileString = compileString;
 
-},{"../exceptions":8,"../intrinsics":9,"../library/library":10,"../utils":22,"./parser":5}],4:[function(require,module,exports){
+},{"../exceptions":8,"../intrinsics":9,"../library/library":10,"../utils":23,"./parser":5}],4:[function(require,module,exports){
 // Declare shape code with Javascript calls.
 "use strict";
 var utils_1 = require("../utils");
@@ -930,7 +941,7 @@ var CustomShape = (function () {
 }());
 exports.CustomShape = CustomShape;
 
-},{"../utils":22,"./compiler":3}],5:[function(require,module,exports){
+},{"../utils":23,"./compiler":3}],5:[function(require,module,exports){
 "use strict";
 var exceptions_1 = require("../exceptions");
 var parser_pegjs = require("./parser_pegjs");
@@ -5014,7 +5025,7 @@ var Context = (function () {
 }());
 exports.Context = Context;
 
-},{"../exceptions":8,"../intrinsics":9,"../utils":22}],8:[function(require,module,exports){
+},{"../exceptions":8,"../intrinsics":9,"../utils":23}],8:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -5278,7 +5289,7 @@ addConstant("SQRT2", "float", Math.SQRT2);
 addConstant("SQRT1_2", "float", Math.SQRT1_2);
 addConstant("RED", "Color", [1, 0, 0, 1]);
 
-},{"./math":13,"./utils":22}],10:[function(require,module,exports){
+},{"./math":13,"./utils":23}],10:[function(require,module,exports){
 "use strict";
 var parser_1 = require("../compiler/parser");
 var utils_1 = require("../utils");
@@ -5314,9 +5325,9 @@ function forEachModuleFunction(name, callback) {
 }
 exports.forEachModuleFunction = forEachModuleFunction;
 
-},{"../compiler/parser":5,"../utils":22,"./primitives2d":11,"./primitives3d":12}],11:[function(require,module,exports){
+},{"../compiler/parser":5,"../utils":23,"./primitives2d":11,"./primitives3d":12}],11:[function(require,module,exports){
 "use strict";
-exports.primitives = "\n    shape Triangle(\n        Vector2 p1,\n        Vector2 p2,\n        Vector2 p3,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: p1, color: color },\n            { position: p2, color: color },\n            { position: p3, color: color }\n        ];\n    }\n\n    shape Rectangle(\n        Vector2 p1,\n        Vector2 p2,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p2.x, p1.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p1.x, p2.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n    }\n\n    shape OutlinedRectangle(\n        Vector2 p1,\n        Vector2 p2,\n        float width = 1,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        Rectangle(p1, Vector2(p1.x + width, p2.y - width), color);\n        Rectangle(Vector2(p1.x, p2.y - width), Vector2(p2.x - width, p2.y), color);\n        Rectangle(Vector2(p1.x + width, p1.y), Vector2(p2.x, p1.y + width), color);\n        Rectangle(Vector2(p2.x - width, p1.y + width), p2, color);\n    }\n\n    shape Hexagon(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..5) {\n            float a1 = i / 6.0 * PI * 2.0;\n            float a2 = (i + 1) / 6.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle16(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..15) {\n            float a1 = i / 16.0 * PI * 2.0;\n            float a2 = (i + 1) / 16.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..31) {\n            float a1 = i / 32.0 * PI * 2.0;\n            float a2 = (i + 1) / 32.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Line(\n        Vector2 p1,\n        Vector2 p2,\n        float thickness = 1,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        Vector2 d = normalize(p2 - p1);\n        Vector2 t = Vector2(d.y, -d.x) * (thickness / 2);\n        emit [\n            { position: p1 + t, color: color },\n            { position: p1 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n        emit [\n            { position: p1 - t, color: color },\n            { position: p2 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n    }\n";
+exports.primitives = "\n    shape Triangle(\n        Vector2 p1,\n        Vector2 p2,\n        Vector2 p3,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: p1, color: color },\n            { position: p2, color: color },\n            { position: p3, color: color }\n        ];\n    }\n\n    shape Rectangle(\n        Vector2 p1,\n        Vector2 p2,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p2.x, p1.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p1.x, p2.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n    }\n\n    shape OutlinedRectangle(\n        Vector2 p1,\n        Vector2 p2,\n        float width = 1,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        Rectangle(p1, Vector2(p1.x + width, p2.y - width), color);\n        Rectangle(Vector2(p1.x, p2.y - width), Vector2(p2.x - width, p2.y), color);\n        Rectangle(Vector2(p1.x + width, p1.y), Vector2(p2.x, p1.y + width), color);\n        Rectangle(Vector2(p2.x - width, p1.y + width), p2, color);\n    }\n\n    shape Hexagon(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..5) {\n            float a1 = i / 6.0 * PI * 2.0;\n            float a2 = (i + 1) / 6.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle16(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..15) {\n            float a1 = i / 16.0 * PI * 2.0;\n            float a2 = (i + 1) / 16.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..31) {\n            float a1 = i / 32.0 * PI * 2.0;\n            float a2 = (i + 1) / 32.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Line(\n        Vector2 p1,\n        Vector2 p2,\n        float width = 1,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        Vector2 d = normalize(p2 - p1);\n        Vector2 t = Vector2(d.y, -d.x) * (width / 2);\n        emit [\n            { position: p1 + t, color: color },\n            { position: p1 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n        emit [\n            { position: p1 - t, color: color },\n            { position: p2 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n    }\n";
 
 },{}],12:[function(require,module,exports){
 "use strict";
@@ -5811,7 +5822,7 @@ var scale;
     scale_2.div = div;
 })(scale = exports.scale || (exports.scale = {}));
 
-},{"../specConstruct":18,"./scale":15}],17:[function(require,module,exports){
+},{"../specConstruct":19,"./scale":15}],17:[function(require,module,exports){
 "use strict";
 var binding_1 = require("./binding");
 var exceptions_1 = require("./exceptions");
@@ -5824,6 +5835,7 @@ var Shape = (function () {
         this._data = [];
         this._platform = platform;
         this._bindings = new utils_1.Dictionary();
+        this._shiftBindings = new utils_1.Dictionary();
         this._platformShape = null;
         this._shouldUploadData = true;
         this._instanceFunction = null;
@@ -5833,6 +5845,23 @@ var Shape = (function () {
                 var input = this._spec.input[name_1];
                 if (input.default != null) {
                     this._bindings.set(name_1, new binding_1.Binding(input.type, input.default));
+                }
+            }
+        }
+        // Assign shift bindings based on naming convention.
+        for (var name_2 in this._spec.input) {
+            if (this._spec.input.hasOwnProperty(name_2)) {
+                if (this._spec.input.hasOwnProperty(name_2 + "_pp")) {
+                    this._shiftBindings.set(name_2 + "_pp", new binding_1.ShiftBinding(name_2, -2));
+                }
+                if (this._spec.input.hasOwnProperty(name_2 + "_p")) {
+                    this._shiftBindings.set(name_2 + "_p", new binding_1.ShiftBinding(name_2, -1));
+                }
+                if (this._spec.input.hasOwnProperty(name_2 + "_n")) {
+                    this._shiftBindings.set(name_2 + "_n", new binding_1.ShiftBinding(name_2, +1));
+                }
+                if (this._spec.input.hasOwnProperty(name_2 + "_nn")) {
+                    this._shiftBindings.set(name_2 + "_nn", new binding_1.ShiftBinding(name_2, +2));
                 }
             }
         }
@@ -5915,6 +5944,7 @@ var Shape = (function () {
             variables: utils_1.shallowClone(this._spec.variables)
         };
         var newBindings = this._bindings.clone();
+        var shiftBindings = this._shiftBindings.clone();
         this._bindings.forEach(function (binding, name) {
             if (binding instanceof scale_1.ScaleBinding) {
                 var attributes = binding.getAttributes();
@@ -5944,7 +5974,7 @@ var Shape = (function () {
                 newBindings.delete(name);
             }
         });
-        return [newSpec, newBindings];
+        return [newSpec, newBindings, shiftBindings];
     };
     Shape.prototype.uploadScaleUniforms = function () {
         var _this = this;
@@ -5961,8 +5991,8 @@ var Shape = (function () {
     Shape.prototype.prepare = function () {
         var _this = this;
         if (!this._platformShape) {
-            var _a = this.prepareSpecification(), spec = _a[0], binding = _a[1];
-            this._platformShape = this._platform.compile(this, spec, binding);
+            var _a = this.prepareSpecification(), spec = _a[0], binding = _a[1], shiftBinding = _a[2];
+            this._platformShape = this._platform.compile(this, spec, binding, shiftBinding);
             this._shouldUploadData = true;
         }
         if (this._shouldUploadData) {
@@ -6004,7 +6034,46 @@ var Shape = (function () {
 }());
 exports.Shape = Shape;
 
-},{"./binding":2,"./exceptions":8,"./scale/scale":15,"./utils":22}],18:[function(require,module,exports){
+},{"./binding":2,"./exceptions":8,"./scale/scale":15,"./utils":23}],18:[function(require,module,exports){
+"use strict";
+var compiler_1 = require("./compiler/compiler");
+var declare_1 = require("./compiler/declare");
+var shape_1 = require("./shape");
+var shape;
+(function (shape) {
+    function create(spec, platform) {
+        if (spec instanceof declare_1.CustomShape) {
+            return new shape_1.Shape(spec.compile(), platform);
+        }
+        else {
+            return new shape_1.Shape(spec, platform);
+        }
+    }
+    shape.create = create;
+    function custom() {
+        return new declare_1.CustomShape();
+    }
+    shape.custom = custom;
+    function compile(code) {
+        return compiler_1.compileString(code);
+    }
+    shape.compile = compile;
+    function circle(sides) {
+        if (sides === void 0) { sides = 32; }
+        return shape.compile("\n            shape Circle(\n                Vector2 center,\n                float radius,\n                Color color\n            ) {\n                for(i in 0.." + (sides - 1) + ") {\n                    float a1 = i / " + sides.toFixed(1) + " * PI * 2.0;\n                    float a2 = (i + 1) / " + sides.toFixed(1) + " * PI * 2.0;\n                    Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n                    Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n                    emit [\n                        { position: center + p1, color: color },\n                        { position: center, color: color },\n                        { position: center + p2, color: color }\n                    ];\n                }\n            }\n        ")["Circle"];
+    }
+    shape.circle = circle;
+    function line() {
+        return shape.compile("\n            shape Line(\n                Vector2 p1,\n                Vector2 p2,\n                float width = 1,\n                Color color = [ 0, 0, 0, 1 ]\n            ) {\n                Vector2 d = normalize(p2 - p1);\n                Vector2 t = Vector2(d.y, -d.x) * (width / 2);\n                emit [\n                    { position: p1 + t, color: color },\n                    { position: p1 - t, color: color },\n                    { position: p2 + t, color: color }\n                ];\n                emit [\n                    { position: p1 - t, color: color },\n                    { position: p2 - t, color: color },\n                    { position: p2 + t, color: color }\n                ];\n            }\n        ")["Line"];
+    }
+    shape.line = line;
+    function polyline() {
+        return shape.compile("\n            import Triangle from P2D;\n\n            shape Sector2(\n                Vector2 c,\n                Vector2 p1,\n                Vector2 p2,\n                Color color\n            ) {\n                auto pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Triangle(c, p1, pc, color);\n                Triangle(c, pc, p2, color);\n            }\n\n            shape Sector4(\n                Vector2 c,\n                Vector2 p1,\n                Vector2 p2,\n                Color color\n            ) {\n                auto pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Sector2(c, p1, pc, color);\n                Sector2(c, pc, p2, color);\n            }\n\n            shape PolylineRound(\n                Vector2 p, Vector2 p_p, Vector2 p_n, Vector2 p_nn,\n                float width,\n                Color color = [ 0, 0, 0, 1 ]\n            ) {\n                float EPS = 1e-5;\n                float w = width / 2;\n                Vector2 d = normalize(p - p_n);\n                Vector2 n = Vector2(d.y, -d.x);\n                Vector2 m1;\n                if(length(p - p_p) < EPS) {\n                    m1 = n * w;\n                } else {\n                    m1 = normalize(d + normalize(p - p_p)) * w;\n                }\n                Vector2 m2;\n                if(length(p_n - p_nn) < EPS) {\n                    m2 = -n * w;\n                } else {\n                    m2 = normalize(normalize(p_n - p_nn) - d) * w;\n                }\n                Vector2 c1a;\n                Vector2 c1b;\n                Vector2 a1;\n                Vector2 a2;\n                if(dot(m1, n) > 0) {\n                    c1a = p + m1;\n                    c1b = p + n * w;\n                    a2 = c1b;\n                    a1 = p - m1 * (w / dot(m1, n));\n                } else {\n                    c1a = p + m1;\n                    c1b = p - n * w;\n                    a2 = p + m1 * (w / dot(m1, n));\n                    a1 = c1b;\n                }\n                Vector2 c2a;\n                Vector2 c2b;\n                Vector2 b1;\n                Vector2 b2;\n                if(dot(m2, n) < 0) {\n                    c2a = p_n + m2;\n                    c2b = p_n - n * w;\n                    b1 = c2b;\n                    b2 = p_n + m2 * (w / dot(m2, n));\n                } else {\n                    c2a = p_n + m2;\n                    c2b = p_n + n * w;\n                    b2 = c2b;\n                    b1 = p_n - m2 * (w / dot(m2, n));\n                }\n                Sector4(p, c1a, c1b, color);\n                Sector4(p_n, c2a, c2b, color);\n                Triangle(p, a1, b1, color);\n                Triangle(p, b1, p_n, color);\n                Triangle(p, a2, b2, color);\n                Triangle(p, b2, p_n, color);\n            }\n        ")["PolylineRound"];
+    }
+    shape.polyline = polyline;
+})(shape = exports.shape || (exports.shape = {}));
+
+},{"./compiler/compiler":3,"./compiler/declare":4,"./shape":17}],19:[function(require,module,exports){
 "use strict";
 // Construct part of specification.
 var intrinsics_1 = require("./intrinsics");
@@ -6095,7 +6164,7 @@ function lessThan(a1, a2) {
 }
 exports.lessThan = lessThan;
 
-},{"./intrinsics":9}],19:[function(require,module,exports){
+},{"./intrinsics":9}],20:[function(require,module,exports){
 // Flattener: Resolve emit statements into individual render calls.
 "use strict";
 var SC = require("../specConstruct");
@@ -6255,12 +6324,12 @@ function FlattenEmits(shape) {
 }
 exports.FlattenEmits = FlattenEmits;
 
-},{"../specConstruct":18,"../utils":22}],20:[function(require,module,exports){
+},{"../specConstruct":19,"../utils":23}],21:[function(require,module,exports){
 "use strict";
 var flattener_1 = require("./flattener");
 exports.FlattenEmits = flattener_1.FlattenEmits;
 
-},{"./flattener":19}],21:[function(require,module,exports){
+},{"./flattener":20}],22:[function(require,module,exports){
 // Basic types.
 "use strict";
 function MakeType(name, size, primitive, primitiveCount) {
@@ -6280,7 +6349,7 @@ exports.types = {
     "Color": MakeType("Color", 16, "float", 4)
 };
 
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 "use strict";
 var Dictionary = (function () {
     function Dictionary() {
@@ -6348,7 +6417,7 @@ function timeTask(name, cb) {
 }
 exports.timeTask = timeTask;
 
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 "use strict";
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
@@ -6358,6 +6427,7 @@ exports.version = "0.0.1";
 __export(require("./core/utils"));
 __export(require("./core/math"));
 // Shape class and shape specification
+__export(require("./core/shapeModule"));
 __export(require("./core/shape"));
 __export(require("./core/binding"));
 __export(require("./core/intrinsics"));
@@ -6378,12 +6448,12 @@ __export(require("./core/scale/scale"));
 var scales_1 = require("./core/scale/scales");
 exports.scale = scales_1.scale;
 
-},{"./core/binding":2,"./core/compiler/compiler":3,"./core/compiler/declare":4,"./core/compiler/parser":5,"./core/evaluator/evaluator":7,"./core/exceptions":8,"./core/intrinsics":9,"./core/math":13,"./core/platform":14,"./core/scale/scale":15,"./core/scale/scales":16,"./core/shape":17,"./core/transform/transforms":20,"./core/types":21,"./core/utils":22}],24:[function(require,module,exports){
+},{"./core/binding":2,"./core/compiler/compiler":3,"./core/compiler/declare":4,"./core/compiler/parser":5,"./core/evaluator/evaluator":7,"./core/exceptions":8,"./core/intrinsics":9,"./core/math":13,"./core/platform":14,"./core/scale/scale":15,"./core/scale/scales":16,"./core/shape":17,"./core/shapeModule":18,"./core/transform/transforms":21,"./core/types":22,"./core/utils":23}],25:[function(require,module,exports){
 "use strict";
 var webgl_1 = require("./webgl/webgl");
 exports.WebGLPlatform = webgl_1.WebGLPlatform;
 
-},{"./webgl/webgl":28}],25:[function(require,module,exports){
+},{"./webgl/webgl":29}],26:[function(require,module,exports){
 "use strict";
 var types_1 = require("./types");
 var intrinsics_1 = require("./intrinsics");
@@ -6632,7 +6702,7 @@ var Generator = (function () {
 }());
 exports.Generator = Generator;
 
-},{"./intrinsics":26,"./types":27}],26:[function(require,module,exports){
+},{"./intrinsics":27,"./types":28}],27:[function(require,module,exports){
 "use strict";
 var stardust_core_1 = require("stardust-core");
 var stardust_core_2 = require("stardust-core");
@@ -6751,7 +6821,7 @@ function generateIntrinsicFunction(name, args) {
 }
 exports.generateIntrinsicFunction = generateIntrinsicFunction;
 
-},{"stardust-core":23}],27:[function(require,module,exports){
+},{"stardust-core":24}],28:[function(require,module,exports){
 "use strict";
 var typeName2WebGLTypeName = {
     "float": "float",
@@ -6792,7 +6862,7 @@ function convertConstant(type, value) {
 }
 exports.convertConstant = convertConstant;
 
-},{}],28:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -6892,13 +6962,14 @@ var WebGLPlatformShapeData = (function (_super) {
 exports.WebGLPlatformShapeData = WebGLPlatformShapeData;
 var WebGLPlatformShape = (function (_super) {
     __extends(WebGLPlatformShape, _super);
-    function WebGLPlatformShape(platform, GL, shape, spec, bindings) {
+    function WebGLPlatformShape(platform, GL, shape, spec, bindings, shiftBindings) {
         var _this = this;
         _super.call(this);
         this._platform = platform;
         this._GL = GL;
         this._shape = shape;
         this._bindings = bindings;
+        this._shiftBindings = shiftBindings;
         this._spec = spec;
         var flattenedInfo = stardust_core_2.FlattenEmits(spec);
         this._specFlattened = flattenedInfo.specification;
@@ -6916,18 +6987,20 @@ var WebGLPlatformShape = (function (_super) {
         }
     };
     WebGLPlatformShape.prototype.initializeBuffers = function () {
+        var _this = this;
         var GL = this._GL;
         var data = new WebGLPlatformShapeData();
         data.buffers = new stardust_core_3.Dictionary();
         ;
-        for (var name_2 in this._specFlattened.input) {
-            if (!this.isUniform(name_2)) {
-                var location_3 = this._program.getAttribLocation(name_2);
+        this._bindings.forEach(function (binding, name) {
+            if (!_this.isUniform(name)) {
+                var location_3 = _this._program.getAttribLocation(name);
                 if (location_3 != null) {
-                    data.buffers.set(name_2, GL.createBuffer());
+                    data.buffers.set(name, GL.createBuffer());
                 }
             }
-        }
+        });
+        data.buffers.set(this._flattenedVertexIndexVariable, GL.createBuffer());
         if (this._programPick) {
             data.buffers.set("s3_pick_index", GL.createBuffer());
         }
@@ -6940,10 +7013,18 @@ var WebGLPlatformShape = (function (_super) {
         if (name == this._flattenedVertexIndexVariable)
             return false;
         if (this._bindings.get(name) == null) {
-            throw new stardust_core_4.RuntimeError("attribute " + name + " is not specified.");
+            console.log(this._shiftBindings, name);
+            if (this._shiftBindings.get(name) == null) {
+                throw new stardust_core_4.RuntimeError("attribute " + name + " is not specified.");
+            }
+            else {
+                return false;
+            }
         }
-        // Look at the binding to determine.
-        return !this._bindings.get(name).isFunction;
+        else {
+            // Look at the binding to determine.
+            return !this._bindings.get(name).isFunction;
+        }
     };
     WebGLPlatformShape.prototype.updateUniform = function (name, value) {
         var binding = this._bindings.get(name);
@@ -7000,32 +7081,52 @@ var WebGLPlatformShape = (function (_super) {
             var GL = this._GL;
             var spec = this._specFlattened;
             var bindings = this._bindings;
+            // Decide which program to use
             var program = this._program;
             if (mode == generator_1.GenerateMode.PICK) {
                 program = this._programPick;
             }
             program.use();
-            for (var name_3 in spec.input) {
-                var attributeLocation = program.getAttribLocation(name_3);
+            var minOffset_1 = 0;
+            var maxOffset_1 = 0;
+            this._shiftBindings.forEach(function (shift, name) {
+                if (shift.offset > maxOffset_1)
+                    maxOffset_1 = shift.offset;
+                if (shift.offset < minOffset_1)
+                    minOffset_1 = shift.offset;
+            });
+            // Assign attributes to buffers
+            for (var name_2 in spec.input) {
+                var attributeLocation = program.getAttribLocation(name_2);
                 if (attributeLocation == null)
                     continue;
-                GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get(name_3));
-                GL.enableVertexAttribArray(attributeLocation);
-                if (name_3 == this._flattenedVertexIndexVariable) {
-                    GL.vertexAttribPointer(attributeLocation, 1, GL.FLOAT, false, 0, 0);
+                if (this._shiftBindings.has(name_2)) {
+                    var shift = this._shiftBindings.get(name_2);
+                    GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get(shift.name));
+                    GL.enableVertexAttribArray(attributeLocation);
+                    var type = bindings.get(shift.name).type;
+                    GL.vertexAttribPointer(attributeLocation, type.primitiveCount, type.primitive == "float" ? GL.FLOAT : GL.INT, false, 0, type.size * (shift.offset - minOffset_1) * this._flattenedVertexCount);
                 }
                 else {
-                    var type = bindings.get(name_3).type;
-                    GL.vertexAttribPointer(attributeLocation, type.primitiveCount, type.primitive == "float" ? GL.FLOAT : GL.INT, false, 0, 0);
+                    GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get(name_2));
+                    GL.enableVertexAttribArray(attributeLocation);
+                    if (name_2 == this._flattenedVertexIndexVariable) {
+                        GL.vertexAttribPointer(attributeLocation, 1, GL.FLOAT, false, 0, 4 * (-minOffset_1) * this._flattenedVertexCount);
+                    }
+                    else {
+                        var type = bindings.get(name_2).type;
+                        GL.vertexAttribPointer(attributeLocation, type.primitiveCount, type.primitive == "float" ? GL.FLOAT : GL.INT, false, 0, type.size * (-minOffset_1) * this._flattenedVertexCount);
+                    }
                 }
             }
+            // For pick mode, assign the pick index buffer
             if (mode == generator_1.GenerateMode.PICK) {
                 var attributeLocation = program.getAttribLocation("s3_pick_index");
                 GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get("s3_pick_index"));
                 GL.enableVertexAttribArray(attributeLocation);
                 GL.vertexAttribPointer(attributeLocation, 4, GL.FLOAT, false, 0, 0);
             }
-            // Set view uniforms.
+            // Set view uniforms
             var viewInfo = this._platform.viewInfo;
             var pose = this._platform.pose;
             switch (viewInfo.type) {
@@ -7049,16 +7150,20 @@ var WebGLPlatformShape = (function (_super) {
                     }
                     break;
             }
+            // For pick, set the shape index
             if (mode == generator_1.GenerateMode.PICK) {
                 GL.uniform1f(program.getUniformLocation("s3_pick_index_alpha"), this._pickIndex / 255.0);
             }
-            GL.drawArrays(GL.TRIANGLES, 0, buffers.vertexCount);
-            for (var name_4 in spec.input) {
-                var attributeLocation = program.getAttribLocation(name_4);
+            // Draw arrays
+            GL.drawArrays(GL.TRIANGLES, 0, buffers.vertexCount - (maxOffset_1 - minOffset_1) * this._flattenedVertexCount);
+            // Unbind attributes
+            for (var name_3 in spec.input) {
+                var attributeLocation = program.getAttribLocation(name_3);
                 if (attributeLocation != null) {
                     GL.disableVertexAttribArray(attributeLocation);
                 }
             }
+            // Unbind the pick index buffer
             if (mode == generator_1.GenerateMode.PICK) {
                 var attributeLocation = program.getAttribLocation("s3_pick_index");
                 GL.disableVertexAttribArray(attributeLocation);
@@ -7185,14 +7290,14 @@ var WebGLPlatform = (function (_super) {
     WebGLPlatform.prototype.setPose = function (pose) {
         this._pose = pose;
     };
-    WebGLPlatform.prototype.compile = function (shape, spec, bindings) {
-        return new WebGLPlatformShape(this, this._GL, shape, spec, bindings);
+    WebGLPlatform.prototype.compile = function (shape, spec, bindings, shiftBindings) {
+        return new WebGLPlatformShape(this, this._GL, shape, spec, bindings, shiftBindings);
     };
     return WebGLPlatform;
 }(stardust_core_1.Platform));
 exports.WebGLPlatform = WebGLPlatform;
 
-},{"./generator":25,"./webglutils":29,"stardust-core":23}],29:[function(require,module,exports){
+},{"./generator":26,"./webglutils":30,"stardust-core":24}],30:[function(require,module,exports){
 "use strict";
 var stardust_core_1 = require("stardust-core");
 function compileProgram(GL, vsCode, fsCode) {
@@ -7226,11 +7331,11 @@ function compileProgram(GL, vsCode, fsCode) {
 }
 exports.compileProgram = compileProgram;
 
-},{"stardust-core":23}],30:[function(require,module,exports){
+},{"stardust-core":24}],31:[function(require,module,exports){
 "use strict";
 exports.version = "0.0.1";
 var platforms_1 = require("./platforms/platforms");
 exports.WebGLPlatform = platforms_1.WebGLPlatform;
 
-},{"./platforms/platforms":24}]},{},[1])(1)
+},{"./platforms/platforms":25}]},{},[1])(1)
 });
