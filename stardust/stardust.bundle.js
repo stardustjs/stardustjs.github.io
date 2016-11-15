@@ -6635,14 +6635,11 @@ exports.WebGLPlatform = webgl_1.WebGLPlatform;
 exports.WebGLCanvasPlatform2D = webgl_1.WebGLCanvasPlatform2D;
 var stardust_core_1 = require("stardust-core");
 var webgl_2 = require("./webgl/webgl");
-function registerModule() {
-    stardust_core_1.registerPlatformConstructor("webgl-2d", function (canvas, width, height) {
-        if (width === void 0) { width = 600; }
-        if (height === void 0) { height = 400; }
-        return new webgl_2.WebGLCanvasPlatform2D(canvas, width, height);
-    });
-}
-exports.registerModule = registerModule;
+stardust_core_1.registerPlatformConstructor("webgl-2d", function (canvas, width, height) {
+    if (width === void 0) { width = 600; }
+    if (height === void 0) { height = 400; }
+    return new webgl_2.WebGLCanvasPlatform2D(canvas, width, height);
+});
 
 },{"./webgl/webgl":29,"stardust-core":24}],26:[function(require,module,exports){
 "use strict";
