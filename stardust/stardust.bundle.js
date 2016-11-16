@@ -5492,7 +5492,7 @@ exports.forEachModuleFunction = forEachModuleFunction;
 
 },{"../compiler/parser":5,"../utils":23,"./primitives2d":11,"./primitives3d":12}],11:[function(require,module,exports){
 "use strict";
-exports.primitives = "\n    shape Triangle(\n        p1: Vector2,\n        p2: Vector2,\n        p3: Vector2,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: p1, color: color },\n            { position: p2, color: color },\n            { position: p3, color: color }\n        ];\n    }\n\n    shape Rectangle(\n        p1: Vector2,\n        p2: Vector2,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p2.x, p1.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p1.x, p2.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n    }\n\n    shape OutlinedRectangle(\n        p1: Vector2,\n        p2: Vector2,\n        width: float = 1,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        Rectangle(p1, Vector2(p1.x + width, p2.y - width), color);\n        Rectangle(Vector2(p1.x, p2.y - width), Vector2(p2.x - width, p2.y), color);\n        Rectangle(Vector2(p1.x + width, p1.y), Vector2(p2.x, p1.y + width), color);\n        Rectangle(Vector2(p2.x - width, p1.y + width), p2, color);\n    }\n\n    shape Hexagon(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..5) {\n            let a1 = i / 6.0 * PI * 2.0;\n            let a2 = (i + 1) / 6.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle16(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..15) {\n            let a1 = i / 16.0 * PI * 2.0;\n            let a2 = (i + 1) / 16.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..31) {\n            let a1 = i / 32.0 * PI * 2.0;\n            let a2 = (i + 1) / 32.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Line(\n        p1: Vector2,\n        p2: Vector2,\n        width: float = 1,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let d = normalize(p2 - p1);\n        let t = Vector2(d.y, -d.x) * (width / 2);\n        emit [\n            { position: p1 + t, color: color },\n            { position: p1 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n        emit [\n            { position: p1 - t, color: color },\n            { position: p2 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n    }\n";
+exports.primitives = "\n    shape Triangle(\n        p1: Vector2,\n        p2: Vector2,\n        p3: Vector2,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: p1, color: color },\n            { position: p2, color: color },\n            { position: p3, color: color }\n        ];\n    }\n\n    shape Rectangle(\n        p1: Vector2,\n        p2: Vector2,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p2.x, p1.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p1.x, p2.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n    }\n\n    shape OutlinedRectangle(\n        p1: Vector2,\n        p2: Vector2,\n        width: float = 1,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        Rectangle(p1, Vector2(p1.x + width, p2.y - width), color);\n        Rectangle(Vector2(p1.x, p2.y - width), Vector2(p2.x - width, p2.y), color);\n        Rectangle(Vector2(p1.x + width, p1.y), Vector2(p2.x, p1.y + width), color);\n        Rectangle(Vector2(p2.x - width, p1.y + width), p2, color);\n    }\n\n    shape Hexagon(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..5) {\n            let a1 = i / 6.0 * PI * 2.0;\n            let a2 = (i + 1) / 6.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle16(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..15) {\n            let a1 = i / 16.0 * PI * 2.0;\n            let a2 = (i + 1) / 16.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..31) {\n            let a1 = i / 32.0 * PI * 2.0;\n            let a2 = (i + 1) / 32.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Line(\n        p1: Vector2,\n        p2: Vector2,\n        width: float = 1,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let d = normalize(p2 - p1);\n        let t = Vector2(d.y, -d.x) * (width / 2);\n        emit [\n            { position: p1 + t, color: color },\n            { position: p1 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n        emit [\n            { position: p1 - t, color: color },\n            { position: p2 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n    }\n\n    shape Sector2(\n        c: Vector2,\n        p1: Vector2,\n        p2: Vector2,\n        color: Color\n    ) {\n        let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n        Triangle(c, p1, pc, color);\n        Triangle(c, pc, p2, color);\n    }\n\n    shape Sector4(\n        c: Vector2,\n        p1: Vector2,\n        p2: Vector2,\n        color: Color\n    ) {\n        let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n        Sector2(c, p1, pc, color);\n        Sector2(c, pc, p2, color);\n    }\n\n    shape Polyline(\n        p: Vector2, p_p: Vector2, p_n: Vector2, p_nn: Vector2,\n        width: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let EPS = 1e-5;\n        let w = width / 2;\n        let d = normalize(p - p_n);\n        let n = Vector2(d.y, -d.x);\n        let m1: Vector2;\n        if(length(p - p_p) < EPS) {\n            m1 = n * w;\n        } else {\n            m1 = normalize(d + normalize(p - p_p)) * w;\n        }\n        let m2: Vector2;\n        if(length(p_n - p_nn) < EPS) {\n            m2 = -n * w;\n        } else {\n            m2 = normalize(normalize(p_n - p_nn) - d) * w;\n        }\n        let c1a: Vector2;\n        let c1b: Vector2;\n        let a1: Vector2;\n        let a2: Vector2;\n        if(dot(m1, n) > 0) {\n            c1a = p + m1;\n            c1b = p + n * w;\n            a2 = c1b;\n            a1 = p - m1 * (w / dot(m1, n));\n        } else {\n            c1a = p + m1;\n            c1b = p - n * w;\n            a2 = p + m1 * (w / dot(m1, n));\n            a1 = c1b;\n        }\n        let c2a: Vector2;\n        let c2b: Vector2;\n        let b1: Vector2;\n        let b2: Vector2;\n        if(dot(m2, n) < 0) {\n            c2a = p_n + m2;\n            c2b = p_n - n * w;\n            b1 = c2b;\n            b2 = p_n + m2 * (w / dot(m2, n));\n        } else {\n            c2a = p_n + m2;\n            c2b = p_n + n * w;\n            b2 = c2b;\n            b1 = p_n - m2 * (w / dot(m2, n));\n        }\n        emit [\n            { position: p, color: color },\n            { position: c1a, color: color },\n            { position: c1b, color: color }\n        ];\n        emit [\n            { position: p_n, color: color },\n            { position: c2a, color: color },\n            { position: c2b, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: a1, color: color },\n            { position: b1, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: b1, color: color },\n            { position: p_n, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: a2, color: color },\n            { position: b2, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: b2, color: color },\n            { position: p_n, color: color }\n        ];\n    }\n";
 
 },{}],12:[function(require,module,exports){
 "use strict";
@@ -5937,10 +5937,7 @@ var scale;
             return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
         });
         scale.getAttributes = function () { return []; };
-        scale.getExpression = function (attrs, value1, value2) {
-            console.log(value1, value2);
-            return SC.add(value1, value2);
-        };
+        scale.getExpression = function (attrs, value1, value2) { return SC.add(value1, value2); };
         return scale;
     }
     scale_2.addScale = addScale;
@@ -5983,6 +5980,20 @@ var scale;
         return scale;
     }
     scale_2.divScale = divScale;
+    // Common arithmetics
+    function vector2Scale() {
+        var scale = (function () {
+            var args = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                args[_i - 0] = arguments[_i];
+            }
+            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, "Vector2", ["float", "float"]], args)))();
+        });
+        scale.getAttributes = function () { return []; };
+        scale.getExpression = function (attrs, value1, value2) { return SC.func("Vector2", "Vector2", value1, value2); };
+        return scale;
+    }
+    scale_2.vector2Scale = vector2Scale;
     function add(value1, value2) {
         return addScale()(value1, value2);
     }
@@ -5999,6 +6010,10 @@ var scale;
         return divScale()(value1, value2);
     }
     scale_2.div = div;
+    function Vector2(value1, value2) {
+        return vector2Scale()(value1, value2);
+    }
+    scale_2.Vector2 = Vector2;
 })(scale = exports.scale || (exports.scale = {}));
 
 },{"../specConstruct":19,"./scale":15}],17:[function(require,module,exports){
@@ -6008,6 +6023,12 @@ var exceptions_1 = require("./exceptions");
 var utils_1 = require("./utils");
 var scale_1 = require("./scale/scale");
 ;
+var shiftBindingDescriptions = [
+    { shift: -2, suffix: "_pp" },
+    { shift: -1, suffix: "_p" },
+    { shift: +1, suffix: "_n" },
+    { shift: +2, suffix: "_nn" }
+];
 var Shape = (function () {
     function Shape(spec, platform) {
         this._spec = spec;
@@ -6030,17 +6051,11 @@ var Shape = (function () {
         // Assign shift bindings based on naming convention.
         for (var name_2 in this._spec.input) {
             if (this._spec.input.hasOwnProperty(name_2)) {
-                if (this._spec.input.hasOwnProperty(name_2 + "_pp")) {
-                    this._shiftBindings.set(name_2 + "_pp", new binding_1.ShiftBinding(name_2, -2));
-                }
-                if (this._spec.input.hasOwnProperty(name_2 + "_p")) {
-                    this._shiftBindings.set(name_2 + "_p", new binding_1.ShiftBinding(name_2, -1));
-                }
-                if (this._spec.input.hasOwnProperty(name_2 + "_n")) {
-                    this._shiftBindings.set(name_2 + "_n", new binding_1.ShiftBinding(name_2, +1));
-                }
-                if (this._spec.input.hasOwnProperty(name_2 + "_nn")) {
-                    this._shiftBindings.set(name_2 + "_nn", new binding_1.ShiftBinding(name_2, +2));
+                for (var _i = 0, shiftBindingDescriptions_1 = shiftBindingDescriptions; _i < shiftBindingDescriptions_1.length; _i++) {
+                    var _a = shiftBindingDescriptions_1[_i], shift = _a.shift, suffix = _a.suffix;
+                    if (this._spec.input.hasOwnProperty(name_2 + suffix)) {
+                        this._shiftBindings.set(name_2 + suffix, new binding_1.ShiftBinding(name_2, shift));
+                    }
                 }
             }
         }
@@ -6149,8 +6164,54 @@ var Shape = (function () {
                     expression: binding.getExpression(attrs_1),
                     valueType: newSpec.input[name].type
                 });
+                var _loop_1 = function(suffix, shift) {
+                    if (newSpec.input.hasOwnProperty(name + suffix)) {
+                        newSpec.variables[name + suffix] = newSpec.input[name].type;
+                        var shiftAttrs_1 = {};
+                        attributes.forEach(function (attr) {
+                            var bindedName = name + attr.bindedName;
+                            if (newBindings.get(bindedName).isFunction) {
+                                var shiftBindedName = bindedName + suffix;
+                                shiftBindings.set(shiftBindedName, new binding_1.ShiftBinding(bindedName, shift));
+                                shiftAttrs_1[attr.bindedName] = {
+                                    type: "variable",
+                                    valueType: attr.type,
+                                    variableName: shiftBindedName
+                                };
+                                newSpec.input[shiftBindedName] = {
+                                    type: attr.type,
+                                    default: null
+                                };
+                            }
+                            else {
+                                shiftAttrs_1[attr.bindedName] = {
+                                    type: "variable",
+                                    valueType: attr.type,
+                                    variableName: bindedName
+                                };
+                            }
+                        });
+                        newSpec.statements.splice(0, 0, {
+                            type: "assign",
+                            variableName: name + suffix,
+                            expression: binding.getExpression(shiftAttrs_1),
+                            valueType: newSpec.input[name].type
+                        });
+                    }
+                };
+                for (var _i = 0, shiftBindingDescriptions_2 = shiftBindingDescriptions; _i < shiftBindingDescriptions_2.length; _i++) {
+                    var _a = shiftBindingDescriptions_2[_i], suffix = _a.suffix, shift = _a.shift;
+                    _loop_1(suffix, shift);
+                }
                 delete newSpec.input[name];
                 newBindings.delete(name);
+                for (var _b = 0, shiftBindingDescriptions_3 = shiftBindingDescriptions; _b < shiftBindingDescriptions_3.length; _b++) {
+                    var suffix = shiftBindingDescriptions_3[_b].suffix;
+                    if (shiftBindings.has(name + suffix)) {
+                        delete newSpec.input[name + suffix];
+                        shiftBindings.delete(name + suffix);
+                    }
+                }
             }
         });
         return [newSpec, newBindings, shiftBindings];
@@ -6181,7 +6242,7 @@ var Shape = (function () {
             else {
                 this._platformShapeData = this._data.map(function (datum, index) {
                     var info = _this._instanceFunction(datum, index, _this._data);
-                    _this._platformShape.uploadData(info.data);
+                    return _this._platformShape.uploadData(info.data);
                 });
             }
             this._shouldUploadData = false;
@@ -6191,7 +6252,6 @@ var Shape = (function () {
     Shape.prototype.render = function () {
         var _this = this;
         this.prepare();
-        this.uploadScaleUniforms();
         if (this._instanceFunction == null) {
             this._platformShape.render(this._platformShapeData);
         }
@@ -6199,11 +6259,17 @@ var Shape = (function () {
             var datas_1 = this._platformShapeData;
             this._data.forEach(function (datum, index) {
                 var info = _this._instanceFunction(datum, index, _this._data);
-                for (var attr in info.attrs) {
-                    if (info.attrs.hasOwnProperty(attr)) {
-                        _this._platformShape.updateUniform(attr, binding_1.getBindingValue(info.attrs[attr]));
+                if (info.attrs != null) {
+                    for (var attr in info.attrs) {
+                        if (info.attrs.hasOwnProperty(attr)) {
+                            _this._platformShape.updateUniform(attr, binding_1.getBindingValue(info.attrs[attr]));
+                        }
                     }
                 }
+                if (info.onRender) {
+                    info.onRender(datum, index, _this._data);
+                }
+                _this.uploadScaleUniforms();
                 _this._platformShape.render(datas_1[index]);
             });
         }
@@ -7201,12 +7267,11 @@ var WebGLPlatformShape = (function (_super) {
         if (name == this._flattenedVertexIndexVariable)
             return false;
         if (this._bindings.get(name) == null) {
-            console.log(this._shiftBindings, name);
             if (this._shiftBindings.get(name) == null) {
                 throw new stardust_core_4.RuntimeError("attribute " + name + " is not specified.");
             }
             else {
-                return false;
+                return !this._bindings.get(this._shiftBindings.get(name).name).isFunction;
             }
         }
         else {
