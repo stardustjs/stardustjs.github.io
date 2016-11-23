@@ -7439,6 +7439,7 @@ var webgl_1 = require("./webgl/webgl");
 exports.WebGLPlatform = webgl_1.WebGLPlatform;
 exports.WebGLCanvasPlatform2D = webgl_1.WebGLCanvasPlatform2D;
 exports.WebGLCanvasPlatform3D = webgl_1.WebGLCanvasPlatform3D;
+exports.WebGLCanvasPlatformWebVR = webgl_1.WebGLCanvasPlatformWebVR;
 var stardust_core_1 = require("stardust-core");
 var webgl_2 = require("./webgl/webgl");
 stardust_core_1.registerPlatformConstructor("webgl-2d", function (canvas, width, height) {
@@ -7446,13 +7447,15 @@ stardust_core_1.registerPlatformConstructor("webgl-2d", function (canvas, width,
     if (height === void 0) { height = 400; }
     return new webgl_2.WebGLCanvasPlatform2D(canvas, width, height);
 });
-stardust_core_1.registerPlatformConstructor("webgl-3d", function (canvas, width, height, fov, near, far) {
+stardust_core_1.registerPlatformConstructor("webgl-3d", function (canvas, width, height) {
     if (width === void 0) { width = 600; }
     if (height === void 0) { height = 400; }
-    if (fov === void 0) { fov = Math.PI / 2; }
-    if (near === void 0) { near = 0.1; }
-    if (far === void 0) { far = 1000; }
-    return new webgl_2.WebGLCanvasPlatform3D(canvas, width, height, fov, near, far);
+    return new webgl_2.WebGLCanvasPlatform3D(canvas, width, height);
+});
+stardust_core_1.registerPlatformConstructor("webgl-webvr", function (canvas, width, height) {
+    if (width === void 0) { width = 600; }
+    if (height === void 0) { height = 400; }
+    return new webgl_2.WebGLCanvasPlatformWebVR(canvas, width, height);
 });
 
 },{"./webgl/webgl":31,"stardust-core":24}],28:[function(require,module,exports){
@@ -7467,6 +7470,7 @@ var GenerateMode = exports.GenerateMode;
 (function (ViewType) {
     ViewType[ViewType["VIEW_2D"] = 0] = "VIEW_2D";
     ViewType[ViewType["VIEW_3D"] = 1] = "VIEW_3D";
+    ViewType[ViewType["VIEW_WEBVR"] = 2] = "VIEW_WEBVR"; // WebVR mode.
 })(exports.ViewType || (exports.ViewType = {}));
 var ViewType = exports.ViewType;
 var Generator = (function () {
@@ -7649,6 +7653,16 @@ var Generator = (function () {
                     this.addUniform("s3_view_position", "Vector3");
                     this.addUniform("s3_view_rotation", "Vector4");
                     this.addAdditionalCode("\n                    vec4 s3_render_vertex(vec3 p) {\n                        // Get position in view coordinates:\n                        //   v = quaternion_inverse_rotate(rotation, p - position)\n                        vec3 v = p - s3_view_position;\n                        float d = dot(s3_view_rotation.xyz, v);\n                        vec3 c = cross(s3_view_rotation.xyz, v);\n                        v = s3_view_rotation.w * s3_view_rotation.w * v - (s3_view_rotation.w + s3_view_rotation.w) * c + d * s3_view_rotation.xyz - cross(c, s3_view_rotation.xyz);\n                        // Compute projection.\n                        vec4 r;\n                        r.xy = v.xy * s3_view_params.xy;\n                        r.z = v.z * s3_view_params.z + s3_view_params.w;\n                        r.w = -v.z;\n                        return r;\n                    }\n                ");
+                }
+                break;
+            case ViewType.VIEW_WEBVR:
+                {
+                    // For WebVR, we use the MVP matrix provided by it.
+                    this.addUniform("s3_projection_matrix", "Matrix4");
+                    this.addUniform("s3_view_matrix", "Matrix4");
+                    this.addUniform("s3_view_position", "Vector3");
+                    this.addUniform("s3_view_rotation", "Vector4");
+                    this.addAdditionalCode("\n                    vec4 s3_render_vertex(vec3 p) {\n                        vec3 v = p - s3_view_position;\n                        float d = dot(s3_view_rotation.xyz, v);\n                        vec3 c = cross(s3_view_rotation.xyz, v);\n                        v = s3_view_rotation.w * s3_view_rotation.w * v - (s3_view_rotation.w + s3_view_rotation.w) * c + d * s3_view_rotation.xyz - cross(c, s3_view_rotation.xyz);\n                        return s3_projection_matrix * s3_view_matrix * vec4(v, 1);\n                    }\n                ");
                 }
                 break;
         }
@@ -7840,6 +7854,8 @@ var typeName2WebGLTypeName = {
     "Vector2": "vec2",
     "Vector3": "vec3",
     "Vector4": "vec4",
+    "Matrix3": "mat3",
+    "Matrix4": "mat4",
     "Quaternion": "vec4",
     "Color": "vec4"
 };
@@ -8158,6 +8174,21 @@ var WebGLPlatformShape = (function (_super) {
                         }
                     }
                     break;
+                case generator_1.ViewType.VIEW_WEBVR:
+                    {
+                        GL.uniformMatrix4fv(program.getUniformLocation("s3_view_matrix"), false, viewInfo.viewMatrix);
+                        GL.uniformMatrix4fv(program.getUniformLocation("s3_projection_matrix"), false, viewInfo.projectionMatrix);
+                        if (pose) {
+                            // Rotation and position.
+                            GL.uniform4f(program.getUniformLocation("s3_view_rotation"), pose.rotation.x, pose.rotation.y, pose.rotation.z, pose.rotation.w);
+                            GL.uniform3f(program.getUniformLocation("s3_view_position"), pose.position.x, pose.position.y, pose.position.z);
+                        }
+                        else {
+                            GL.uniform4f(program.getUniformLocation("s3_view_rotation"), 0, 0, 0, 1);
+                            GL.uniform3f(program.getUniformLocation("s3_view_position"), 0, 0, 0);
+                        }
+                    }
+                    break;
             }
             // For pick, set the shape index
             if (mode == generator_1.GenerateMode.PICK) {
@@ -8296,6 +8327,13 @@ var WebGLPlatform = (function (_super) {
             far: far
         };
     };
+    WebGLPlatform.prototype.setWebVRView = function (viewMatrix, projectionMatrix) {
+        this._viewInfo = {
+            type: generator_1.ViewType.VIEW_WEBVR,
+            viewMatrix: viewMatrix,
+            projectionMatrix: projectionMatrix
+        };
+    };
     WebGLPlatform.prototype.setPose = function (pose) {
         this._pose = pose;
     };
@@ -8368,6 +8406,7 @@ var WebGLCanvasPlatform3D = (function (_super) {
         GL.disable(GL.CULL_FACE);
         GL.blendFuncSeparate(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA, GL.ONE, GL.ONE_MINUS_SRC_ALPHA);
         this._pixelRatio = 2;
+        _super.prototype.set3DView.call(this, Math.PI / 4, width / height, 0.1, 1000);
         this.resize(width, height);
     }
     Object.defineProperty(WebGLCanvasPlatform3D.prototype, "pixelRatio", {
@@ -8388,8 +8427,8 @@ var WebGLCanvasPlatform3D = (function (_super) {
         this._canvas.style.height = height + "px";
         this._canvas.width = width * this._pixelRatio;
         this._canvas.height = height * this._pixelRatio;
-        this.setPose(new stardust_core_5.Pose());
         this._GL.viewport(0, 0, this._canvas.width, this._canvas.height);
+        _super.prototype.set3DView.call(this, this._viewInfo.fovY, this._width / this._height, this._viewInfo.near, this._viewInfo.far);
     };
     WebGLCanvasPlatform3D.prototype.set3DView = function (fovY, near, far) {
         if (near === void 0) { near = 0.1; }
@@ -8408,6 +8447,58 @@ var WebGLCanvasPlatform3D = (function (_super) {
     return WebGLCanvasPlatform3D;
 }(WebGLPlatform));
 exports.WebGLCanvasPlatform3D = WebGLCanvasPlatform3D;
+var WebGLCanvasPlatformWebVR = (function (_super) {
+    __extends(WebGLCanvasPlatformWebVR, _super);
+    function WebGLCanvasPlatformWebVR(canvas, width, height) {
+        if (width === void 0) { width = 600; }
+        if (height === void 0) { height = 400; }
+        var GL = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+        _super.call(this, GL);
+        this._canvas = canvas;
+        GL.clearColor(1, 1, 1, 1);
+        GL.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
+        GL.enable(GL.DEPTH_TEST);
+        GL.enable(GL.BLEND);
+        GL.disable(GL.CULL_FACE);
+        GL.blendFuncSeparate(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA, GL.ONE, GL.ONE_MINUS_SRC_ALPHA);
+        this._pixelRatio = 2;
+        this.resize(width, height);
+        this.setWebVRView([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+    }
+    Object.defineProperty(WebGLCanvasPlatformWebVR.prototype, "pixelRatio", {
+        get: function () {
+            return this._pixelRatio;
+        },
+        set: function (value) {
+            this._pixelRatio = value;
+            this.resize(this._width, this._height);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    WebGLCanvasPlatformWebVR.prototype.resize = function (width, height) {
+        this._width = width;
+        this._height = height;
+        this._canvas.width = width * this._pixelRatio;
+        this._canvas.height = height * this._pixelRatio;
+    };
+    WebGLCanvasPlatformWebVR.prototype.set3DView = function (fovY, near, far) {
+        if (near === void 0) { near = 0.1; }
+        if (far === void 0) { far = 1000; }
+        _super.prototype.set3DView.call(this, fovY, this._width / this._height, near, far);
+    };
+    WebGLCanvasPlatformWebVR.prototype.setWebVRView = function (viewMatrix, projectionMatrix) {
+        _super.prototype.setWebVRView.call(this, viewMatrix, projectionMatrix);
+    };
+    WebGLCanvasPlatformWebVR.prototype.clear = function (color) {
+        if (color) {
+            this._GL.clearColor(color[0], color[1], color[2], color[3] != null ? color[3] : 1);
+        }
+        this._GL.clear(this._GL.COLOR_BUFFER_BIT | this._GL.DEPTH_BUFFER_BIT);
+    };
+    return WebGLCanvasPlatformWebVR;
+}(WebGLPlatform));
+exports.WebGLCanvasPlatformWebVR = WebGLCanvasPlatformWebVR;
 
 },{"./generator":28,"./webglutils":32,"stardust-core":24}],32:[function(require,module,exports){
 "use strict";

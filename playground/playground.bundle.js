@@ -1,6445 +1,4 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-// binding.js:
-// Take care of data binding.
-"use strict";
-var types_1 = require("./types");
-var math_1 = require("./math");
-// Resolve binding primitives to Value (Value = number or number[]).
-function getBindingValue(value) {
-    if (value instanceof math_1.MathType) {
-        return value.toArray();
-    }
-    else {
-        return value;
-    }
-}
-exports.getBindingValue = getBindingValue;
-var ShiftBinding = (function () {
-    function ShiftBinding(name, offset) {
-        this.name = name;
-        this.offset = offset;
-    }
-    return ShiftBinding;
-}());
-exports.ShiftBinding = ShiftBinding;
-// The main binding class.
-var Binding = (function () {
-    function Binding(typeName, value) {
-        this._type = types_1.types[typeName];
-        this._value = value;
-    }
-    Object.defineProperty(Binding.prototype, "typeName", {
-        get: function () {
-            return this._type.name;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Binding.prototype, "type", {
-        get: function () {
-            return this._type;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Binding.prototype, "size", {
-        get: function () {
-            return this._type.size;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Binding.prototype, "value", {
-        get: function () {
-            return this._value;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Binding.prototype, "isFunction", {
-        get: function () {
-            return typeof (this._value) == "function";
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Binding.prototype, "specValue", {
-        get: function () {
-            return getBindingValue(this._value);
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Binding.prototype.forEach = function (data, callback) {
-        if (this.isFunction) {
-            var f = this._value;
-            for (var i = 0; i < data.length; i++) {
-                callback(getBindingValue(f(data[i], i)), i);
-            }
-        }
-        else {
-            var value = getBindingValue(this._value);
-            for (var i = 0; i < data.length; i++) {
-                callback(value, i);
-            }
-        }
-    };
-    Binding.prototype.map = function (data) {
-        if (this.isFunction) {
-            var f_1 = this._value;
-            return data.map(function (d, i) { return getBindingValue(f_1(d, i)); });
-        }
-        else {
-            var value_1 = getBindingValue(this._value);
-            return data.map(function () { return value_1; });
-        }
-    };
-    Binding.prototype.fillBinary = function (data, rep, array) {
-        var n = data.length;
-        var p = this._type.primitiveCount;
-        var ptr = 0;
-        if (this.isFunction) {
-            var f = this._value;
-            if (p == 1) {
-                for (var i = 0; i < n; i++) {
-                    var result = getBindingValue(f(data[i], i));
-                    for (var k = 0; k < rep; k++) {
-                        array[ptr++] = result;
-                    }
-                }
-            }
-            else {
-                for (var i = 0; i < n; i++) {
-                    var result = getBindingValue(f(data[i], i));
-                    for (var k = 0; k < rep; k++) {
-                        for (var j = 0; j < p; j++) {
-                            array[ptr++] = result[j];
-                        }
-                    }
-                }
-            }
-        }
-        else {
-            var value = getBindingValue(this._value);
-            if (p == 1) {
-                var v = value;
-                for (var i = 0; i < n; i++) {
-                    for (var k = 0; k < rep; k++) {
-                        array[ptr++] = v;
-                    }
-                }
-            }
-            else {
-                var v = value;
-                for (var i = 0; i < n; i++) {
-                    for (var k = 0; k < rep; k++) {
-                        for (var j = 0; j < p; j++) {
-                            array[ptr++] = v[j];
-                        }
-                    }
-                }
-            }
-        }
-    };
-    return Binding;
-}());
-exports.Binding = Binding;
-
-},{"./math":12,"./types":21}],2:[function(require,module,exports){
-"use strict";
-var exceptions_1 = require("../exceptions");
-var parser_1 = require("./parser");
-var utils_1 = require("../utils");
-var Intrinsics = require("../intrinsics");
-var Library = require("../library/library");
-var ScopeVariables = (function () {
-    function ScopeVariables(owner, parentScope, argMap) {
-        if (parentScope === void 0) { parentScope = null; }
-        if (argMap === void 0) { argMap = null; }
-        this._owner = owner;
-        this._variables = new utils_1.Dictionary();
-        this._parentScope = parentScope || null;
-        this._argMap = argMap;
-    }
-    // Add a variable with name and type, shadows the ones from previous scopes.
-    ScopeVariables.prototype.addVariable = function (name, type) {
-        if (this._variables.has(name) || (this._argMap != null && this._argMap.has(name))) {
-            // If the variable is defined in the current scope, throw exception.
-            throw new exceptions_1.CompileError(name + " is already declared.");
-        }
-        else {
-            // Create new translated name and set variable info.
-            var translatedName = this._owner.newTranslatedName(name, type);
-            this._variables.set(name, {
-                name: name,
-                type: type,
-                translatedName: translatedName
-            });
-        }
-    };
-    // Create a new variable of type.
-    ScopeVariables.prototype.nextVariable = function (type) {
-        var _this = this;
-        var name = utils_1.attemptName("tmp", function (name) { return !_this._variables.has(name) && !(_this._argMap != null && _this._argMap.has(name)); });
-        this.addVariable(name, type);
-        return this.getVariable(name);
-    };
-    ScopeVariables.prototype.getVariable = function (name) {
-        if (this._variables.has(name)) {
-            return this._variables.get(name);
-        }
-        else if (this._argMap != null && this._argMap.has(name)) {
-            return this._parentScope.getVariable(this._argMap.get(name));
-        }
-        else if (this._parentScope) {
-            return this._parentScope.getVariable(name);
-        }
-        else {
-            throw new exceptions_1.CompileError(name + " is undefined.");
-        }
-    };
-    Object.defineProperty(ScopeVariables.prototype, "parentScope", {
-        get: function () {
-            return this._parentScope;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    return ScopeVariables;
-}());
-exports.ScopeVariables = ScopeVariables;
-var ScopeStack = (function () {
-    function ScopeStack() {
-        this._translatedNames = new utils_1.Dictionary();
-        this._globalScope = new ScopeVariables(this);
-        this._currentScope = this._globalScope;
-    }
-    // Reset scope to empty.
-    ScopeStack.prototype.resetScope = function () {
-        this._translatedNames = new utils_1.Dictionary();
-        this._globalScope = new ScopeVariables(this);
-        this._currentScope = this._globalScope;
-    };
-    // Push a scope.
-    ScopeStack.prototype.pushScope = function (argMap) {
-        if (argMap === void 0) { argMap = null; }
-        this._currentScope = new ScopeVariables(this, this._currentScope, argMap);
-    };
-    // Pop a scope.
-    ScopeStack.prototype.popScope = function () {
-        this._currentScope = this._currentScope.parentScope;
-    };
-    // Create a new translated variable.
-    ScopeStack.prototype.newTranslatedName = function (name, type) {
-        var _this = this;
-        var candidate = utils_1.attemptName(name, function (c) { return !_this._translatedNames.has(c); });
-        this._translatedNames.set(candidate, {
-            name: name,
-            type: type,
-            translatedName: candidate
-        });
-        return candidate;
-    };
-    // Iterate through translated variables.
-    ScopeStack.prototype.forEach = function (callback) {
-        this._translatedNames.forEach(function (o) {
-            callback(o.translatedName, o.type);
-        });
-    };
-    // Create a new variable in current scope, return its translated name.
-    ScopeStack.prototype.nextVariableTranslatedName = function (type) {
-        return this.nextVariable(type).translatedName;
-    };
-    // Create a new variable in current scope, return its name.
-    ScopeStack.prototype.nextVariableName = function (type) {
-        return this.nextVariable(type).name;
-    };
-    // Create a new variable in current scope, return its info.
-    ScopeStack.prototype.nextVariable = function (type) {
-        return this._currentScope.nextVariable(type);
-    };
-    // Add a new variable.
-    ScopeStack.prototype.addVariable = function (name, type, scope) {
-        if (scope == "global") {
-            this._globalScope.addVariable(name, type);
-        }
-        else {
-            this._currentScope.addVariable(name, type);
-        }
-    };
-    // Translate variable from current scope to its translated name.
-    ScopeStack.prototype.translateVariableName = function (name) {
-        return this.getVariable(name).translatedName;
-    };
-    // Get variable info.
-    ScopeStack.prototype.getVariable = function (name) {
-        return this._currentScope.getVariable(name);
-    };
-    return ScopeStack;
-}());
-exports.ScopeStack = ScopeStack;
-function typeConversionAttempt(src, dest) {
-    var info = Intrinsics.getTypeConversion(src.valueType, dest);
-    if (info) {
-        var rank = info.rank;
-        return [{
-                type: "function",
-                valueType: dest,
-                arguments: [src],
-                functionName: info.internalName,
-            }, rank];
-    }
-    else {
-        return [null, null];
-    }
-}
-var FunctionOverloadResolver = (function () {
-    function FunctionOverloadResolver(name) {
-        this._name = name;
-        this._functions = [];
-    }
-    FunctionOverloadResolver.prototype.addFunction = function (func) {
-        this._functions.push(func);
-    };
-    FunctionOverloadResolver.prototype.resolveArguments = function (args, kwargs) {
-        var result = null;
-        var resultRank = null;
-        for (var _i = 0, _a = this._functions; _i < _a.length; _i++) {
-            var func = _a[_i];
-            var funcRank = 0;
-            var matched = true;
-            var argExpressions = [];
-            var argIndexUsed = [];
-            var kwargsUsed = [];
-            for (var argIndex in func.arguments) {
-                var arg = func.arguments[argIndex];
-                var argExpression = args[argIndex] || kwargs[arg.name];
-                if (args[argIndex] != null) {
-                    argIndexUsed.push(argIndex);
-                }
-                else if (kwargs[arg.name]) {
-                    kwargsUsed.push(arg.name);
-                }
-                if (argExpression != null) {
-                    if (argExpression.valueType != arg.type) {
-                        var _b = typeConversionAttempt(argExpression, arg.type), conversion = _b[0], rank = _b[1];
-                        if (conversion) {
-                            argExpressions.push(conversion);
-                            funcRank += rank;
-                        }
-                        else {
-                            matched = false;
-                            break;
-                        }
-                    }
-                    else {
-                        argExpressions.push(argExpression);
-                    }
-                }
-                else {
-                    if (arg.default === null || arg.default === undefined) {
-                        matched = false;
-                        break;
-                    }
-                    else {
-                        argExpressions.push({
-                            type: "constant",
-                            value: arg.default,
-                            valueType: arg.type
-                        });
-                    }
-                }
-            }
-            var isAllUsed = true;
-            for (var argIndex in args) {
-                if (argIndexUsed.indexOf(argIndex) < 0)
-                    isAllUsed = false;
-            }
-            for (var argName in kwargs) {
-                if (kwargsUsed.indexOf(argName) < 0)
-                    isAllUsed = false;
-            }
-            if (matched && isAllUsed) {
-                if (!result || funcRank < resultRank) {
-                    result = [func, argExpressions];
-                    resultRank = funcRank;
-                }
-            }
-        }
-        if (result) {
-            return result;
-        }
-        else {
-            var argspec = args.map(function (x) { return x.valueType; }).join(", ");
-            throw new exceptions_1.CompileError("unable to resolve function '" + this._name + "' with arguments (" + argspec + ")");
-        }
-    };
-    return FunctionOverloadResolver;
-}());
-exports.FunctionOverloadResolver = FunctionOverloadResolver;
-var Compiler = (function () {
-    function Compiler() {
-        this._scope = new ScopeStack();
-        this._functions = new utils_1.Dictionary();
-        this._intrinsicFunctions = new utils_1.Dictionary();
-        this._constants = new utils_1.Dictionary();
-        this._statements = [];
-        this._lastIndex = 1;
-        this.prepareIntrinsicFunctions();
-        this.prepareFieldTypeRegistry();
-        this.prepareConstants();
-    }
-    Compiler.prototype.prepareFieldTypeRegistry = function () {
-        this._fieldTypeRegistry = {};
-        var r = this._fieldTypeRegistry;
-        for (var _i = 0, _a = ["x", "y"]; _i < _a.length; _i++) {
-            var f = _a[_i];
-            r[("Vector2." + f)] = "float";
-        }
-        for (var _b = 0, _c = ["x", "y", "z", "r", "g", "b"]; _b < _c.length; _b++) {
-            var f = _c[_b];
-            r[("Vector3." + f)] = "float";
-        }
-        for (var _d = 0, _e = ["x", "y", "z", "w", "r", "g", "b", "a"]; _d < _e.length; _d++) {
-            var f = _e[_d];
-            r[("Vector4." + f)] = "float";
-        }
-        for (var _f = 0, _g = ["r", "g", "b", "a"]; _f < _g.length; _f++) {
-            var f = _g[_f];
-            r[("Color." + f)] = "float";
-        }
-    };
-    Compiler.prototype.prepareConstants = function () {
-        var _this = this;
-        Intrinsics.forEachConstant(function (info) {
-            _this._constants.set(info.name, info);
-        });
-    };
-    Compiler.prototype.addFunction = function (name, func) {
-        if (!this._functions.has(name)) {
-            var resolver = new FunctionOverloadResolver(name);
-            this._functions.set(name, resolver);
-            resolver.addFunction(func);
-        }
-        else {
-            var resolver = this._functions.get(name);
-            resolver.addFunction(func);
-        }
-    };
-    Compiler.prototype.addIntrinsicFunction = function (name, func) {
-        if (!this._intrinsicFunctions.has(name)) {
-            var resolver = new FunctionOverloadResolver(name);
-            this._intrinsicFunctions.set(name, resolver);
-            resolver.addFunction(func);
-        }
-        else {
-            var resolver = this._intrinsicFunctions.get(name);
-            resolver.addFunction(func);
-        }
-    };
-    Compiler.prototype.resolveFunction = function (name, args, kwargs) {
-        var resolver = this._functions.get(name) || this._intrinsicFunctions.get(name);
-        if (resolver) {
-            return resolver.resolveArguments(args, kwargs);
-        }
-        else {
-            throw new exceptions_1.CompileError("function '" + name + " is undefined.");
-        }
-    };
-    Compiler.prototype.prepareIntrinsicFunctions = function () {
-        var _this = this;
-        Intrinsics.forEachIntrinsicFunction(function (info) {
-            _this.addIntrinsicFunction(info.name, {
-                type: "function",
-                isShape: false,
-                name: info.internalName,
-                returnType: info.returnType,
-                arguments: info.argTypes.map(function (x, idx) { return { name: "a" + idx, type: x }; }),
-                statements: null
-            });
-        });
-    };
-    Compiler.prototype.loadFile = function (file) {
-        var _this = this;
-        var _loop_1 = function(block) {
-            if (block.type == "function") {
-                var blockFunction = block;
-                this_1.addFunction(blockFunction.name, blockFunction);
-            }
-            if (block.type == "import") {
-                var blockImport_1 = block;
-                if (blockImport_1.functionNames != null) {
-                    blockImport_1.functionNames.forEach(function (name) {
-                        var f = Library.getModuleFunction(blockImport_1.moduleName, name);
-                        _this.addFunction(name, f);
-                    });
-                }
-                else {
-                    Library.forEachModuleFunction(blockImport_1.moduleName, function (f, name) {
-                        _this.addFunction(name, f);
-                    });
-                }
-            }
-        };
-        var this_1 = this;
-        for (var _i = 0, _a = file.blocks; _i < _a.length; _i++) {
-            var block = _a[_i];
-            _loop_1(block);
-        }
-    };
-    Compiler.prototype.compileFunctionToShape = function (globals, block) {
-        // Re-init state.
-        this._scope.resetScope();
-        this._lastIndex = 1;
-        var shapeInput = {};
-        var shapeOutput = {};
-        var shapeVariables = {};
-        // Setup input parameters.
-        for (var _i = 0, globals_1 = globals; _i < globals_1.length; _i++) {
-            var global = globals_1[_i];
-            this._scope.addVariable(global.name, global.valueType, "global");
-            shapeInput[global.name] = {
-                type: global.valueType,
-                default: global.default
-            };
-        }
-        for (var _a = 0, _b = block.arguments; _a < _b.length; _a++) {
-            var arg = _b[_a];
-            this._scope.addVariable(arg.name, arg.type, "local");
-            shapeInput[arg.name] = {
-                type: arg.type,
-                default: arg.default
-            };
-        }
-        // Flatten statements.
-        this.compileStatements({
-            type: "statements",
-            statements: block.statements
-        });
-        // Figure out variables.
-        this._scope.forEach(function (name, type) {
-            if (!shapeInput[name]) {
-                shapeVariables[name] = type;
-            }
-        });
-        // Figure out outputs.
-        var processStatementsForOutputs = function (statements) {
-            statements.forEach(function (x) {
-                if (x.type == "emit") {
-                    var sEmit = x;
-                    for (var attr in sEmit.attributes) {
-                        if (shapeOutput.hasOwnProperty(attr)) {
-                            if (shapeOutput[attr].type != sEmit.attributes[attr].valueType) {
-                                throw new exceptions_1.CompileError("output variable '" + attr + " has conflicting types.");
-                            }
-                        }
-                        else {
-                            shapeOutput[attr] = { type: sEmit.attributes[attr].valueType };
-                        }
-                    }
-                }
-                if (x.type == "condition") {
-                    var sCondition = x;
-                    processStatementsForOutputs(sCondition.trueStatements);
-                    processStatementsForOutputs(sCondition.falseStatements);
-                }
-                if (x.type == "for") {
-                    var sForLoop = x;
-                    processStatementsForOutputs(sForLoop.statements);
-                }
-            });
-        };
-        processStatementsForOutputs(this._statements);
-        return {
-            input: shapeInput,
-            output: shapeOutput,
-            variables: shapeVariables,
-            statements: this._statements
-        };
-    };
-    Compiler.prototype.addStatement = function (statement) {
-        this._statements.push(statement);
-    };
-    Compiler.prototype.addStatements = function (statements) {
-        this._statements = this._statements.concat(statements);
-    };
-    Compiler.prototype.captureStatements = function (callback) {
-        var currentStatements = this._statements;
-        this._statements = [];
-        callback();
-        var result = this._statements;
-        this._statements = currentStatements;
-        return result;
-    };
-    Compiler.prototype.compileExpression = function (expression, keepResult) {
-        if (keepResult === void 0) { keepResult = false; }
-        switch (expression.type) {
-            case "value": {
-                var expr = expression;
-                return {
-                    type: "constant",
-                    value: expr.value,
-                    valueType: expr.valueType
-                };
-            }
-            case "variable": {
-                var expr = expression;
-                if (this._constants.has(expr.name)) {
-                    var cinfo = this._constants.get(expr.name);
-                    return {
-                        type: "constant",
-                        value: cinfo.value,
-                        valueType: cinfo.type
-                    };
-                }
-                else {
-                    return {
-                        type: "variable",
-                        variableName: this._scope.translateVariableName(expr.name),
-                        valueType: this._scope.getVariable(expr.name).type
-                    };
-                }
-            }
-            case "field": {
-                var expr = expression;
-                var valueExpr = this.compileExpression(expr.value, true);
-                return {
-                    type: "field",
-                    fieldName: expr.fieldName,
-                    value: valueExpr,
-                    valueType: this._fieldTypeRegistry[valueExpr.valueType + "." + expr.fieldName]
-                };
-            }
-            case "function": {
-                var expr = expression;
-                var args = [];
-                var kwargs = {};
-                for (var _i = 0, _a = expr.args.args; _i < _a.length; _i++) {
-                    var arg = _a[_i];
-                    args.push(this.compileExpression(arg, true));
-                }
-                for (var key in expr.args.kwargs) {
-                    var e = expr.args.kwargs[key];
-                    kwargs[key] = this.compileExpression(expr.args.kwargs[key], true);
-                }
-                var _b = this.resolveFunction(expr.name, args, kwargs), func = _b[0], argExpressions = _b[1];
-                var returnValueExpression = null;
-                if (!func.statements) {
-                    returnValueExpression = {
-                        type: "function",
-                        functionName: func.name,
-                        arguments: argExpressions,
-                        valueType: func.returnType
-                    };
-                }
-                else {
-                    var argMap = new utils_1.Dictionary();
-                    for (var argIndex in func.arguments) {
-                        var arg = func.arguments[argIndex];
-                        var mapped = this._scope.nextVariableName(arg.type);
-                        argMap.set(arg.name, mapped);
-                        this.addStatement({
-                            type: "assign",
-                            variableName: this._scope.translateVariableName(mapped),
-                            expression: argExpressions[argIndex]
-                        });
-                    }
-                    this._scope.pushScope(argMap);
-                    for (var _c = 0, _d = func.statements; _c < _d.length; _c++) {
-                        var statement = _d[_c];
-                        if (statement.type == "return") {
-                            var statement_return = statement;
-                            returnValueExpression = this.compileExpression(statement_return.value);
-                            break;
-                        }
-                        else {
-                            this.compileStatement(statement);
-                        }
-                    }
-                    this._scope.popScope();
-                }
-                return returnValueExpression;
-            }
-        }
-        return null;
-    };
-    Compiler.prototype.compileStatements = function (statements) {
-        this._scope.pushScope();
-        for (var _i = 0, _a = statements.statements; _i < _a.length; _i++) {
-            var s = _a[_i];
-            this.compileStatement(s);
-        }
-        this._scope.popScope();
-    };
-    Compiler.prototype.compileStatement = function (statement) {
-        var _this = this;
-        switch (statement.type) {
-            case "declare":
-                {
-                    var s = statement;
-                    if (s.initial) {
-                        var ve = this.compileExpression(s.initial, true);
-                        var variableType = s.variableType;
-                        if (variableType == "auto")
-                            variableType = ve.valueType;
-                        this._scope.addVariable(s.variableName, variableType, "local");
-                        if (ve.valueType != variableType) {
-                            var veType = ve.valueType;
-                            ve = typeConversionAttempt(ve, this._scope.getVariable(s.variableName).type)[0];
-                            if (ve === null) {
-                                throw new exceptions_1.CompileError("cannot convert type '" + veType + "' to '" + variableType + "'.");
-                            }
-                        }
-                        this.addStatement({
-                            type: "assign",
-                            variableName: this._scope.translateVariableName(s.variableName),
-                            expression: ve
-                        });
-                    }
-                    else {
-                        this._scope.addVariable(s.variableName, s.variableType, "local");
-                    }
-                }
-                break;
-            case "expression":
-                {
-                    var s = statement;
-                    this.compileExpression(s.expression, false);
-                }
-                break;
-            case "assign":
-                {
-                    var s = statement;
-                    var ve = this.compileExpression(s.expression, true);
-                    var targetType = this._scope.getVariable(s.variableName).type;
-                    if (ve.valueType != targetType) {
-                        var veType = ve.valueType;
-                        ve = typeConversionAttempt(ve, this._scope.getVariable(s.variableName).type)[0];
-                        if (ve === null) {
-                            throw new exceptions_1.CompileError("cannot convert type '" + veType + " to '" + targetType + "'.");
-                        }
-                    }
-                    this.addStatement({
-                        type: "assign",
-                        variableName: this._scope.translateVariableName(s.variableName),
-                        expression: ve
-                    });
-                }
-                break;
-            case "emit":
-                {
-                    var s = statement;
-                    s.vertices.forEach(function (v) {
-                        var attrs = {};
-                        for (var argName in v) {
-                            var expr = v[argName];
-                            attrs[argName] = _this.compileExpression(expr, true);
-                        }
-                        _this.addStatement({
-                            type: "emit",
-                            attributes: attrs
-                        });
-                    });
-                }
-                break;
-            case "statements":
-                {
-                    var s = statement;
-                    this.compileStatements(s);
-                }
-                break;
-            case "for":
-                {
-                    var s_1 = statement;
-                    this._scope.pushScope();
-                    // Declare the loop variable
-                    this._scope.addVariable(s_1.variableName, "int", "local");
-                    var loopVariable = this._scope.translateVariableName(s_1.variableName);
-                    // Compile for statements
-                    var forStatement = {
-                        type: "for",
-                        variableName: loopVariable,
-                        rangeMin: s_1.start,
-                        rangeMax: s_1.end,
-                        statements: this.captureStatements(function () { return _this.compileStatement(s_1.statement); })
-                    };
-                    this.addStatement(forStatement);
-                    this._scope.popScope();
-                }
-                break;
-            case "if":
-                {
-                    var s_2 = statement;
-                    // Function to compile the i-th condition in the if-elseif-else syntax.
-                    var compileIthCondition_1 = function (i) {
-                        if (i < s_2.conditions.length) {
-                            var statements = [];
-                            _this._scope.pushScope();
-                            var ve = _this.compileExpression(s_2.conditions[i].condition, true);
-                            var cond = {
-                                type: "condition",
-                                condition: ve,
-                                trueStatements: _this.captureStatements(function () { return _this.compileStatement(s_2.conditions[i].statement); }),
-                                falseStatements: _this.captureStatements(function () { return compileIthCondition_1(i + 1); })
-                            };
-                            _this.addStatement(cond);
-                            _this._scope.popScope();
-                        }
-                        else {
-                            if (s_2.else) {
-                                _this.compileStatement(s_2.else);
-                            }
-                        }
-                    };
-                    compileIthCondition_1(0);
-                }
-                break;
-            case "return": {
-                throw new exceptions_1.CompileError("unexpected return statement");
-            }
-        }
-    };
-    return Compiler;
-}());
-exports.Compiler = Compiler;
-function compileTree(file) {
-    var spec = {};
-    var globals = file.blocks.filter(function (x) { return x.type == "global"; });
-    for (var _i = 0, _a = file.blocks; _i < _a.length; _i++) {
-        var block = _a[_i];
-        if (block.type == "function") {
-            var blockFunction = block;
-            if (blockFunction.returnType == "shape") {
-                var scope = new Compiler();
-                scope.loadFile(file);
-                var shape = scope.compileFunctionToShape(globals, blockFunction);
-                spec[blockFunction.name] = shape;
-            }
-        }
-    }
-    return spec;
-}
-exports.compileTree = compileTree;
-function compileString(content) {
-    var file = parser_1.parseString(content);
-    return compileTree(file);
-}
-exports.compileString = compileString;
-
-},{"../exceptions":7,"../intrinsics":8,"../library/library":9,"../utils":22,"./parser":4}],3:[function(require,module,exports){
-// Declare shape code with Javascript calls.
-"use strict";
-var utils_1 = require("../utils");
-var compiler_1 = require("./compiler");
-var CustomShapeItem = (function () {
-    function CustomShapeItem(name) {
-        this._name = name;
-        this._attrs = new utils_1.Dictionary();
-    }
-    CustomShapeItem.prototype.attr = function (name, expression) {
-        this._attrs.set(name, expression);
-        return this;
-    };
-    CustomShapeItem.prototype.generateCode = function () {
-        var attrDefs = [];
-        this._attrs.forEach(function (value, key) {
-            attrDefs.push(key + " = " + value);
-        });
-        return this._name + "(" + attrDefs.join(", ") + ")";
-    };
-    return CustomShapeItem;
-}());
-exports.CustomShapeItem = CustomShapeItem;
-var CustomShape = (function () {
-    function CustomShape() {
-        this._imports = [];
-        this._inputs = [];
-        this._variables = [];
-        this._items = [];
-    }
-    CustomShape.prototype.input = function (name, type, initial) {
-        this._inputs.push([name, type, initial]);
-        return this;
-    };
-    CustomShape.prototype.variable = function (name, expression) {
-        this._variables.push([name, expression]);
-        return this;
-    };
-    CustomShape.prototype.add = function (name) {
-        var _a = name.split("."), libraryName = _a[0], shapeName = _a[1];
-        var alreadyImported = false;
-        for (var _i = 0, _b = this._imports; _i < _b.length; _i++) {
-            var _c = _b[_i], lib = _c[0], shape = _c[1];
-            if (lib == libraryName && shape == shapeName) {
-                alreadyImported = true;
-            }
-        }
-        if (!alreadyImported) {
-            this._imports.push([libraryName, shapeName]);
-        }
-        var item = new CustomShapeItem(shapeName);
-        this._items.push(item);
-        return item;
-    };
-    CustomShape.prototype.generateCode = function (shapeName) {
-        var lines = [];
-        for (var _i = 0, _a = this._imports; _i < _a.length; _i++) {
-            var _b = _a[_i], library = _b[0], name_1 = _b[1];
-            lines.push("import " + name_1 + " from " + library + ";");
-        }
-        // Input attributes:
-        var inputDefs = [];
-        for (var _c = 0, _d = this._inputs; _c < _d.length; _c++) {
-            var _e = _d[_c], name_2 = _e[0], type = _e[1], initial = _e[2];
-            if (initial == null) {
-                inputDefs.push(type + " " + name_2);
-            }
-            else {
-                inputDefs.push(type + " " + name_2 + " = " + initial);
-            }
-        }
-        lines.push("shape " + shapeName + "(");
-        lines.push("    " + inputDefs.join(", "));
-        lines.push(") {");
-        // Variables
-        for (var _f = 0, _g = this._variables; _f < _g.length; _f++) {
-            var _h = _g[_f], name_3 = _h[0], expression = _h[1];
-            lines.push("    auto " + name_3 + " = " + expression + ";");
-        }
-        for (var _j = 0, _k = this._items; _j < _k.length; _j++) {
-            var item = _k[_j];
-            lines.push("    " + item.generateCode() + ";");
-        }
-        lines.push("}");
-        return lines.join("\n");
-    };
-    CustomShape.prototype.compile = function () {
-        var code = this.generateCode("Shape");
-        var specs = compiler_1.compileString(code);
-        return specs["Shape"];
-    };
-    CustomShape.test = function () {
-        var g = new CustomShape();
-        g.input("x", "float").input("y", "float")
-            .add("P2D.Circle")
-            .attr("center", "Vector2(x, y)")
-            .attr("radius", "1")
-            .attr("color", "Color(0, 1, 0, 1)");
-        console.log(g.generateCode("Shape"));
-        console.log(g.compile());
-    };
-    return CustomShape;
-}());
-exports.CustomShape = CustomShape;
-
-},{"../utils":22,"./compiler":2}],4:[function(require,module,exports){
-"use strict";
-var exceptions_1 = require("../exceptions");
-var parser_pegjs = require("./parser_pegjs");
-function stripComments(content) {
-    content = content.replace(/\/\/[^\n]*\n/g, "\n");
-    content = content.replace(/\/\/[^\n]*$/g, "");
-    return content;
-}
-function parseString(content) {
-    content = stripComments(content);
-    var result = null;
-    try {
-        result = parser_pegjs.parse(content);
-    }
-    catch (e) {
-        if (e.location) {
-            throw new exceptions_1.ParseError(e.message, e.location.start, e.location.end);
-        }
-        else {
-            throw new exceptions_1.ParseError(e.message);
-        }
-    }
-    return result;
-}
-exports.parseString = parseString;
-
-},{"../exceptions":7,"./parser_pegjs":5}],5:[function(require,module,exports){
-module.exports = (function() {
-  "use strict";
-
-  /*
-   * Generated by PEG.js 0.9.0.
-   *
-   * http://pegjs.org/
-   */
-
-  function peg$subclass(child, parent) {
-    function ctor() { this.constructor = child; }
-    ctor.prototype = parent.prototype;
-    child.prototype = new ctor();
-  }
-
-  function peg$SyntaxError(message, expected, found, location) {
-    this.message  = message;
-    this.expected = expected;
-    this.found    = found;
-    this.location = location;
-    this.name     = "SyntaxError";
-
-    if (typeof Error.captureStackTrace === "function") {
-      Error.captureStackTrace(this, peg$SyntaxError);
-    }
-  }
-
-  peg$subclass(peg$SyntaxError, Error);
-
-  function peg$parse(input) {
-    var options = arguments.length > 1 ? arguments[1] : {},
-        parser  = this,
-
-        peg$FAILED = {},
-
-        peg$startRuleFunctions = { Start: peg$parseStart },
-        peg$startRuleFunction  = peg$parseStart,
-
-        peg$c0 = function(blocks) { return { blocks: blocks.map(function(d) { return d[0]; }) }; },
-        peg$c1 = "(",
-        peg$c2 = { type: "literal", value: "(", description: "\"(\"" },
-        peg$c3 = ")",
-        peg$c4 = { type: "literal", value: ")", description: "\")\"" },
-        peg$c5 = "{",
-        peg$c6 = { type: "literal", value: "{", description: "\"{\"" },
-        peg$c7 = "}",
-        peg$c8 = { type: "literal", value: "}", description: "\"}\"" },
-        peg$c9 = function(ret, name, args, statements) { return { type: "function", isShape: ret == "shape", name: name, returnType: ret, arguments: args, statements: statements }; },
-        peg$c10 = "=",
-        peg$c11 = { type: "literal", value: "=", description: "\"=\"" },
-        peg$c12 = ";",
-        peg$c13 = { type: "literal", value: ";", description: "\";\"" },
-        peg$c14 = function(type, name, value) { return { type: "global", name: name, valueType: type, default: value }; },
-        peg$c15 = function(type, name) { return { type: "global", name: name, valueType: type }; },
-        peg$c16 = "import",
-        peg$c17 = { type: "literal", value: "import", description: "\"import\"" },
-        peg$c18 = "*",
-        peg$c19 = { type: "literal", value: "*", description: "\"*\"" },
-        peg$c20 = "from",
-        peg$c21 = { type: "literal", value: "from", description: "\"from\"" },
-        peg$c22 = function(moduleName) { return { type: "import", moduleName: moduleName, functionNames: null }; },
-        peg$c23 = ",",
-        peg$c24 = { type: "literal", value: ",", description: "\",\"" },
-        peg$c25 = function(name, others, moduleName) { return { type: "import", moduleName: moduleName, functionNames: resolveList(name, others, 3) }; },
-        peg$c26 = function(first, others) { return resolveList(first, others, 3); },
-        peg$c27 = function() { return []; },
-        peg$c28 = function(type, name, value) { return { type: type, name: name, default: value } },
-        peg$c29 = function(type, name) { return { type: type, name: name } },
-        peg$c30 = function(first, others) { return resolveList(first, others, 1); },
-        peg$c31 = function(s) { return s; },
-        peg$c32 = function(statements) { return { type: "statements", statements: statements }; },
-        peg$c33 = "return",
-        peg$c34 = { type: "literal", value: "return", description: "\"return\"" },
-        peg$c35 = function(expr) { return { type: "return", value: expr }; },
-        peg$c36 = "emit",
-        peg$c37 = { type: "literal", value: "emit", description: "\"emit\"" },
-        peg$c38 = "[",
-        peg$c39 = { type: "literal", value: "[", description: "\"[\"" },
-        peg$c40 = "]",
-        peg$c41 = { type: "literal", value: "]", description: "\"]\"" },
-        peg$c42 = function(vertices) { return { type: "emit", vertices: vertices }; },
-        peg$c43 = ":",
-        peg$c44 = { type: "literal", value: ":", description: "\":\"" },
-        peg$c45 = function(name, expr) { return { name: name, value: expr }; },
-        peg$c46 = function(first, others) { return resolveArgumentList(resolveList(first, others, 3)).kwargs; },
-        peg$c47 = function() { return {}; },
-        peg$c48 = function(first, others) { return resolveList(first, others, 4); },
-        peg$c49 = function(expr) { return { type: "expression", expression: expr }; },
-        peg$c50 = function(type, name, initial) { return { type: "declare", variableType: type, variableName: name, initial: initial }; },
-        peg$c51 = function(type, name) { return { type: "declare", variableType: type, variableName: name }; },
-        peg$c52 = function(variable, value) { return { type: "assign", variableName: variable, expression: value }; },
-        peg$c53 = "for",
-        peg$c54 = { type: "literal", value: "for", description: "\"for\"" },
-        peg$c55 = "in",
-        peg$c56 = { type: "literal", value: "in", description: "\"in\"" },
-        peg$c57 = "..",
-        peg$c58 = { type: "literal", value: "..", description: "\"..\"" },
-        peg$c59 = function(variable, start, end, statement) { return { type: "for", variableName: variable, statement: statement, start: start, end: end }; },
-        peg$c60 = "if",
-        peg$c61 = { type: "literal", value: "if", description: "\"if\"" },
-        peg$c62 = "else",
-        peg$c63 = { type: "literal", value: "else", description: "\"else\"" },
-        peg$c64 = function(condition, statement, elseifs, lastelse) {
-              var conditions = [ { condition: condition, statement: statement } ].concat(elseifs.map(function(x) {
-                return { condition: x[7], statement: x[11] };
-              }));
-              return {type: "if", conditions: conditions, else: lastelse ? lastelse[3] : null };
-            },
-        peg$c65 = "&&",
-        peg$c66 = { type: "literal", value: "&&", description: "\"&&\"" },
-        peg$c67 = "||",
-        peg$c68 = { type: "literal", value: "||", description: "\"||\"" },
-        peg$c69 = ">=",
-        peg$c70 = { type: "literal", value: ">=", description: "\">=\"" },
-        peg$c71 = ">",
-        peg$c72 = { type: "literal", value: ">", description: "\">\"" },
-        peg$c73 = "<=",
-        peg$c74 = { type: "literal", value: "<=", description: "\"<=\"" },
-        peg$c75 = "<",
-        peg$c76 = { type: "literal", value: "<", description: "\"<\"" },
-        peg$c77 = "==",
-        peg$c78 = { type: "literal", value: "==", description: "\"==\"" },
-        peg$c79 = "!=",
-        peg$c80 = { type: "literal", value: "!=", description: "\"!=\"" },
-        peg$c81 = "+",
-        peg$c82 = { type: "literal", value: "+", description: "\"+\"" },
-        peg$c83 = "-",
-        peg$c84 = { type: "literal", value: "-", description: "\"-\"" },
-        peg$c85 = "/",
-        peg$c86 = { type: "literal", value: "/", description: "\"/\"" },
-        peg$c87 = "%",
-        peg$c88 = { type: "literal", value: "%", description: "\"%\"" },
-        peg$c89 = "not",
-        peg$c90 = { type: "literal", value: "not", description: "\"not\"" },
-        peg$c91 = function(expr) { return makeOperatorFunction({ type: "operator", operator: "!", args: [ item ] }); },
-        peg$c92 = function(first, others) { return resolveExpressionBinaryOp(first, others); },
-        peg$c93 = function(item) { return makeOperatorFunction({ type: "operator", operator: "-", args: [ item ] }); },
-        peg$c94 = function(expr) { return expr; },
-        peg$c95 = function(name) { return { type: "variable", name: name }; },
-        peg$c96 = ".",
-        peg$c97 = { type: "literal", value: ".", description: "\".\"" },
-        peg$c98 = function(expr, field) { return { type: "field", value: expr, fieldName: field }; },
-        peg$c99 = function(name, args) { return { type: "function", name: name, args: resolveArgumentList(args) }; },
-        peg$c100 = function(expr) { return { value: expr }; },
-        peg$c101 = function(value) { return { type: "value", valueType: "float", value: value }; },
-        peg$c102 = function(value) { return { type: "value", valueType: "bool", value: value }; },
-        peg$c103 = function(value) { return { type: "value", valueType: "int", value: value }; },
-        peg$c104 = function(first, others) {
-              var list = resolveList(first, others, 3);
-              return { type: "value", valueType: "Vector" + list.length, value: list };
-            },
-        peg$c105 = /^[+\-]/,
-        peg$c106 = { type: "class", value: "[+-]", description: "[+-]" },
-        peg$c107 = /^[0-9]/,
-        peg$c108 = { type: "class", value: "[0-9]", description: "[0-9]" },
-        peg$c109 = function(str) { return parseFloat(flatten(str)); },
-        peg$c110 = /^[eE]/,
-        peg$c111 = { type: "class", value: "[eE]", description: "[eE]" },
-        peg$c112 = "true",
-        peg$c113 = { type: "literal", value: "true", description: "\"true\"" },
-        peg$c114 = function() { return true; },
-        peg$c115 = "false",
-        peg$c116 = { type: "literal", value: "false", description: "\"false\"" },
-        peg$c117 = function() { return false; },
-        peg$c118 = /^[a-zA-Z_]/,
-        peg$c119 = { type: "class", value: "[a-zA-Z_]", description: "[a-zA-Z_]" },
-        peg$c120 = /^[a-zA-Z0-9_]/,
-        peg$c121 = { type: "class", value: "[a-zA-Z0-9_]", description: "[a-zA-Z0-9_]" },
-        peg$c122 = function(name) { return flatten(name); },
-        peg$c123 = /^[ \t\n]/,
-        peg$c124 = { type: "class", value: "[ \\t\\n]", description: "[ \\t\\n]" },
-        peg$c125 = function() { return ' '; },
-
-        peg$currPos          = 0,
-        peg$savedPos         = 0,
-        peg$posDetailsCache  = [{ line: 1, column: 1, seenCR: false }],
-        peg$maxFailPos       = 0,
-        peg$maxFailExpected  = [],
-        peg$silentFails      = 0,
-
-        peg$result;
-
-    if ("startRule" in options) {
-      if (!(options.startRule in peg$startRuleFunctions)) {
-        throw new Error("Can't start parsing from rule \"" + options.startRule + "\".");
-      }
-
-      peg$startRuleFunction = peg$startRuleFunctions[options.startRule];
-    }
-
-    function text() {
-      return input.substring(peg$savedPos, peg$currPos);
-    }
-
-    function location() {
-      return peg$computeLocation(peg$savedPos, peg$currPos);
-    }
-
-    function expected(description) {
-      throw peg$buildException(
-        null,
-        [{ type: "other", description: description }],
-        input.substring(peg$savedPos, peg$currPos),
-        peg$computeLocation(peg$savedPos, peg$currPos)
-      );
-    }
-
-    function error(message) {
-      throw peg$buildException(
-        message,
-        null,
-        input.substring(peg$savedPos, peg$currPos),
-        peg$computeLocation(peg$savedPos, peg$currPos)
-      );
-    }
-
-    function peg$computePosDetails(pos) {
-      var details = peg$posDetailsCache[pos],
-          p, ch;
-
-      if (details) {
-        return details;
-      } else {
-        p = pos - 1;
-        while (!peg$posDetailsCache[p]) {
-          p--;
-        }
-
-        details = peg$posDetailsCache[p];
-        details = {
-          line:   details.line,
-          column: details.column,
-          seenCR: details.seenCR
-        };
-
-        while (p < pos) {
-          ch = input.charAt(p);
-          if (ch === "\n") {
-            if (!details.seenCR) { details.line++; }
-            details.column = 1;
-            details.seenCR = false;
-          } else if (ch === "\r" || ch === "\u2028" || ch === "\u2029") {
-            details.line++;
-            details.column = 1;
-            details.seenCR = true;
-          } else {
-            details.column++;
-            details.seenCR = false;
-          }
-
-          p++;
-        }
-
-        peg$posDetailsCache[pos] = details;
-        return details;
-      }
-    }
-
-    function peg$computeLocation(startPos, endPos) {
-      var startPosDetails = peg$computePosDetails(startPos),
-          endPosDetails   = peg$computePosDetails(endPos);
-
-      return {
-        start: {
-          offset: startPos,
-          line:   startPosDetails.line,
-          column: startPosDetails.column
-        },
-        end: {
-          offset: endPos,
-          line:   endPosDetails.line,
-          column: endPosDetails.column
-        }
-      };
-    }
-
-    function peg$fail(expected) {
-      if (peg$currPos < peg$maxFailPos) { return; }
-
-      if (peg$currPos > peg$maxFailPos) {
-        peg$maxFailPos = peg$currPos;
-        peg$maxFailExpected = [];
-      }
-
-      peg$maxFailExpected.push(expected);
-    }
-
-    function peg$buildException(message, expected, found, location) {
-      function cleanupExpected(expected) {
-        var i = 1;
-
-        expected.sort(function(a, b) {
-          if (a.description < b.description) {
-            return -1;
-          } else if (a.description > b.description) {
-            return 1;
-          } else {
-            return 0;
-          }
-        });
-
-        while (i < expected.length) {
-          if (expected[i - 1] === expected[i]) {
-            expected.splice(i, 1);
-          } else {
-            i++;
-          }
-        }
-      }
-
-      function buildMessage(expected, found) {
-        function stringEscape(s) {
-          function hex(ch) { return ch.charCodeAt(0).toString(16).toUpperCase(); }
-
-          return s
-            .replace(/\\/g,   '\\\\')
-            .replace(/"/g,    '\\"')
-            .replace(/\x08/g, '\\b')
-            .replace(/\t/g,   '\\t')
-            .replace(/\n/g,   '\\n')
-            .replace(/\f/g,   '\\f')
-            .replace(/\r/g,   '\\r')
-            .replace(/[\x00-\x07\x0B\x0E\x0F]/g, function(ch) { return '\\x0' + hex(ch); })
-            .replace(/[\x10-\x1F\x80-\xFF]/g,    function(ch) { return '\\x'  + hex(ch); })
-            .replace(/[\u0100-\u0FFF]/g,         function(ch) { return '\\u0' + hex(ch); })
-            .replace(/[\u1000-\uFFFF]/g,         function(ch) { return '\\u'  + hex(ch); });
-        }
-
-        var expectedDescs = new Array(expected.length),
-            expectedDesc, foundDesc, i;
-
-        for (i = 0; i < expected.length; i++) {
-          expectedDescs[i] = expected[i].description;
-        }
-
-        expectedDesc = expected.length > 1
-          ? expectedDescs.slice(0, -1).join(", ")
-              + " or "
-              + expectedDescs[expected.length - 1]
-          : expectedDescs[0];
-
-        foundDesc = found ? "\"" + stringEscape(found) + "\"" : "end of input";
-
-        return "Expected " + expectedDesc + " but " + foundDesc + " found.";
-      }
-
-      if (expected !== null) {
-        cleanupExpected(expected);
-      }
-
-      return new peg$SyntaxError(
-        message !== null ? message : buildMessage(expected, found),
-        expected,
-        found,
-        location
-      );
-    }
-
-    function peg$parseStart() {
-      var s0, s1, s2, s3, s4, s5;
-
-      s0 = peg$currPos;
-      s1 = peg$parse_();
-      if (s1 !== peg$FAILED) {
-        s2 = [];
-        s3 = peg$currPos;
-        s4 = peg$parseFileBlock();
-        if (s4 !== peg$FAILED) {
-          s5 = peg$parse_();
-          if (s5 !== peg$FAILED) {
-            s4 = [s4, s5];
-            s3 = s4;
-          } else {
-            peg$currPos = s3;
-            s3 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s3;
-          s3 = peg$FAILED;
-        }
-        while (s3 !== peg$FAILED) {
-          s2.push(s3);
-          s3 = peg$currPos;
-          s4 = peg$parseFileBlock();
-          if (s4 !== peg$FAILED) {
-            s5 = peg$parse_();
-            if (s5 !== peg$FAILED) {
-              s4 = [s4, s5];
-              s3 = s4;
-            } else {
-              peg$currPos = s3;
-              s3 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s3;
-            s3 = peg$FAILED;
-          }
-        }
-        if (s2 !== peg$FAILED) {
-          peg$savedPos = s0;
-          s1 = peg$c0(s2);
-          s0 = s1;
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-
-      return s0;
-    }
-
-    function peg$parseFileBlock() {
-      var s0;
-
-      s0 = peg$parseFunction();
-      if (s0 === peg$FAILED) {
-        s0 = peg$parseGlobalVariable();
-        if (s0 === peg$FAILED) {
-          s0 = peg$parseImportStatement();
-        }
-      }
-
-      return s0;
-    }
-
-    function peg$parseFunction() {
-      var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13;
-
-      s0 = peg$currPos;
-      s1 = peg$parseName();
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse__();
-        if (s2 !== peg$FAILED) {
-          s3 = peg$parseName();
-          if (s3 !== peg$FAILED) {
-            s4 = peg$parse_();
-            if (s4 !== peg$FAILED) {
-              if (input.charCodeAt(peg$currPos) === 40) {
-                s5 = peg$c1;
-                peg$currPos++;
-              } else {
-                s5 = peg$FAILED;
-                if (peg$silentFails === 0) { peg$fail(peg$c2); }
-              }
-              if (s5 !== peg$FAILED) {
-                s6 = peg$parseFunctionArgumentList();
-                if (s6 !== peg$FAILED) {
-                  if (input.charCodeAt(peg$currPos) === 41) {
-                    s7 = peg$c3;
-                    peg$currPos++;
-                  } else {
-                    s7 = peg$FAILED;
-                    if (peg$silentFails === 0) { peg$fail(peg$c4); }
-                  }
-                  if (s7 !== peg$FAILED) {
-                    s8 = peg$parse_();
-                    if (s8 !== peg$FAILED) {
-                      if (input.charCodeAt(peg$currPos) === 123) {
-                        s9 = peg$c5;
-                        peg$currPos++;
-                      } else {
-                        s9 = peg$FAILED;
-                        if (peg$silentFails === 0) { peg$fail(peg$c6); }
-                      }
-                      if (s9 !== peg$FAILED) {
-                        s10 = peg$parse_();
-                        if (s10 !== peg$FAILED) {
-                          s11 = peg$parseStatements();
-                          if (s11 !== peg$FAILED) {
-                            s12 = peg$parse_();
-                            if (s12 !== peg$FAILED) {
-                              if (input.charCodeAt(peg$currPos) === 125) {
-                                s13 = peg$c7;
-                                peg$currPos++;
-                              } else {
-                                s13 = peg$FAILED;
-                                if (peg$silentFails === 0) { peg$fail(peg$c8); }
-                              }
-                              if (s13 !== peg$FAILED) {
-                                peg$savedPos = s0;
-                                s1 = peg$c9(s1, s3, s6, s11);
-                                s0 = s1;
-                              } else {
-                                peg$currPos = s0;
-                                s0 = peg$FAILED;
-                              }
-                            } else {
-                              peg$currPos = s0;
-                              s0 = peg$FAILED;
-                            }
-                          } else {
-                            peg$currPos = s0;
-                            s0 = peg$FAILED;
-                          }
-                        } else {
-                          peg$currPos = s0;
-                          s0 = peg$FAILED;
-                        }
-                      } else {
-                        peg$currPos = s0;
-                        s0 = peg$FAILED;
-                      }
-                    } else {
-                      peg$currPos = s0;
-                      s0 = peg$FAILED;
-                    }
-                  } else {
-                    peg$currPos = s0;
-                    s0 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s0;
-                  s0 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-
-      return s0;
-    }
-
-    function peg$parseGlobalVariable() {
-      var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9;
-
-      s0 = peg$currPos;
-      s1 = peg$parseName();
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse__();
-        if (s2 !== peg$FAILED) {
-          s3 = peg$parseName();
-          if (s3 !== peg$FAILED) {
-            s4 = peg$parse_();
-            if (s4 !== peg$FAILED) {
-              if (input.charCodeAt(peg$currPos) === 61) {
-                s5 = peg$c10;
-                peg$currPos++;
-              } else {
-                s5 = peg$FAILED;
-                if (peg$silentFails === 0) { peg$fail(peg$c11); }
-              }
-              if (s5 !== peg$FAILED) {
-                s6 = peg$parse_();
-                if (s6 !== peg$FAILED) {
-                  s7 = peg$parseValue();
-                  if (s7 !== peg$FAILED) {
-                    s8 = peg$parse_();
-                    if (s8 !== peg$FAILED) {
-                      if (input.charCodeAt(peg$currPos) === 59) {
-                        s9 = peg$c12;
-                        peg$currPos++;
-                      } else {
-                        s9 = peg$FAILED;
-                        if (peg$silentFails === 0) { peg$fail(peg$c13); }
-                      }
-                      if (s9 !== peg$FAILED) {
-                        peg$savedPos = s0;
-                        s1 = peg$c14(s1, s3, s7);
-                        s0 = s1;
-                      } else {
-                        peg$currPos = s0;
-                        s0 = peg$FAILED;
-                      }
-                    } else {
-                      peg$currPos = s0;
-                      s0 = peg$FAILED;
-                    }
-                  } else {
-                    peg$currPos = s0;
-                    s0 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s0;
-                  s0 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-      if (s0 === peg$FAILED) {
-        s0 = peg$currPos;
-        s1 = peg$parseName();
-        if (s1 !== peg$FAILED) {
-          s2 = peg$parse__();
-          if (s2 !== peg$FAILED) {
-            s3 = peg$parseName();
-            if (s3 !== peg$FAILED) {
-              s4 = peg$parse_();
-              if (s4 !== peg$FAILED) {
-                if (input.charCodeAt(peg$currPos) === 59) {
-                  s5 = peg$c12;
-                  peg$currPos++;
-                } else {
-                  s5 = peg$FAILED;
-                  if (peg$silentFails === 0) { peg$fail(peg$c13); }
-                }
-                if (s5 !== peg$FAILED) {
-                  peg$savedPos = s0;
-                  s1 = peg$c15(s1, s3);
-                  s0 = s1;
-                } else {
-                  peg$currPos = s0;
-                  s0 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      }
-
-      return s0;
-    }
-
-    function peg$parseImportStatement() {
-      var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10;
-
-      s0 = peg$currPos;
-      if (input.substr(peg$currPos, 6) === peg$c16) {
-        s1 = peg$c16;
-        peg$currPos += 6;
-      } else {
-        s1 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c17); }
-      }
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse__();
-        if (s2 !== peg$FAILED) {
-          if (input.charCodeAt(peg$currPos) === 42) {
-            s3 = peg$c18;
-            peg$currPos++;
-          } else {
-            s3 = peg$FAILED;
-            if (peg$silentFails === 0) { peg$fail(peg$c19); }
-          }
-          if (s3 !== peg$FAILED) {
-            s4 = peg$parse__();
-            if (s4 !== peg$FAILED) {
-              if (input.substr(peg$currPos, 4) === peg$c20) {
-                s5 = peg$c20;
-                peg$currPos += 4;
-              } else {
-                s5 = peg$FAILED;
-                if (peg$silentFails === 0) { peg$fail(peg$c21); }
-              }
-              if (s5 !== peg$FAILED) {
-                s6 = peg$parse__();
-                if (s6 !== peg$FAILED) {
-                  s7 = peg$parseName();
-                  if (s7 !== peg$FAILED) {
-                    s8 = peg$parse_();
-                    if (s8 !== peg$FAILED) {
-                      if (input.charCodeAt(peg$currPos) === 59) {
-                        s9 = peg$c12;
-                        peg$currPos++;
-                      } else {
-                        s9 = peg$FAILED;
-                        if (peg$silentFails === 0) { peg$fail(peg$c13); }
-                      }
-                      if (s9 !== peg$FAILED) {
-                        peg$savedPos = s0;
-                        s1 = peg$c22(s7);
-                        s0 = s1;
-                      } else {
-                        peg$currPos = s0;
-                        s0 = peg$FAILED;
-                      }
-                    } else {
-                      peg$currPos = s0;
-                      s0 = peg$FAILED;
-                    }
-                  } else {
-                    peg$currPos = s0;
-                    s0 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s0;
-                  s0 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-      if (s0 === peg$FAILED) {
-        s0 = peg$currPos;
-        if (input.substr(peg$currPos, 6) === peg$c16) {
-          s1 = peg$c16;
-          peg$currPos += 6;
-        } else {
-          s1 = peg$FAILED;
-          if (peg$silentFails === 0) { peg$fail(peg$c17); }
-        }
-        if (s1 !== peg$FAILED) {
-          s2 = peg$parse__();
-          if (s2 !== peg$FAILED) {
-            s3 = peg$parseName();
-            if (s3 !== peg$FAILED) {
-              s4 = [];
-              s5 = peg$currPos;
-              s6 = peg$parse_();
-              if (s6 !== peg$FAILED) {
-                if (input.charCodeAt(peg$currPos) === 44) {
-                  s7 = peg$c23;
-                  peg$currPos++;
-                } else {
-                  s7 = peg$FAILED;
-                  if (peg$silentFails === 0) { peg$fail(peg$c24); }
-                }
-                if (s7 !== peg$FAILED) {
-                  s8 = peg$parse_();
-                  if (s8 !== peg$FAILED) {
-                    s9 = peg$parseName();
-                    if (s9 !== peg$FAILED) {
-                      s6 = [s6, s7, s8, s9];
-                      s5 = s6;
-                    } else {
-                      peg$currPos = s5;
-                      s5 = peg$FAILED;
-                    }
-                  } else {
-                    peg$currPos = s5;
-                    s5 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s5;
-                  s5 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s5;
-                s5 = peg$FAILED;
-              }
-              while (s5 !== peg$FAILED) {
-                s4.push(s5);
-                s5 = peg$currPos;
-                s6 = peg$parse_();
-                if (s6 !== peg$FAILED) {
-                  if (input.charCodeAt(peg$currPos) === 44) {
-                    s7 = peg$c23;
-                    peg$currPos++;
-                  } else {
-                    s7 = peg$FAILED;
-                    if (peg$silentFails === 0) { peg$fail(peg$c24); }
-                  }
-                  if (s7 !== peg$FAILED) {
-                    s8 = peg$parse_();
-                    if (s8 !== peg$FAILED) {
-                      s9 = peg$parseName();
-                      if (s9 !== peg$FAILED) {
-                        s6 = [s6, s7, s8, s9];
-                        s5 = s6;
-                      } else {
-                        peg$currPos = s5;
-                        s5 = peg$FAILED;
-                      }
-                    } else {
-                      peg$currPos = s5;
-                      s5 = peg$FAILED;
-                    }
-                  } else {
-                    peg$currPos = s5;
-                    s5 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s5;
-                  s5 = peg$FAILED;
-                }
-              }
-              if (s4 !== peg$FAILED) {
-                s5 = peg$parse__();
-                if (s5 !== peg$FAILED) {
-                  if (input.substr(peg$currPos, 4) === peg$c20) {
-                    s6 = peg$c20;
-                    peg$currPos += 4;
-                  } else {
-                    s6 = peg$FAILED;
-                    if (peg$silentFails === 0) { peg$fail(peg$c21); }
-                  }
-                  if (s6 !== peg$FAILED) {
-                    s7 = peg$parse__();
-                    if (s7 !== peg$FAILED) {
-                      s8 = peg$parseName();
-                      if (s8 !== peg$FAILED) {
-                        s9 = peg$parse_();
-                        if (s9 !== peg$FAILED) {
-                          if (input.charCodeAt(peg$currPos) === 59) {
-                            s10 = peg$c12;
-                            peg$currPos++;
-                          } else {
-                            s10 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c13); }
-                          }
-                          if (s10 !== peg$FAILED) {
-                            peg$savedPos = s0;
-                            s1 = peg$c25(s3, s4, s8);
-                            s0 = s1;
-                          } else {
-                            peg$currPos = s0;
-                            s0 = peg$FAILED;
-                          }
-                        } else {
-                          peg$currPos = s0;
-                          s0 = peg$FAILED;
-                        }
-                      } else {
-                        peg$currPos = s0;
-                        s0 = peg$FAILED;
-                      }
-                    } else {
-                      peg$currPos = s0;
-                      s0 = peg$FAILED;
-                    }
-                  } else {
-                    peg$currPos = s0;
-                    s0 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s0;
-                  s0 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      }
-
-      return s0;
-    }
-
-    function peg$parseFunctionArgumentList() {
-      var s0, s1, s2, s3, s4, s5, s6, s7, s8;
-
-      s0 = peg$currPos;
-      s1 = peg$parse_();
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parseFunctionArgument();
-        if (s2 !== peg$FAILED) {
-          s3 = [];
-          s4 = peg$currPos;
-          s5 = peg$parse_();
-          if (s5 !== peg$FAILED) {
-            if (input.charCodeAt(peg$currPos) === 44) {
-              s6 = peg$c23;
-              peg$currPos++;
-            } else {
-              s6 = peg$FAILED;
-              if (peg$silentFails === 0) { peg$fail(peg$c24); }
-            }
-            if (s6 !== peg$FAILED) {
-              s7 = peg$parse_();
-              if (s7 !== peg$FAILED) {
-                s8 = peg$parseFunctionArgument();
-                if (s8 !== peg$FAILED) {
-                  s5 = [s5, s6, s7, s8];
-                  s4 = s5;
-                } else {
-                  peg$currPos = s4;
-                  s4 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s4;
-                s4 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s4;
-              s4 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s4;
-            s4 = peg$FAILED;
-          }
-          while (s4 !== peg$FAILED) {
-            s3.push(s4);
-            s4 = peg$currPos;
-            s5 = peg$parse_();
-            if (s5 !== peg$FAILED) {
-              if (input.charCodeAt(peg$currPos) === 44) {
-                s6 = peg$c23;
-                peg$currPos++;
-              } else {
-                s6 = peg$FAILED;
-                if (peg$silentFails === 0) { peg$fail(peg$c24); }
-              }
-              if (s6 !== peg$FAILED) {
-                s7 = peg$parse_();
-                if (s7 !== peg$FAILED) {
-                  s8 = peg$parseFunctionArgument();
-                  if (s8 !== peg$FAILED) {
-                    s5 = [s5, s6, s7, s8];
-                    s4 = s5;
-                  } else {
-                    peg$currPos = s4;
-                    s4 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s4;
-                  s4 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s4;
-                s4 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s4;
-              s4 = peg$FAILED;
-            }
-          }
-          if (s3 !== peg$FAILED) {
-            s4 = peg$parse_();
-            if (s4 !== peg$FAILED) {
-              peg$savedPos = s0;
-              s1 = peg$c26(s2, s3);
-              s0 = s1;
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-      if (s0 === peg$FAILED) {
-        s0 = peg$currPos;
-        s1 = peg$parse_();
-        if (s1 !== peg$FAILED) {
-          peg$savedPos = s0;
-          s1 = peg$c27();
-        }
-        s0 = s1;
-      }
-
-      return s0;
-    }
-
-    function peg$parseFunctionArgument() {
-      var s0, s1, s2, s3, s4, s5, s6, s7;
-
-      s0 = peg$currPos;
-      s1 = peg$parseName();
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse__();
-        if (s2 !== peg$FAILED) {
-          s3 = peg$parseName();
-          if (s3 !== peg$FAILED) {
-            s4 = peg$parse_();
-            if (s4 !== peg$FAILED) {
-              if (input.charCodeAt(peg$currPos) === 61) {
-                s5 = peg$c10;
-                peg$currPos++;
-              } else {
-                s5 = peg$FAILED;
-                if (peg$silentFails === 0) { peg$fail(peg$c11); }
-              }
-              if (s5 !== peg$FAILED) {
-                s6 = peg$parse_();
-                if (s6 !== peg$FAILED) {
-                  s7 = peg$parseValue();
-                  if (s7 !== peg$FAILED) {
-                    peg$savedPos = s0;
-                    s1 = peg$c28(s1, s3, s7);
-                    s0 = s1;
-                  } else {
-                    peg$currPos = s0;
-                    s0 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s0;
-                  s0 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-      if (s0 === peg$FAILED) {
-        s0 = peg$currPos;
-        s1 = peg$parseName();
-        if (s1 !== peg$FAILED) {
-          s2 = peg$parse__();
-          if (s2 !== peg$FAILED) {
-            s3 = peg$parseName();
-            if (s3 !== peg$FAILED) {
-              peg$savedPos = s0;
-              s1 = peg$c29(s1, s3);
-              s0 = s1;
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      }
-
-      return s0;
-    }
-
-    function peg$parseStatements() {
-      var s0, s1, s2, s3, s4, s5;
-
-      s0 = peg$currPos;
-      s1 = peg$parseStatement();
-      if (s1 !== peg$FAILED) {
-        s2 = [];
-        s3 = peg$currPos;
-        s4 = peg$parse_();
-        if (s4 !== peg$FAILED) {
-          s5 = peg$parseStatement();
-          if (s5 !== peg$FAILED) {
-            s4 = [s4, s5];
-            s3 = s4;
-          } else {
-            peg$currPos = s3;
-            s3 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s3;
-          s3 = peg$FAILED;
-        }
-        while (s3 !== peg$FAILED) {
-          s2.push(s3);
-          s3 = peg$currPos;
-          s4 = peg$parse_();
-          if (s4 !== peg$FAILED) {
-            s5 = peg$parseStatement();
-            if (s5 !== peg$FAILED) {
-              s4 = [s4, s5];
-              s3 = s4;
-            } else {
-              peg$currPos = s3;
-              s3 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s3;
-            s3 = peg$FAILED;
-          }
-        }
-        if (s2 !== peg$FAILED) {
-          peg$savedPos = s0;
-          s1 = peg$c30(s1, s2);
-          s0 = s1;
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-      if (s0 === peg$FAILED) {
-        s0 = peg$currPos;
-        s1 = peg$parse_();
-        if (s1 !== peg$FAILED) {
-          peg$savedPos = s0;
-          s1 = peg$c27();
-        }
-        s0 = s1;
-      }
-
-      return s0;
-    }
-
-    function peg$parseStatement() {
-      var s0, s1, s2, s3, s4, s5;
-
-      s0 = peg$currPos;
-      s1 = peg$parseReturnStatement();
-      if (s1 === peg$FAILED) {
-        s1 = peg$parseEmitStatement();
-        if (s1 === peg$FAILED) {
-          s1 = peg$parseVariableDeclaration();
-          if (s1 === peg$FAILED) {
-            s1 = peg$parseVariableAssignment();
-            if (s1 === peg$FAILED) {
-              s1 = peg$parseExpressionStatement();
-            }
-          }
-        }
-      }
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse_();
-        if (s2 !== peg$FAILED) {
-          if (input.charCodeAt(peg$currPos) === 59) {
-            s3 = peg$c12;
-            peg$currPos++;
-          } else {
-            s3 = peg$FAILED;
-            if (peg$silentFails === 0) { peg$fail(peg$c13); }
-          }
-          if (s3 !== peg$FAILED) {
-            peg$savedPos = s0;
-            s1 = peg$c31(s1);
-            s0 = s1;
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-      if (s0 === peg$FAILED) {
-        s0 = peg$parseForLoop();
-        if (s0 === peg$FAILED) {
-          s0 = peg$parseIfStatement();
-          if (s0 === peg$FAILED) {
-            s0 = peg$currPos;
-            if (input.charCodeAt(peg$currPos) === 123) {
-              s1 = peg$c5;
-              peg$currPos++;
-            } else {
-              s1 = peg$FAILED;
-              if (peg$silentFails === 0) { peg$fail(peg$c6); }
-            }
-            if (s1 !== peg$FAILED) {
-              s2 = peg$parse_();
-              if (s2 !== peg$FAILED) {
-                s3 = peg$parseStatements();
-                if (s3 !== peg$FAILED) {
-                  s4 = peg$parse_();
-                  if (s4 !== peg$FAILED) {
-                    if (input.charCodeAt(peg$currPos) === 125) {
-                      s5 = peg$c7;
-                      peg$currPos++;
-                    } else {
-                      s5 = peg$FAILED;
-                      if (peg$silentFails === 0) { peg$fail(peg$c8); }
-                    }
-                    if (s5 !== peg$FAILED) {
-                      peg$savedPos = s0;
-                      s1 = peg$c32(s3);
-                      s0 = s1;
-                    } else {
-                      peg$currPos = s0;
-                      s0 = peg$FAILED;
-                    }
-                  } else {
-                    peg$currPos = s0;
-                    s0 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s0;
-                  s0 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          }
-        }
-      }
-
-      return s0;
-    }
-
-    function peg$parseReturnStatement() {
-      var s0, s1, s2, s3;
-
-      s0 = peg$currPos;
-      if (input.substr(peg$currPos, 6) === peg$c33) {
-        s1 = peg$c33;
-        peg$currPos += 6;
-      } else {
-        s1 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c34); }
-      }
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse__();
-        if (s2 !== peg$FAILED) {
-          s3 = peg$parseExpressionLevel1();
-          if (s3 !== peg$FAILED) {
-            peg$savedPos = s0;
-            s1 = peg$c35(s3);
-            s0 = s1;
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-
-      return s0;
-    }
-
-    function peg$parseEmitStatement() {
-      var s0, s1, s2, s3, s4, s5;
-
-      s0 = peg$currPos;
-      if (input.substr(peg$currPos, 4) === peg$c36) {
-        s1 = peg$c36;
-        peg$currPos += 4;
-      } else {
-        s1 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c37); }
-      }
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse_();
-        if (s2 !== peg$FAILED) {
-          if (input.charCodeAt(peg$currPos) === 91) {
-            s3 = peg$c38;
-            peg$currPos++;
-          } else {
-            s3 = peg$FAILED;
-            if (peg$silentFails === 0) { peg$fail(peg$c39); }
-          }
-          if (s3 !== peg$FAILED) {
-            s4 = peg$parseEmitVertexList();
-            if (s4 !== peg$FAILED) {
-              if (input.charCodeAt(peg$currPos) === 93) {
-                s5 = peg$c40;
-                peg$currPos++;
-              } else {
-                s5 = peg$FAILED;
-                if (peg$silentFails === 0) { peg$fail(peg$c41); }
-              }
-              if (s5 !== peg$FAILED) {
-                peg$savedPos = s0;
-                s1 = peg$c42(s4);
-                s0 = s1;
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-
-      return s0;
-    }
-
-    function peg$parseEmitArgument() {
-      var s0, s1, s2, s3, s4, s5;
-
-      s0 = peg$currPos;
-      s1 = peg$parseName();
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse_();
-        if (s2 !== peg$FAILED) {
-          if (input.charCodeAt(peg$currPos) === 58) {
-            s3 = peg$c43;
-            peg$currPos++;
-          } else {
-            s3 = peg$FAILED;
-            if (peg$silentFails === 0) { peg$fail(peg$c44); }
-          }
-          if (s3 !== peg$FAILED) {
-            s4 = peg$parse_();
-            if (s4 !== peg$FAILED) {
-              s5 = peg$parseExpressionLevel1();
-              if (s5 !== peg$FAILED) {
-                peg$savedPos = s0;
-                s1 = peg$c45(s1, s5);
-                s0 = s1;
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-
-      return s0;
-    }
-
-    function peg$parseEmitArgumentList() {
-      var s0, s1, s2, s3, s4, s5, s6, s7, s8;
-
-      s0 = peg$currPos;
-      s1 = peg$parse_();
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parseEmitArgument();
-        if (s2 !== peg$FAILED) {
-          s3 = [];
-          s4 = peg$currPos;
-          s5 = peg$parse_();
-          if (s5 !== peg$FAILED) {
-            if (input.charCodeAt(peg$currPos) === 44) {
-              s6 = peg$c23;
-              peg$currPos++;
-            } else {
-              s6 = peg$FAILED;
-              if (peg$silentFails === 0) { peg$fail(peg$c24); }
-            }
-            if (s6 !== peg$FAILED) {
-              s7 = peg$parse_();
-              if (s7 !== peg$FAILED) {
-                s8 = peg$parseEmitArgument();
-                if (s8 !== peg$FAILED) {
-                  s5 = [s5, s6, s7, s8];
-                  s4 = s5;
-                } else {
-                  peg$currPos = s4;
-                  s4 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s4;
-                s4 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s4;
-              s4 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s4;
-            s4 = peg$FAILED;
-          }
-          while (s4 !== peg$FAILED) {
-            s3.push(s4);
-            s4 = peg$currPos;
-            s5 = peg$parse_();
-            if (s5 !== peg$FAILED) {
-              if (input.charCodeAt(peg$currPos) === 44) {
-                s6 = peg$c23;
-                peg$currPos++;
-              } else {
-                s6 = peg$FAILED;
-                if (peg$silentFails === 0) { peg$fail(peg$c24); }
-              }
-              if (s6 !== peg$FAILED) {
-                s7 = peg$parse_();
-                if (s7 !== peg$FAILED) {
-                  s8 = peg$parseEmitArgument();
-                  if (s8 !== peg$FAILED) {
-                    s5 = [s5, s6, s7, s8];
-                    s4 = s5;
-                  } else {
-                    peg$currPos = s4;
-                    s4 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s4;
-                  s4 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s4;
-                s4 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s4;
-              s4 = peg$FAILED;
-            }
-          }
-          if (s3 !== peg$FAILED) {
-            s4 = peg$parse_();
-            if (s4 !== peg$FAILED) {
-              peg$savedPos = s0;
-              s1 = peg$c46(s2, s3);
-              s0 = s1;
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-      if (s0 === peg$FAILED) {
-        s0 = peg$currPos;
-        s1 = peg$parse_();
-        if (s1 !== peg$FAILED) {
-          peg$savedPos = s0;
-          s1 = peg$c47();
-        }
-        s0 = s1;
-      }
-
-      return s0;
-    }
-
-    function peg$parseEmitVertexList() {
-      var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12;
-
-      s0 = peg$currPos;
-      s1 = peg$parse_();
-      if (s1 !== peg$FAILED) {
-        if (input.charCodeAt(peg$currPos) === 123) {
-          s2 = peg$c5;
-          peg$currPos++;
-        } else {
-          s2 = peg$FAILED;
-          if (peg$silentFails === 0) { peg$fail(peg$c6); }
-        }
-        if (s2 !== peg$FAILED) {
-          s3 = peg$parseEmitArgumentList();
-          if (s3 !== peg$FAILED) {
-            if (input.charCodeAt(peg$currPos) === 125) {
-              s4 = peg$c7;
-              peg$currPos++;
-            } else {
-              s4 = peg$FAILED;
-              if (peg$silentFails === 0) { peg$fail(peg$c8); }
-            }
-            if (s4 !== peg$FAILED) {
-              s5 = [];
-              s6 = peg$currPos;
-              s7 = peg$parse_();
-              if (s7 !== peg$FAILED) {
-                if (input.charCodeAt(peg$currPos) === 44) {
-                  s8 = peg$c23;
-                  peg$currPos++;
-                } else {
-                  s8 = peg$FAILED;
-                  if (peg$silentFails === 0) { peg$fail(peg$c24); }
-                }
-                if (s8 !== peg$FAILED) {
-                  s9 = peg$parse_();
-                  if (s9 !== peg$FAILED) {
-                    if (input.charCodeAt(peg$currPos) === 123) {
-                      s10 = peg$c5;
-                      peg$currPos++;
-                    } else {
-                      s10 = peg$FAILED;
-                      if (peg$silentFails === 0) { peg$fail(peg$c6); }
-                    }
-                    if (s10 !== peg$FAILED) {
-                      s11 = peg$parseEmitArgumentList();
-                      if (s11 !== peg$FAILED) {
-                        if (input.charCodeAt(peg$currPos) === 125) {
-                          s12 = peg$c7;
-                          peg$currPos++;
-                        } else {
-                          s12 = peg$FAILED;
-                          if (peg$silentFails === 0) { peg$fail(peg$c8); }
-                        }
-                        if (s12 !== peg$FAILED) {
-                          s7 = [s7, s8, s9, s10, s11, s12];
-                          s6 = s7;
-                        } else {
-                          peg$currPos = s6;
-                          s6 = peg$FAILED;
-                        }
-                      } else {
-                        peg$currPos = s6;
-                        s6 = peg$FAILED;
-                      }
-                    } else {
-                      peg$currPos = s6;
-                      s6 = peg$FAILED;
-                    }
-                  } else {
-                    peg$currPos = s6;
-                    s6 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s6;
-                  s6 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s6;
-                s6 = peg$FAILED;
-              }
-              while (s6 !== peg$FAILED) {
-                s5.push(s6);
-                s6 = peg$currPos;
-                s7 = peg$parse_();
-                if (s7 !== peg$FAILED) {
-                  if (input.charCodeAt(peg$currPos) === 44) {
-                    s8 = peg$c23;
-                    peg$currPos++;
-                  } else {
-                    s8 = peg$FAILED;
-                    if (peg$silentFails === 0) { peg$fail(peg$c24); }
-                  }
-                  if (s8 !== peg$FAILED) {
-                    s9 = peg$parse_();
-                    if (s9 !== peg$FAILED) {
-                      if (input.charCodeAt(peg$currPos) === 123) {
-                        s10 = peg$c5;
-                        peg$currPos++;
-                      } else {
-                        s10 = peg$FAILED;
-                        if (peg$silentFails === 0) { peg$fail(peg$c6); }
-                      }
-                      if (s10 !== peg$FAILED) {
-                        s11 = peg$parseEmitArgumentList();
-                        if (s11 !== peg$FAILED) {
-                          if (input.charCodeAt(peg$currPos) === 125) {
-                            s12 = peg$c7;
-                            peg$currPos++;
-                          } else {
-                            s12 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c8); }
-                          }
-                          if (s12 !== peg$FAILED) {
-                            s7 = [s7, s8, s9, s10, s11, s12];
-                            s6 = s7;
-                          } else {
-                            peg$currPos = s6;
-                            s6 = peg$FAILED;
-                          }
-                        } else {
-                          peg$currPos = s6;
-                          s6 = peg$FAILED;
-                        }
-                      } else {
-                        peg$currPos = s6;
-                        s6 = peg$FAILED;
-                      }
-                    } else {
-                      peg$currPos = s6;
-                      s6 = peg$FAILED;
-                    }
-                  } else {
-                    peg$currPos = s6;
-                    s6 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s6;
-                  s6 = peg$FAILED;
-                }
-              }
-              if (s5 !== peg$FAILED) {
-                s6 = peg$parse_();
-                if (s6 !== peg$FAILED) {
-                  peg$savedPos = s0;
-                  s1 = peg$c48(s3, s5);
-                  s0 = s1;
-                } else {
-                  peg$currPos = s0;
-                  s0 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-      if (s0 === peg$FAILED) {
-        s0 = peg$currPos;
-        s1 = peg$parse_();
-        if (s1 !== peg$FAILED) {
-          peg$savedPos = s0;
-          s1 = peg$c27();
-        }
-        s0 = s1;
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionStatement() {
-      var s0, s1;
-
-      s0 = peg$currPos;
-      s1 = peg$parseExpressionLevel1();
-      if (s1 !== peg$FAILED) {
-        peg$savedPos = s0;
-        s1 = peg$c49(s1);
-      }
-      s0 = s1;
-
-      return s0;
-    }
-
-    function peg$parseVariableDeclaration() {
-      var s0, s1, s2, s3, s4, s5, s6, s7;
-
-      s0 = peg$currPos;
-      s1 = peg$parseName();
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse_();
-        if (s2 !== peg$FAILED) {
-          s3 = peg$parseName();
-          if (s3 !== peg$FAILED) {
-            s4 = peg$parse_();
-            if (s4 !== peg$FAILED) {
-              if (input.charCodeAt(peg$currPos) === 61) {
-                s5 = peg$c10;
-                peg$currPos++;
-              } else {
-                s5 = peg$FAILED;
-                if (peg$silentFails === 0) { peg$fail(peg$c11); }
-              }
-              if (s5 !== peg$FAILED) {
-                s6 = peg$parse_();
-                if (s6 !== peg$FAILED) {
-                  s7 = peg$parseExpressionLevel1();
-                  if (s7 !== peg$FAILED) {
-                    peg$savedPos = s0;
-                    s1 = peg$c50(s1, s3, s7);
-                    s0 = s1;
-                  } else {
-                    peg$currPos = s0;
-                    s0 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s0;
-                  s0 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-      if (s0 === peg$FAILED) {
-        s0 = peg$currPos;
-        s1 = peg$parseName();
-        if (s1 !== peg$FAILED) {
-          s2 = peg$parse_();
-          if (s2 !== peg$FAILED) {
-            s3 = peg$parseName();
-            if (s3 !== peg$FAILED) {
-              peg$savedPos = s0;
-              s1 = peg$c51(s1, s3);
-              s0 = s1;
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      }
-
-      return s0;
-    }
-
-    function peg$parseVariableAssignment() {
-      var s0, s1, s2, s3, s4, s5;
-
-      s0 = peg$currPos;
-      s1 = peg$parseName();
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse_();
-        if (s2 !== peg$FAILED) {
-          if (input.charCodeAt(peg$currPos) === 61) {
-            s3 = peg$c10;
-            peg$currPos++;
-          } else {
-            s3 = peg$FAILED;
-            if (peg$silentFails === 0) { peg$fail(peg$c11); }
-          }
-          if (s3 !== peg$FAILED) {
-            s4 = peg$parse_();
-            if (s4 !== peg$FAILED) {
-              s5 = peg$parseExpressionLevel1();
-              if (s5 !== peg$FAILED) {
-                peg$savedPos = s0;
-                s1 = peg$c52(s1, s5);
-                s0 = s1;
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-
-      return s0;
-    }
-
-    function peg$parseForLoop() {
-      var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17;
-
-      s0 = peg$currPos;
-      if (input.substr(peg$currPos, 3) === peg$c53) {
-        s1 = peg$c53;
-        peg$currPos += 3;
-      } else {
-        s1 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c54); }
-      }
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse_();
-        if (s2 !== peg$FAILED) {
-          if (input.charCodeAt(peg$currPos) === 40) {
-            s3 = peg$c1;
-            peg$currPos++;
-          } else {
-            s3 = peg$FAILED;
-            if (peg$silentFails === 0) { peg$fail(peg$c2); }
-          }
-          if (s3 !== peg$FAILED) {
-            s4 = peg$parse_();
-            if (s4 !== peg$FAILED) {
-              s5 = peg$parseName();
-              if (s5 !== peg$FAILED) {
-                s6 = peg$parse_();
-                if (s6 !== peg$FAILED) {
-                  if (input.substr(peg$currPos, 2) === peg$c55) {
-                    s7 = peg$c55;
-                    peg$currPos += 2;
-                  } else {
-                    s7 = peg$FAILED;
-                    if (peg$silentFails === 0) { peg$fail(peg$c56); }
-                  }
-                  if (s7 !== peg$FAILED) {
-                    s8 = peg$parse_();
-                    if (s8 !== peg$FAILED) {
-                      s9 = peg$parseInteger();
-                      if (s9 !== peg$FAILED) {
-                        s10 = peg$parse_();
-                        if (s10 !== peg$FAILED) {
-                          if (input.substr(peg$currPos, 2) === peg$c57) {
-                            s11 = peg$c57;
-                            peg$currPos += 2;
-                          } else {
-                            s11 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c58); }
-                          }
-                          if (s11 !== peg$FAILED) {
-                            s12 = peg$parse_();
-                            if (s12 !== peg$FAILED) {
-                              s13 = peg$parseInteger();
-                              if (s13 !== peg$FAILED) {
-                                s14 = peg$parse_();
-                                if (s14 !== peg$FAILED) {
-                                  if (input.charCodeAt(peg$currPos) === 41) {
-                                    s15 = peg$c3;
-                                    peg$currPos++;
-                                  } else {
-                                    s15 = peg$FAILED;
-                                    if (peg$silentFails === 0) { peg$fail(peg$c4); }
-                                  }
-                                  if (s15 !== peg$FAILED) {
-                                    s16 = peg$parse_();
-                                    if (s16 !== peg$FAILED) {
-                                      s17 = peg$parseStatement();
-                                      if (s17 !== peg$FAILED) {
-                                        peg$savedPos = s0;
-                                        s1 = peg$c59(s5, s9, s13, s17);
-                                        s0 = s1;
-                                      } else {
-                                        peg$currPos = s0;
-                                        s0 = peg$FAILED;
-                                      }
-                                    } else {
-                                      peg$currPos = s0;
-                                      s0 = peg$FAILED;
-                                    }
-                                  } else {
-                                    peg$currPos = s0;
-                                    s0 = peg$FAILED;
-                                  }
-                                } else {
-                                  peg$currPos = s0;
-                                  s0 = peg$FAILED;
-                                }
-                              } else {
-                                peg$currPos = s0;
-                                s0 = peg$FAILED;
-                              }
-                            } else {
-                              peg$currPos = s0;
-                              s0 = peg$FAILED;
-                            }
-                          } else {
-                            peg$currPos = s0;
-                            s0 = peg$FAILED;
-                          }
-                        } else {
-                          peg$currPos = s0;
-                          s0 = peg$FAILED;
-                        }
-                      } else {
-                        peg$currPos = s0;
-                        s0 = peg$FAILED;
-                      }
-                    } else {
-                      peg$currPos = s0;
-                      s0 = peg$FAILED;
-                    }
-                  } else {
-                    peg$currPos = s0;
-                    s0 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s0;
-                  s0 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-
-      return s0;
-    }
-
-    function peg$parseIfStatement() {
-      var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18, s19, s20, s21, s22, s23;
-
-      s0 = peg$currPos;
-      if (input.substr(peg$currPos, 2) === peg$c60) {
-        s1 = peg$c60;
-        peg$currPos += 2;
-      } else {
-        s1 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c61); }
-      }
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse_();
-        if (s2 !== peg$FAILED) {
-          if (input.charCodeAt(peg$currPos) === 40) {
-            s3 = peg$c1;
-            peg$currPos++;
-          } else {
-            s3 = peg$FAILED;
-            if (peg$silentFails === 0) { peg$fail(peg$c2); }
-          }
-          if (s3 !== peg$FAILED) {
-            s4 = peg$parse_();
-            if (s4 !== peg$FAILED) {
-              s5 = peg$parseExpressionLevel1();
-              if (s5 !== peg$FAILED) {
-                s6 = peg$parse_();
-                if (s6 !== peg$FAILED) {
-                  if (input.charCodeAt(peg$currPos) === 41) {
-                    s7 = peg$c3;
-                    peg$currPos++;
-                  } else {
-                    s7 = peg$FAILED;
-                    if (peg$silentFails === 0) { peg$fail(peg$c4); }
-                  }
-                  if (s7 !== peg$FAILED) {
-                    s8 = peg$parse_();
-                    if (s8 !== peg$FAILED) {
-                      s9 = peg$parseStatement();
-                      if (s9 !== peg$FAILED) {
-                        s10 = [];
-                        s11 = peg$currPos;
-                        s12 = peg$parse_();
-                        if (s12 !== peg$FAILED) {
-                          if (input.substr(peg$currPos, 4) === peg$c62) {
-                            s13 = peg$c62;
-                            peg$currPos += 4;
-                          } else {
-                            s13 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c63); }
-                          }
-                          if (s13 !== peg$FAILED) {
-                            s14 = peg$parse__();
-                            if (s14 !== peg$FAILED) {
-                              if (input.substr(peg$currPos, 2) === peg$c60) {
-                                s15 = peg$c60;
-                                peg$currPos += 2;
-                              } else {
-                                s15 = peg$FAILED;
-                                if (peg$silentFails === 0) { peg$fail(peg$c61); }
-                              }
-                              if (s15 !== peg$FAILED) {
-                                s16 = peg$parse_();
-                                if (s16 !== peg$FAILED) {
-                                  if (input.charCodeAt(peg$currPos) === 40) {
-                                    s17 = peg$c1;
-                                    peg$currPos++;
-                                  } else {
-                                    s17 = peg$FAILED;
-                                    if (peg$silentFails === 0) { peg$fail(peg$c2); }
-                                  }
-                                  if (s17 !== peg$FAILED) {
-                                    s18 = peg$parse_();
-                                    if (s18 !== peg$FAILED) {
-                                      s19 = peg$parseExpressionLevel1();
-                                      if (s19 !== peg$FAILED) {
-                                        s20 = peg$parse_();
-                                        if (s20 !== peg$FAILED) {
-                                          if (input.charCodeAt(peg$currPos) === 41) {
-                                            s21 = peg$c3;
-                                            peg$currPos++;
-                                          } else {
-                                            s21 = peg$FAILED;
-                                            if (peg$silentFails === 0) { peg$fail(peg$c4); }
-                                          }
-                                          if (s21 !== peg$FAILED) {
-                                            s22 = peg$parse_();
-                                            if (s22 !== peg$FAILED) {
-                                              s23 = peg$parseStatement();
-                                              if (s23 !== peg$FAILED) {
-                                                s12 = [s12, s13, s14, s15, s16, s17, s18, s19, s20, s21, s22, s23];
-                                                s11 = s12;
-                                              } else {
-                                                peg$currPos = s11;
-                                                s11 = peg$FAILED;
-                                              }
-                                            } else {
-                                              peg$currPos = s11;
-                                              s11 = peg$FAILED;
-                                            }
-                                          } else {
-                                            peg$currPos = s11;
-                                            s11 = peg$FAILED;
-                                          }
-                                        } else {
-                                          peg$currPos = s11;
-                                          s11 = peg$FAILED;
-                                        }
-                                      } else {
-                                        peg$currPos = s11;
-                                        s11 = peg$FAILED;
-                                      }
-                                    } else {
-                                      peg$currPos = s11;
-                                      s11 = peg$FAILED;
-                                    }
-                                  } else {
-                                    peg$currPos = s11;
-                                    s11 = peg$FAILED;
-                                  }
-                                } else {
-                                  peg$currPos = s11;
-                                  s11 = peg$FAILED;
-                                }
-                              } else {
-                                peg$currPos = s11;
-                                s11 = peg$FAILED;
-                              }
-                            } else {
-                              peg$currPos = s11;
-                              s11 = peg$FAILED;
-                            }
-                          } else {
-                            peg$currPos = s11;
-                            s11 = peg$FAILED;
-                          }
-                        } else {
-                          peg$currPos = s11;
-                          s11 = peg$FAILED;
-                        }
-                        while (s11 !== peg$FAILED) {
-                          s10.push(s11);
-                          s11 = peg$currPos;
-                          s12 = peg$parse_();
-                          if (s12 !== peg$FAILED) {
-                            if (input.substr(peg$currPos, 4) === peg$c62) {
-                              s13 = peg$c62;
-                              peg$currPos += 4;
-                            } else {
-                              s13 = peg$FAILED;
-                              if (peg$silentFails === 0) { peg$fail(peg$c63); }
-                            }
-                            if (s13 !== peg$FAILED) {
-                              s14 = peg$parse__();
-                              if (s14 !== peg$FAILED) {
-                                if (input.substr(peg$currPos, 2) === peg$c60) {
-                                  s15 = peg$c60;
-                                  peg$currPos += 2;
-                                } else {
-                                  s15 = peg$FAILED;
-                                  if (peg$silentFails === 0) { peg$fail(peg$c61); }
-                                }
-                                if (s15 !== peg$FAILED) {
-                                  s16 = peg$parse_();
-                                  if (s16 !== peg$FAILED) {
-                                    if (input.charCodeAt(peg$currPos) === 40) {
-                                      s17 = peg$c1;
-                                      peg$currPos++;
-                                    } else {
-                                      s17 = peg$FAILED;
-                                      if (peg$silentFails === 0) { peg$fail(peg$c2); }
-                                    }
-                                    if (s17 !== peg$FAILED) {
-                                      s18 = peg$parse_();
-                                      if (s18 !== peg$FAILED) {
-                                        s19 = peg$parseExpressionLevel1();
-                                        if (s19 !== peg$FAILED) {
-                                          s20 = peg$parse_();
-                                          if (s20 !== peg$FAILED) {
-                                            if (input.charCodeAt(peg$currPos) === 41) {
-                                              s21 = peg$c3;
-                                              peg$currPos++;
-                                            } else {
-                                              s21 = peg$FAILED;
-                                              if (peg$silentFails === 0) { peg$fail(peg$c4); }
-                                            }
-                                            if (s21 !== peg$FAILED) {
-                                              s22 = peg$parse_();
-                                              if (s22 !== peg$FAILED) {
-                                                s23 = peg$parseStatement();
-                                                if (s23 !== peg$FAILED) {
-                                                  s12 = [s12, s13, s14, s15, s16, s17, s18, s19, s20, s21, s22, s23];
-                                                  s11 = s12;
-                                                } else {
-                                                  peg$currPos = s11;
-                                                  s11 = peg$FAILED;
-                                                }
-                                              } else {
-                                                peg$currPos = s11;
-                                                s11 = peg$FAILED;
-                                              }
-                                            } else {
-                                              peg$currPos = s11;
-                                              s11 = peg$FAILED;
-                                            }
-                                          } else {
-                                            peg$currPos = s11;
-                                            s11 = peg$FAILED;
-                                          }
-                                        } else {
-                                          peg$currPos = s11;
-                                          s11 = peg$FAILED;
-                                        }
-                                      } else {
-                                        peg$currPos = s11;
-                                        s11 = peg$FAILED;
-                                      }
-                                    } else {
-                                      peg$currPos = s11;
-                                      s11 = peg$FAILED;
-                                    }
-                                  } else {
-                                    peg$currPos = s11;
-                                    s11 = peg$FAILED;
-                                  }
-                                } else {
-                                  peg$currPos = s11;
-                                  s11 = peg$FAILED;
-                                }
-                              } else {
-                                peg$currPos = s11;
-                                s11 = peg$FAILED;
-                              }
-                            } else {
-                              peg$currPos = s11;
-                              s11 = peg$FAILED;
-                            }
-                          } else {
-                            peg$currPos = s11;
-                            s11 = peg$FAILED;
-                          }
-                        }
-                        if (s10 !== peg$FAILED) {
-                          s11 = peg$currPos;
-                          s12 = peg$parse_();
-                          if (s12 !== peg$FAILED) {
-                            if (input.substr(peg$currPos, 4) === peg$c62) {
-                              s13 = peg$c62;
-                              peg$currPos += 4;
-                            } else {
-                              s13 = peg$FAILED;
-                              if (peg$silentFails === 0) { peg$fail(peg$c63); }
-                            }
-                            if (s13 !== peg$FAILED) {
-                              s14 = peg$parse_();
-                              if (s14 !== peg$FAILED) {
-                                s15 = peg$parseStatement();
-                                if (s15 !== peg$FAILED) {
-                                  s12 = [s12, s13, s14, s15];
-                                  s11 = s12;
-                                } else {
-                                  peg$currPos = s11;
-                                  s11 = peg$FAILED;
-                                }
-                              } else {
-                                peg$currPos = s11;
-                                s11 = peg$FAILED;
-                              }
-                            } else {
-                              peg$currPos = s11;
-                              s11 = peg$FAILED;
-                            }
-                          } else {
-                            peg$currPos = s11;
-                            s11 = peg$FAILED;
-                          }
-                          if (s11 === peg$FAILED) {
-                            s11 = null;
-                          }
-                          if (s11 !== peg$FAILED) {
-                            peg$savedPos = s0;
-                            s1 = peg$c64(s5, s9, s10, s11);
-                            s0 = s1;
-                          } else {
-                            peg$currPos = s0;
-                            s0 = peg$FAILED;
-                          }
-                        } else {
-                          peg$currPos = s0;
-                          s0 = peg$FAILED;
-                        }
-                      } else {
-                        peg$currPos = s0;
-                        s0 = peg$FAILED;
-                      }
-                    } else {
-                      peg$currPos = s0;
-                      s0 = peg$FAILED;
-                    }
-                  } else {
-                    peg$currPos = s0;
-                    s0 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s0;
-                  s0 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionOp1() {
-      var s0;
-
-      if (input.substr(peg$currPos, 2) === peg$c65) {
-        s0 = peg$c65;
-        peg$currPos += 2;
-      } else {
-        s0 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c66); }
-      }
-      if (s0 === peg$FAILED) {
-        if (input.substr(peg$currPos, 2) === peg$c67) {
-          s0 = peg$c67;
-          peg$currPos += 2;
-        } else {
-          s0 = peg$FAILED;
-          if (peg$silentFails === 0) { peg$fail(peg$c68); }
-        }
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionOp2() {
-      var s0;
-
-      if (input.substr(peg$currPos, 2) === peg$c69) {
-        s0 = peg$c69;
-        peg$currPos += 2;
-      } else {
-        s0 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c70); }
-      }
-      if (s0 === peg$FAILED) {
-        if (input.charCodeAt(peg$currPos) === 62) {
-          s0 = peg$c71;
-          peg$currPos++;
-        } else {
-          s0 = peg$FAILED;
-          if (peg$silentFails === 0) { peg$fail(peg$c72); }
-        }
-        if (s0 === peg$FAILED) {
-          if (input.substr(peg$currPos, 2) === peg$c73) {
-            s0 = peg$c73;
-            peg$currPos += 2;
-          } else {
-            s0 = peg$FAILED;
-            if (peg$silentFails === 0) { peg$fail(peg$c74); }
-          }
-          if (s0 === peg$FAILED) {
-            if (input.charCodeAt(peg$currPos) === 60) {
-              s0 = peg$c75;
-              peg$currPos++;
-            } else {
-              s0 = peg$FAILED;
-              if (peg$silentFails === 0) { peg$fail(peg$c76); }
-            }
-            if (s0 === peg$FAILED) {
-              if (input.substr(peg$currPos, 2) === peg$c77) {
-                s0 = peg$c77;
-                peg$currPos += 2;
-              } else {
-                s0 = peg$FAILED;
-                if (peg$silentFails === 0) { peg$fail(peg$c78); }
-              }
-              if (s0 === peg$FAILED) {
-                if (input.substr(peg$currPos, 2) === peg$c79) {
-                  s0 = peg$c79;
-                  peg$currPos += 2;
-                } else {
-                  s0 = peg$FAILED;
-                  if (peg$silentFails === 0) { peg$fail(peg$c80); }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionOp3() {
-      var s0;
-
-      if (input.charCodeAt(peg$currPos) === 43) {
-        s0 = peg$c81;
-        peg$currPos++;
-      } else {
-        s0 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c82); }
-      }
-      if (s0 === peg$FAILED) {
-        if (input.charCodeAt(peg$currPos) === 45) {
-          s0 = peg$c83;
-          peg$currPos++;
-        } else {
-          s0 = peg$FAILED;
-          if (peg$silentFails === 0) { peg$fail(peg$c84); }
-        }
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionOp4() {
-      var s0;
-
-      if (input.charCodeAt(peg$currPos) === 42) {
-        s0 = peg$c18;
-        peg$currPos++;
-      } else {
-        s0 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c19); }
-      }
-      if (s0 === peg$FAILED) {
-        if (input.charCodeAt(peg$currPos) === 47) {
-          s0 = peg$c85;
-          peg$currPos++;
-        } else {
-          s0 = peg$FAILED;
-          if (peg$silentFails === 0) { peg$fail(peg$c86); }
-        }
-        if (s0 === peg$FAILED) {
-          if (input.charCodeAt(peg$currPos) === 37) {
-            s0 = peg$c87;
-            peg$currPos++;
-          } else {
-            s0 = peg$FAILED;
-            if (peg$silentFails === 0) { peg$fail(peg$c88); }
-          }
-        }
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionLevel1() {
-      var s0, s1, s2, s3, s4, s5, s6, s7;
-
-      s0 = peg$currPos;
-      if (input.substr(peg$currPos, 3) === peg$c89) {
-        s1 = peg$c89;
-        peg$currPos += 3;
-      } else {
-        s1 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c90); }
-      }
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse_();
-        if (s2 !== peg$FAILED) {
-          s3 = peg$parseExpressionLevel1();
-          if (s3 !== peg$FAILED) {
-            peg$savedPos = s0;
-            s1 = peg$c91(s3);
-            s0 = s1;
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-      if (s0 === peg$FAILED) {
-        s0 = peg$currPos;
-        s1 = peg$parseExpressionLevel2();
-        if (s1 !== peg$FAILED) {
-          s2 = [];
-          s3 = peg$currPos;
-          s4 = peg$parse_();
-          if (s4 !== peg$FAILED) {
-            s5 = peg$parseExpressionOp1();
-            if (s5 !== peg$FAILED) {
-              s6 = peg$parse_();
-              if (s6 !== peg$FAILED) {
-                s7 = peg$parseExpressionLevel2();
-                if (s7 !== peg$FAILED) {
-                  s4 = [s4, s5, s6, s7];
-                  s3 = s4;
-                } else {
-                  peg$currPos = s3;
-                  s3 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s3;
-                s3 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s3;
-              s3 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s3;
-            s3 = peg$FAILED;
-          }
-          while (s3 !== peg$FAILED) {
-            s2.push(s3);
-            s3 = peg$currPos;
-            s4 = peg$parse_();
-            if (s4 !== peg$FAILED) {
-              s5 = peg$parseExpressionOp1();
-              if (s5 !== peg$FAILED) {
-                s6 = peg$parse_();
-                if (s6 !== peg$FAILED) {
-                  s7 = peg$parseExpressionLevel2();
-                  if (s7 !== peg$FAILED) {
-                    s4 = [s4, s5, s6, s7];
-                    s3 = s4;
-                  } else {
-                    peg$currPos = s3;
-                    s3 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s3;
-                  s3 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s3;
-                s3 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s3;
-              s3 = peg$FAILED;
-            }
-          }
-          if (s2 !== peg$FAILED) {
-            peg$savedPos = s0;
-            s1 = peg$c92(s1, s2);
-            s0 = s1;
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionLevel2() {
-      var s0, s1, s2, s3, s4, s5, s6, s7;
-
-      s0 = peg$currPos;
-      s1 = peg$parseExpressionLevel3();
-      if (s1 !== peg$FAILED) {
-        s2 = [];
-        s3 = peg$currPos;
-        s4 = peg$parse_();
-        if (s4 !== peg$FAILED) {
-          s5 = peg$parseExpressionOp2();
-          if (s5 !== peg$FAILED) {
-            s6 = peg$parse_();
-            if (s6 !== peg$FAILED) {
-              s7 = peg$parseExpressionLevel3();
-              if (s7 !== peg$FAILED) {
-                s4 = [s4, s5, s6, s7];
-                s3 = s4;
-              } else {
-                peg$currPos = s3;
-                s3 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s3;
-              s3 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s3;
-            s3 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s3;
-          s3 = peg$FAILED;
-        }
-        while (s3 !== peg$FAILED) {
-          s2.push(s3);
-          s3 = peg$currPos;
-          s4 = peg$parse_();
-          if (s4 !== peg$FAILED) {
-            s5 = peg$parseExpressionOp2();
-            if (s5 !== peg$FAILED) {
-              s6 = peg$parse_();
-              if (s6 !== peg$FAILED) {
-                s7 = peg$parseExpressionLevel3();
-                if (s7 !== peg$FAILED) {
-                  s4 = [s4, s5, s6, s7];
-                  s3 = s4;
-                } else {
-                  peg$currPos = s3;
-                  s3 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s3;
-                s3 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s3;
-              s3 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s3;
-            s3 = peg$FAILED;
-          }
-        }
-        if (s2 !== peg$FAILED) {
-          peg$savedPos = s0;
-          s1 = peg$c92(s1, s2);
-          s0 = s1;
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-      if (s0 === peg$FAILED) {
-        s0 = peg$parseExpressionLevel3();
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionLevel3() {
-      var s0, s1, s2, s3, s4, s5, s6, s7;
-
-      s0 = peg$currPos;
-      s1 = peg$parseExpressionLevel4();
-      if (s1 !== peg$FAILED) {
-        s2 = [];
-        s3 = peg$currPos;
-        s4 = peg$parse_();
-        if (s4 !== peg$FAILED) {
-          s5 = peg$parseExpressionOp3();
-          if (s5 !== peg$FAILED) {
-            s6 = peg$parse_();
-            if (s6 !== peg$FAILED) {
-              s7 = peg$parseExpressionLevel4();
-              if (s7 !== peg$FAILED) {
-                s4 = [s4, s5, s6, s7];
-                s3 = s4;
-              } else {
-                peg$currPos = s3;
-                s3 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s3;
-              s3 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s3;
-            s3 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s3;
-          s3 = peg$FAILED;
-        }
-        while (s3 !== peg$FAILED) {
-          s2.push(s3);
-          s3 = peg$currPos;
-          s4 = peg$parse_();
-          if (s4 !== peg$FAILED) {
-            s5 = peg$parseExpressionOp3();
-            if (s5 !== peg$FAILED) {
-              s6 = peg$parse_();
-              if (s6 !== peg$FAILED) {
-                s7 = peg$parseExpressionLevel4();
-                if (s7 !== peg$FAILED) {
-                  s4 = [s4, s5, s6, s7];
-                  s3 = s4;
-                } else {
-                  peg$currPos = s3;
-                  s3 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s3;
-                s3 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s3;
-              s3 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s3;
-            s3 = peg$FAILED;
-          }
-        }
-        if (s2 !== peg$FAILED) {
-          peg$savedPos = s0;
-          s1 = peg$c92(s1, s2);
-          s0 = s1;
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-      if (s0 === peg$FAILED) {
-        s0 = peg$parseExpressionLevel4();
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionLevel4() {
-      var s0, s1, s2, s3, s4, s5, s6, s7;
-
-      s0 = peg$currPos;
-      s1 = peg$parseExpressionLevelN();
-      if (s1 !== peg$FAILED) {
-        s2 = [];
-        s3 = peg$currPos;
-        s4 = peg$parse_();
-        if (s4 !== peg$FAILED) {
-          s5 = peg$parseExpressionOp4();
-          if (s5 !== peg$FAILED) {
-            s6 = peg$parse_();
-            if (s6 !== peg$FAILED) {
-              s7 = peg$parseExpressionLevelN();
-              if (s7 !== peg$FAILED) {
-                s4 = [s4, s5, s6, s7];
-                s3 = s4;
-              } else {
-                peg$currPos = s3;
-                s3 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s3;
-              s3 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s3;
-            s3 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s3;
-          s3 = peg$FAILED;
-        }
-        while (s3 !== peg$FAILED) {
-          s2.push(s3);
-          s3 = peg$currPos;
-          s4 = peg$parse_();
-          if (s4 !== peg$FAILED) {
-            s5 = peg$parseExpressionOp4();
-            if (s5 !== peg$FAILED) {
-              s6 = peg$parse_();
-              if (s6 !== peg$FAILED) {
-                s7 = peg$parseExpressionLevelN();
-                if (s7 !== peg$FAILED) {
-                  s4 = [s4, s5, s6, s7];
-                  s3 = s4;
-                } else {
-                  peg$currPos = s3;
-                  s3 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s3;
-                s3 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s3;
-              s3 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s3;
-            s3 = peg$FAILED;
-          }
-        }
-        if (s2 !== peg$FAILED) {
-          peg$savedPos = s0;
-          s1 = peg$c92(s1, s2);
-          s0 = s1;
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-      if (s0 === peg$FAILED) {
-        s0 = peg$parseExpressionLevelN();
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionLevelN() {
-      var s0, s1, s2, s3;
-
-      s0 = peg$currPos;
-      if (input.charCodeAt(peg$currPos) === 45) {
-        s1 = peg$c83;
-        peg$currPos++;
-      } else {
-        s1 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c84); }
-      }
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse_();
-        if (s2 !== peg$FAILED) {
-          s3 = peg$parseExpressionItem();
-          if (s3 !== peg$FAILED) {
-            peg$savedPos = s0;
-            s1 = peg$c93(s3);
-            s0 = s1;
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-      if (s0 === peg$FAILED) {
-        s0 = peg$parseExpressionItem();
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionParenthesis() {
-      var s0, s1, s2, s3, s4, s5;
-
-      s0 = peg$currPos;
-      if (input.charCodeAt(peg$currPos) === 40) {
-        s1 = peg$c1;
-        peg$currPos++;
-      } else {
-        s1 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c2); }
-      }
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse_();
-        if (s2 !== peg$FAILED) {
-          s3 = peg$parseExpressionLevel1();
-          if (s3 !== peg$FAILED) {
-            s4 = peg$parse_();
-            if (s4 !== peg$FAILED) {
-              if (input.charCodeAt(peg$currPos) === 41) {
-                s5 = peg$c3;
-                peg$currPos++;
-              } else {
-                s5 = peg$FAILED;
-                if (peg$silentFails === 0) { peg$fail(peg$c4); }
-              }
-              if (s5 !== peg$FAILED) {
-                peg$savedPos = s0;
-                s1 = peg$c94(s3);
-                s0 = s1;
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionItem() {
-      var s0;
-
-      s0 = peg$parseExpressionFunction();
-      if (s0 === peg$FAILED) {
-        s0 = peg$parseExpressionField();
-        if (s0 === peg$FAILED) {
-          s0 = peg$parseExpressionVariable();
-          if (s0 === peg$FAILED) {
-            s0 = peg$parseExpressionValue();
-            if (s0 === peg$FAILED) {
-              s0 = peg$parseExpressionParenthesis();
-            }
-          }
-        }
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionVariable() {
-      var s0, s1;
-
-      s0 = peg$currPos;
-      s1 = peg$parseName();
-      if (s1 !== peg$FAILED) {
-        peg$savedPos = s0;
-        s1 = peg$c95(s1);
-      }
-      s0 = s1;
-
-      return s0;
-    }
-
-    function peg$parseExpressionField() {
-      var s0, s1, s2, s3;
-
-      s0 = peg$currPos;
-      s1 = peg$parseExpressionFunction();
-      if (s1 === peg$FAILED) {
-        s1 = peg$parseExpressionVariable();
-        if (s1 === peg$FAILED) {
-          s1 = peg$parseExpressionParenthesis();
-        }
-      }
-      if (s1 !== peg$FAILED) {
-        if (input.charCodeAt(peg$currPos) === 46) {
-          s2 = peg$c96;
-          peg$currPos++;
-        } else {
-          s2 = peg$FAILED;
-          if (peg$silentFails === 0) { peg$fail(peg$c97); }
-        }
-        if (s2 !== peg$FAILED) {
-          s3 = peg$parseName();
-          if (s3 !== peg$FAILED) {
-            peg$savedPos = s0;
-            s1 = peg$c98(s1, s3);
-            s0 = s1;
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionFunction() {
-      var s0, s1, s2, s3, s4, s5;
-
-      s0 = peg$currPos;
-      s1 = peg$parseName();
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse_();
-        if (s2 !== peg$FAILED) {
-          if (input.charCodeAt(peg$currPos) === 40) {
-            s3 = peg$c1;
-            peg$currPos++;
-          } else {
-            s3 = peg$FAILED;
-            if (peg$silentFails === 0) { peg$fail(peg$c2); }
-          }
-          if (s3 !== peg$FAILED) {
-            s4 = peg$parseExpressionFunctionArgumentList();
-            if (s4 !== peg$FAILED) {
-              if (input.charCodeAt(peg$currPos) === 41) {
-                s5 = peg$c3;
-                peg$currPos++;
-              } else {
-                s5 = peg$FAILED;
-                if (peg$silentFails === 0) { peg$fail(peg$c4); }
-              }
-              if (s5 !== peg$FAILED) {
-                peg$savedPos = s0;
-                s1 = peg$c99(s1, s4);
-                s0 = s1;
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionFunctionArgumentList() {
-      var s0, s1, s2, s3, s4, s5, s6, s7, s8;
-
-      s0 = peg$currPos;
-      s1 = peg$parse_();
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parseExpressionArgument();
-        if (s2 !== peg$FAILED) {
-          s3 = [];
-          s4 = peg$currPos;
-          s5 = peg$parse_();
-          if (s5 !== peg$FAILED) {
-            if (input.charCodeAt(peg$currPos) === 44) {
-              s6 = peg$c23;
-              peg$currPos++;
-            } else {
-              s6 = peg$FAILED;
-              if (peg$silentFails === 0) { peg$fail(peg$c24); }
-            }
-            if (s6 !== peg$FAILED) {
-              s7 = peg$parse_();
-              if (s7 !== peg$FAILED) {
-                s8 = peg$parseExpressionArgument();
-                if (s8 !== peg$FAILED) {
-                  s5 = [s5, s6, s7, s8];
-                  s4 = s5;
-                } else {
-                  peg$currPos = s4;
-                  s4 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s4;
-                s4 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s4;
-              s4 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s4;
-            s4 = peg$FAILED;
-          }
-          while (s4 !== peg$FAILED) {
-            s3.push(s4);
-            s4 = peg$currPos;
-            s5 = peg$parse_();
-            if (s5 !== peg$FAILED) {
-              if (input.charCodeAt(peg$currPos) === 44) {
-                s6 = peg$c23;
-                peg$currPos++;
-              } else {
-                s6 = peg$FAILED;
-                if (peg$silentFails === 0) { peg$fail(peg$c24); }
-              }
-              if (s6 !== peg$FAILED) {
-                s7 = peg$parse_();
-                if (s7 !== peg$FAILED) {
-                  s8 = peg$parseExpressionArgument();
-                  if (s8 !== peg$FAILED) {
-                    s5 = [s5, s6, s7, s8];
-                    s4 = s5;
-                  } else {
-                    peg$currPos = s4;
-                    s4 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s4;
-                  s4 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s4;
-                s4 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s4;
-              s4 = peg$FAILED;
-            }
-          }
-          if (s3 !== peg$FAILED) {
-            s4 = peg$parse_();
-            if (s4 !== peg$FAILED) {
-              peg$savedPos = s0;
-              s1 = peg$c26(s2, s3);
-              s0 = s1;
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-      if (s0 === peg$FAILED) {
-        s0 = peg$currPos;
-        s1 = peg$parse_();
-        if (s1 !== peg$FAILED) {
-          peg$savedPos = s0;
-          s1 = peg$c27();
-        }
-        s0 = s1;
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionArgument() {
-      var s0, s1, s2, s3, s4, s5;
-
-      s0 = peg$currPos;
-      s1 = peg$parseName();
-      if (s1 !== peg$FAILED) {
-        s2 = peg$parse_();
-        if (s2 !== peg$FAILED) {
-          if (input.charCodeAt(peg$currPos) === 61) {
-            s3 = peg$c10;
-            peg$currPos++;
-          } else {
-            s3 = peg$FAILED;
-            if (peg$silentFails === 0) { peg$fail(peg$c11); }
-          }
-          if (s3 !== peg$FAILED) {
-            s4 = peg$parse_();
-            if (s4 !== peg$FAILED) {
-              s5 = peg$parseExpressionLevel1();
-              if (s5 !== peg$FAILED) {
-                peg$savedPos = s0;
-                s1 = peg$c45(s1, s5);
-                s0 = s1;
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s0;
-            s0 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s0;
-          s0 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s0;
-        s0 = peg$FAILED;
-      }
-      if (s0 === peg$FAILED) {
-        s0 = peg$currPos;
-        s1 = peg$parseExpressionLevel1();
-        if (s1 !== peg$FAILED) {
-          peg$savedPos = s0;
-          s1 = peg$c100(s1);
-        }
-        s0 = s1;
-      }
-
-      return s0;
-    }
-
-    function peg$parseExpressionValue() {
-      var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9;
-
-      s0 = peg$currPos;
-      s1 = peg$parseFloat();
-      if (s1 !== peg$FAILED) {
-        peg$savedPos = s0;
-        s1 = peg$c101(s1);
-      }
-      s0 = s1;
-      if (s0 === peg$FAILED) {
-        s0 = peg$currPos;
-        s1 = peg$parseInteger();
-        if (s1 !== peg$FAILED) {
-          peg$savedPos = s0;
-          s1 = peg$c102(s1);
-        }
-        s0 = s1;
-        if (s0 === peg$FAILED) {
-          s0 = peg$currPos;
-          s1 = peg$parseBoolean();
-          if (s1 !== peg$FAILED) {
-            peg$savedPos = s0;
-            s1 = peg$c103(s1);
-          }
-          s0 = s1;
-          if (s0 === peg$FAILED) {
-            s0 = peg$currPos;
-            if (input.charCodeAt(peg$currPos) === 91) {
-              s1 = peg$c38;
-              peg$currPos++;
-            } else {
-              s1 = peg$FAILED;
-              if (peg$silentFails === 0) { peg$fail(peg$c39); }
-            }
-            if (s1 !== peg$FAILED) {
-              s2 = peg$parse_();
-              if (s2 !== peg$FAILED) {
-                s3 = peg$parseFloat();
-                if (s3 !== peg$FAILED) {
-                  s4 = [];
-                  s5 = peg$currPos;
-                  s6 = peg$parse_();
-                  if (s6 !== peg$FAILED) {
-                    if (input.charCodeAt(peg$currPos) === 44) {
-                      s7 = peg$c23;
-                      peg$currPos++;
-                    } else {
-                      s7 = peg$FAILED;
-                      if (peg$silentFails === 0) { peg$fail(peg$c24); }
-                    }
-                    if (s7 !== peg$FAILED) {
-                      s8 = peg$parse_();
-                      if (s8 !== peg$FAILED) {
-                        s9 = peg$parseFloat();
-                        if (s9 !== peg$FAILED) {
-                          s6 = [s6, s7, s8, s9];
-                          s5 = s6;
-                        } else {
-                          peg$currPos = s5;
-                          s5 = peg$FAILED;
-                        }
-                      } else {
-                        peg$currPos = s5;
-                        s5 = peg$FAILED;
-                      }
-                    } else {
-                      peg$currPos = s5;
-                      s5 = peg$FAILED;
-                    }
-                  } else {
-                    peg$currPos = s5;
-                    s5 = peg$FAILED;
-                  }
-                  while (s5 !== peg$FAILED) {
-                    s4.push(s5);
-                    s5 = peg$currPos;
-                    s6 = peg$parse_();
-                    if (s6 !== peg$FAILED) {
-                      if (input.charCodeAt(peg$currPos) === 44) {
-                        s7 = peg$c23;
-                        peg$currPos++;
-                      } else {
-                        s7 = peg$FAILED;
-                        if (peg$silentFails === 0) { peg$fail(peg$c24); }
-                      }
-                      if (s7 !== peg$FAILED) {
-                        s8 = peg$parse_();
-                        if (s8 !== peg$FAILED) {
-                          s9 = peg$parseFloat();
-                          if (s9 !== peg$FAILED) {
-                            s6 = [s6, s7, s8, s9];
-                            s5 = s6;
-                          } else {
-                            peg$currPos = s5;
-                            s5 = peg$FAILED;
-                          }
-                        } else {
-                          peg$currPos = s5;
-                          s5 = peg$FAILED;
-                        }
-                      } else {
-                        peg$currPos = s5;
-                        s5 = peg$FAILED;
-                      }
-                    } else {
-                      peg$currPos = s5;
-                      s5 = peg$FAILED;
-                    }
-                  }
-                  if (s4 !== peg$FAILED) {
-                    s5 = peg$parse_();
-                    if (s5 !== peg$FAILED) {
-                      if (input.charCodeAt(peg$currPos) === 93) {
-                        s6 = peg$c40;
-                        peg$currPos++;
-                      } else {
-                        s6 = peg$FAILED;
-                        if (peg$silentFails === 0) { peg$fail(peg$c41); }
-                      }
-                      if (s6 !== peg$FAILED) {
-                        peg$savedPos = s0;
-                        s1 = peg$c104(s3, s4);
-                        s0 = s1;
-                      } else {
-                        peg$currPos = s0;
-                        s0 = peg$FAILED;
-                      }
-                    } else {
-                      peg$currPos = s0;
-                      s0 = peg$FAILED;
-                    }
-                  } else {
-                    peg$currPos = s0;
-                    s0 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s0;
-                  s0 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          }
-        }
-      }
-
-      return s0;
-    }
-
-    function peg$parseValue() {
-      var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9;
-
-      s0 = peg$parseFloat();
-      if (s0 === peg$FAILED) {
-        s0 = peg$parseInteger();
-        if (s0 === peg$FAILED) {
-          s0 = peg$parseBoolean();
-          if (s0 === peg$FAILED) {
-            s0 = peg$currPos;
-            if (input.charCodeAt(peg$currPos) === 91) {
-              s1 = peg$c38;
-              peg$currPos++;
-            } else {
-              s1 = peg$FAILED;
-              if (peg$silentFails === 0) { peg$fail(peg$c39); }
-            }
-            if (s1 !== peg$FAILED) {
-              s2 = peg$parse_();
-              if (s2 !== peg$FAILED) {
-                s3 = peg$parseFloat();
-                if (s3 !== peg$FAILED) {
-                  s4 = [];
-                  s5 = peg$currPos;
-                  s6 = peg$parse_();
-                  if (s6 !== peg$FAILED) {
-                    if (input.charCodeAt(peg$currPos) === 44) {
-                      s7 = peg$c23;
-                      peg$currPos++;
-                    } else {
-                      s7 = peg$FAILED;
-                      if (peg$silentFails === 0) { peg$fail(peg$c24); }
-                    }
-                    if (s7 !== peg$FAILED) {
-                      s8 = peg$parse_();
-                      if (s8 !== peg$FAILED) {
-                        s9 = peg$parseFloat();
-                        if (s9 !== peg$FAILED) {
-                          s6 = [s6, s7, s8, s9];
-                          s5 = s6;
-                        } else {
-                          peg$currPos = s5;
-                          s5 = peg$FAILED;
-                        }
-                      } else {
-                        peg$currPos = s5;
-                        s5 = peg$FAILED;
-                      }
-                    } else {
-                      peg$currPos = s5;
-                      s5 = peg$FAILED;
-                    }
-                  } else {
-                    peg$currPos = s5;
-                    s5 = peg$FAILED;
-                  }
-                  while (s5 !== peg$FAILED) {
-                    s4.push(s5);
-                    s5 = peg$currPos;
-                    s6 = peg$parse_();
-                    if (s6 !== peg$FAILED) {
-                      if (input.charCodeAt(peg$currPos) === 44) {
-                        s7 = peg$c23;
-                        peg$currPos++;
-                      } else {
-                        s7 = peg$FAILED;
-                        if (peg$silentFails === 0) { peg$fail(peg$c24); }
-                      }
-                      if (s7 !== peg$FAILED) {
-                        s8 = peg$parse_();
-                        if (s8 !== peg$FAILED) {
-                          s9 = peg$parseFloat();
-                          if (s9 !== peg$FAILED) {
-                            s6 = [s6, s7, s8, s9];
-                            s5 = s6;
-                          } else {
-                            peg$currPos = s5;
-                            s5 = peg$FAILED;
-                          }
-                        } else {
-                          peg$currPos = s5;
-                          s5 = peg$FAILED;
-                        }
-                      } else {
-                        peg$currPos = s5;
-                        s5 = peg$FAILED;
-                      }
-                    } else {
-                      peg$currPos = s5;
-                      s5 = peg$FAILED;
-                    }
-                  }
-                  if (s4 !== peg$FAILED) {
-                    s5 = peg$parse_();
-                    if (s5 !== peg$FAILED) {
-                      if (input.charCodeAt(peg$currPos) === 93) {
-                        s6 = peg$c40;
-                        peg$currPos++;
-                      } else {
-                        s6 = peg$FAILED;
-                        if (peg$silentFails === 0) { peg$fail(peg$c41); }
-                      }
-                      if (s6 !== peg$FAILED) {
-                        peg$savedPos = s0;
-                        s1 = peg$c26(s3, s4);
-                        s0 = s1;
-                      } else {
-                        peg$currPos = s0;
-                        s0 = peg$FAILED;
-                      }
-                    } else {
-                      peg$currPos = s0;
-                      s0 = peg$FAILED;
-                    }
-                  } else {
-                    peg$currPos = s0;
-                    s0 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s0;
-                  s0 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s0;
-                s0 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s0;
-              s0 = peg$FAILED;
-            }
-          }
-        }
-      }
-
-      return s0;
-    }
-
-    function peg$parseInteger() {
-      var s0, s1, s2, s3, s4;
-
-      s0 = peg$currPos;
-      s1 = peg$currPos;
-      if (peg$c105.test(input.charAt(peg$currPos))) {
-        s2 = input.charAt(peg$currPos);
-        peg$currPos++;
-      } else {
-        s2 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c106); }
-      }
-      if (s2 === peg$FAILED) {
-        s2 = null;
-      }
-      if (s2 !== peg$FAILED) {
-        s3 = [];
-        if (peg$c107.test(input.charAt(peg$currPos))) {
-          s4 = input.charAt(peg$currPos);
-          peg$currPos++;
-        } else {
-          s4 = peg$FAILED;
-          if (peg$silentFails === 0) { peg$fail(peg$c108); }
-        }
-        if (s4 !== peg$FAILED) {
-          while (s4 !== peg$FAILED) {
-            s3.push(s4);
-            if (peg$c107.test(input.charAt(peg$currPos))) {
-              s4 = input.charAt(peg$currPos);
-              peg$currPos++;
-            } else {
-              s4 = peg$FAILED;
-              if (peg$silentFails === 0) { peg$fail(peg$c108); }
-            }
-          }
-        } else {
-          s3 = peg$FAILED;
-        }
-        if (s3 !== peg$FAILED) {
-          s2 = [s2, s3];
-          s1 = s2;
-        } else {
-          peg$currPos = s1;
-          s1 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s1;
-        s1 = peg$FAILED;
-      }
-      if (s1 !== peg$FAILED) {
-        peg$savedPos = s0;
-        s1 = peg$c109(s1);
-      }
-      s0 = s1;
-
-      return s0;
-    }
-
-    function peg$parseFloat() {
-      var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9;
-
-      s0 = peg$currPos;
-      s1 = peg$currPos;
-      if (peg$c105.test(input.charAt(peg$currPos))) {
-        s2 = input.charAt(peg$currPos);
-        peg$currPos++;
-      } else {
-        s2 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c106); }
-      }
-      if (s2 === peg$FAILED) {
-        s2 = null;
-      }
-      if (s2 !== peg$FAILED) {
-        s3 = [];
-        if (peg$c107.test(input.charAt(peg$currPos))) {
-          s4 = input.charAt(peg$currPos);
-          peg$currPos++;
-        } else {
-          s4 = peg$FAILED;
-          if (peg$silentFails === 0) { peg$fail(peg$c108); }
-        }
-        if (s4 !== peg$FAILED) {
-          while (s4 !== peg$FAILED) {
-            s3.push(s4);
-            if (peg$c107.test(input.charAt(peg$currPos))) {
-              s4 = input.charAt(peg$currPos);
-              peg$currPos++;
-            } else {
-              s4 = peg$FAILED;
-              if (peg$silentFails === 0) { peg$fail(peg$c108); }
-            }
-          }
-        } else {
-          s3 = peg$FAILED;
-        }
-        if (s3 !== peg$FAILED) {
-          s4 = peg$currPos;
-          if (input.charCodeAt(peg$currPos) === 46) {
-            s5 = peg$c96;
-            peg$currPos++;
-          } else {
-            s5 = peg$FAILED;
-            if (peg$silentFails === 0) { peg$fail(peg$c97); }
-          }
-          if (s5 !== peg$FAILED) {
-            s6 = [];
-            if (peg$c107.test(input.charAt(peg$currPos))) {
-              s7 = input.charAt(peg$currPos);
-              peg$currPos++;
-            } else {
-              s7 = peg$FAILED;
-              if (peg$silentFails === 0) { peg$fail(peg$c108); }
-            }
-            if (s7 !== peg$FAILED) {
-              while (s7 !== peg$FAILED) {
-                s6.push(s7);
-                if (peg$c107.test(input.charAt(peg$currPos))) {
-                  s7 = input.charAt(peg$currPos);
-                  peg$currPos++;
-                } else {
-                  s7 = peg$FAILED;
-                  if (peg$silentFails === 0) { peg$fail(peg$c108); }
-                }
-              }
-            } else {
-              s6 = peg$FAILED;
-            }
-            if (s6 !== peg$FAILED) {
-              s5 = [s5, s6];
-              s4 = s5;
-            } else {
-              peg$currPos = s4;
-              s4 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s4;
-            s4 = peg$FAILED;
-          }
-          if (s4 === peg$FAILED) {
-            s4 = null;
-          }
-          if (s4 !== peg$FAILED) {
-            s5 = peg$currPos;
-            if (peg$c110.test(input.charAt(peg$currPos))) {
-              s6 = input.charAt(peg$currPos);
-              peg$currPos++;
-            } else {
-              s6 = peg$FAILED;
-              if (peg$silentFails === 0) { peg$fail(peg$c111); }
-            }
-            if (s6 !== peg$FAILED) {
-              if (peg$c105.test(input.charAt(peg$currPos))) {
-                s7 = input.charAt(peg$currPos);
-                peg$currPos++;
-              } else {
-                s7 = peg$FAILED;
-                if (peg$silentFails === 0) { peg$fail(peg$c106); }
-              }
-              if (s7 === peg$FAILED) {
-                s7 = null;
-              }
-              if (s7 !== peg$FAILED) {
-                s8 = [];
-                if (peg$c107.test(input.charAt(peg$currPos))) {
-                  s9 = input.charAt(peg$currPos);
-                  peg$currPos++;
-                } else {
-                  s9 = peg$FAILED;
-                  if (peg$silentFails === 0) { peg$fail(peg$c108); }
-                }
-                if (s9 !== peg$FAILED) {
-                  while (s9 !== peg$FAILED) {
-                    s8.push(s9);
-                    if (peg$c107.test(input.charAt(peg$currPos))) {
-                      s9 = input.charAt(peg$currPos);
-                      peg$currPos++;
-                    } else {
-                      s9 = peg$FAILED;
-                      if (peg$silentFails === 0) { peg$fail(peg$c108); }
-                    }
-                  }
-                } else {
-                  s8 = peg$FAILED;
-                }
-                if (s8 !== peg$FAILED) {
-                  s6 = [s6, s7, s8];
-                  s5 = s6;
-                } else {
-                  peg$currPos = s5;
-                  s5 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s5;
-                s5 = peg$FAILED;
-              }
-            } else {
-              peg$currPos = s5;
-              s5 = peg$FAILED;
-            }
-            if (s5 === peg$FAILED) {
-              s5 = null;
-            }
-            if (s5 !== peg$FAILED) {
-              s2 = [s2, s3, s4, s5];
-              s1 = s2;
-            } else {
-              peg$currPos = s1;
-              s1 = peg$FAILED;
-            }
-          } else {
-            peg$currPos = s1;
-            s1 = peg$FAILED;
-          }
-        } else {
-          peg$currPos = s1;
-          s1 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s1;
-        s1 = peg$FAILED;
-      }
-      if (s1 !== peg$FAILED) {
-        peg$savedPos = s0;
-        s1 = peg$c109(s1);
-      }
-      s0 = s1;
-
-      return s0;
-    }
-
-    function peg$parseBoolean() {
-      var s0, s1;
-
-      s0 = peg$currPos;
-      if (input.substr(peg$currPos, 4) === peg$c112) {
-        s1 = peg$c112;
-        peg$currPos += 4;
-      } else {
-        s1 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c113); }
-      }
-      if (s1 !== peg$FAILED) {
-        peg$savedPos = s0;
-        s1 = peg$c114();
-      }
-      s0 = s1;
-      if (s0 === peg$FAILED) {
-        s0 = peg$currPos;
-        if (input.substr(peg$currPos, 5) === peg$c115) {
-          s1 = peg$c115;
-          peg$currPos += 5;
-        } else {
-          s1 = peg$FAILED;
-          if (peg$silentFails === 0) { peg$fail(peg$c116); }
-        }
-        if (s1 !== peg$FAILED) {
-          peg$savedPos = s0;
-          s1 = peg$c117();
-        }
-        s0 = s1;
-      }
-
-      return s0;
-    }
-
-    function peg$parseName() {
-      var s0, s1, s2, s3, s4;
-
-      s0 = peg$currPos;
-      s1 = peg$currPos;
-      if (peg$c118.test(input.charAt(peg$currPos))) {
-        s2 = input.charAt(peg$currPos);
-        peg$currPos++;
-      } else {
-        s2 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c119); }
-      }
-      if (s2 !== peg$FAILED) {
-        s3 = [];
-        if (peg$c120.test(input.charAt(peg$currPos))) {
-          s4 = input.charAt(peg$currPos);
-          peg$currPos++;
-        } else {
-          s4 = peg$FAILED;
-          if (peg$silentFails === 0) { peg$fail(peg$c121); }
-        }
-        while (s4 !== peg$FAILED) {
-          s3.push(s4);
-          if (peg$c120.test(input.charAt(peg$currPos))) {
-            s4 = input.charAt(peg$currPos);
-            peg$currPos++;
-          } else {
-            s4 = peg$FAILED;
-            if (peg$silentFails === 0) { peg$fail(peg$c121); }
-          }
-        }
-        if (s3 !== peg$FAILED) {
-          s2 = [s2, s3];
-          s1 = s2;
-        } else {
-          peg$currPos = s1;
-          s1 = peg$FAILED;
-        }
-      } else {
-        peg$currPos = s1;
-        s1 = peg$FAILED;
-      }
-      if (s1 !== peg$FAILED) {
-        peg$savedPos = s0;
-        s1 = peg$c122(s1);
-      }
-      s0 = s1;
-
-      return s0;
-    }
-
-    function peg$parse_() {
-      var s0, s1, s2;
-
-      s0 = peg$currPos;
-      s1 = [];
-      if (peg$c123.test(input.charAt(peg$currPos))) {
-        s2 = input.charAt(peg$currPos);
-        peg$currPos++;
-      } else {
-        s2 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c124); }
-      }
-      while (s2 !== peg$FAILED) {
-        s1.push(s2);
-        if (peg$c123.test(input.charAt(peg$currPos))) {
-          s2 = input.charAt(peg$currPos);
-          peg$currPos++;
-        } else {
-          s2 = peg$FAILED;
-          if (peg$silentFails === 0) { peg$fail(peg$c124); }
-        }
-      }
-      if (s1 !== peg$FAILED) {
-        peg$savedPos = s0;
-        s1 = peg$c125();
-      }
-      s0 = s1;
-
-      return s0;
-    }
-
-    function peg$parse__() {
-      var s0, s1, s2;
-
-      s0 = peg$currPos;
-      s1 = [];
-      if (peg$c123.test(input.charAt(peg$currPos))) {
-        s2 = input.charAt(peg$currPos);
-        peg$currPos++;
-      } else {
-        s2 = peg$FAILED;
-        if (peg$silentFails === 0) { peg$fail(peg$c124); }
-      }
-      if (s2 !== peg$FAILED) {
-        while (s2 !== peg$FAILED) {
-          s1.push(s2);
-          if (peg$c123.test(input.charAt(peg$currPos))) {
-            s2 = input.charAt(peg$currPos);
-            peg$currPos++;
-          } else {
-            s2 = peg$FAILED;
-            if (peg$silentFails === 0) { peg$fail(peg$c124); }
-          }
-        }
-      } else {
-        s1 = peg$FAILED;
-      }
-      if (s1 !== peg$FAILED) {
-        peg$savedPos = s0;
-        s1 = peg$c125();
-      }
-      s0 = s1;
-
-      return s0;
-    }
-
-
-        function flatten(vars) {
-            if(vars instanceof Array) {
-                var r = "";
-                for(var i = 0; i < vars.length; i++)
-                    r += flatten(vars[i]);
-                return r;
-            } else return vars || "";
-        }
-
-        function resolveList(first, others, k) {
-            if(others) {
-                return [ first ].concat(others.map(function(d) { return d[k]; }));
-            } else {
-                return [ first ];
-            }
-        }
-
-        function resolveExpressionBinaryOp(first, others) {
-            var expr = first;
-            others.forEach(function(d) {
-              var op = d[1];
-              var rhs = d[3];
-              expr = makeOperatorFunction({ type: "operator", operator: op, args: [ expr, rhs ] });
-            });
-            return expr;
-        }
-
-        function resolveArgumentList(list) {
-            var result = { args: [], kwargs: {} };
-            list.forEach(function(d) {
-                if(d.name !== undefined) {
-                    result.kwargs[d.name] = d.value;
-                } else {
-                    result.args.push(d.value);
-                }
-            });
-            return result;
-        }
-
-        function makeOperatorFunction(op) {
-            return { type: "function", name: "@" + op.operator, args: { args: op.args, kwargs: {} } };
-        }
-
-
-    peg$result = peg$startRuleFunction();
-
-    if (peg$result !== peg$FAILED && peg$currPos === input.length) {
-      return peg$result;
-    } else {
-      if (peg$result !== peg$FAILED && peg$currPos < input.length) {
-        peg$fail({ type: "end", description: "end of input" });
-      }
-
-      throw peg$buildException(
-        null,
-        peg$maxFailExpected,
-        peg$maxFailPos < input.length ? input.charAt(peg$maxFailPos) : null,
-        peg$maxFailPos < input.length
-          ? peg$computeLocation(peg$maxFailPos, peg$maxFailPos + 1)
-          : peg$computeLocation(peg$maxFailPos, peg$maxFailPos)
-      );
-    }
-  }
-
-  return {
-    SyntaxError: peg$SyntaxError,
-    parse:       peg$parse
-  };
-})();
-
-},{}],6:[function(require,module,exports){
-"use strict";
-var exceptions_1 = require("../exceptions");
-var utils_1 = require("../utils");
-var Intrinsics = require("../intrinsics");
-var Context = (function () {
-    function Context() {
-        this._variables = new utils_1.Dictionary();
-    }
-    Context.prototype.get = function (name) {
-        if (!this._variables.has(name)) {
-            throw new exceptions_1.RuntimeError("'" + name + "' is undefined.");
-        }
-        return this._variables.get(name);
-    };
-    Context.prototype.set = function (name, value) {
-        this._variables.set(name, value);
-    };
-    Context.prototype.evaluateExpression = function (expression) {
-        var _this = this;
-        switch (expression.type) {
-            case "function": {
-                var expr = expression;
-                var args = expr.arguments.map(function (arg) { return _this.evaluateExpression(arg); });
-                var func = Intrinsics.getIntrinsicFunction(expr.functionName);
-                if (!func) {
-                    throw new exceptions_1.RuntimeError("function '" + expr.functionName + "' is undefined.");
-                }
-                return func.javascriptImplementation.apply(func, args);
-            }
-            case "field": {
-                var expr = expression;
-                var value = this.evaluateExpression(expr.value);
-                switch (expr.fieldName) {
-                    case "x": return value[0];
-                    case "y": return value[1];
-                    case "z": return value[2];
-                    case "w": return value[3];
-                    case "r": return value[0];
-                    case "g": return value[1];
-                    case "b": return value[2];
-                    case "a": return value[3];
-                }
-                throw new exceptions_1.RuntimeError("invalid field.");
-            }
-            case "constant": {
-                var expr = expression;
-                return expr.value;
-            }
-            case "variable": {
-                var expr = expression;
-                return this.get(expr.variableName);
-            }
-        }
-    };
-    Context.prototype.evaluateStatement = function (statement) {
-        switch (statement.type) {
-            case "assign": {
-                var s = statement;
-                this.set(s.variableName, this.evaluateExpression(s.expression));
-                return [];
-            }
-            case "condition": {
-                var s = statement;
-                var condition = this.evaluateExpression(s.condition);
-                if (condition != 0) {
-                    return this.evaluateStatements(s.trueStatements);
-                }
-                else {
-                    return this.evaluateStatements(s.falseStatements);
-                }
-            }
-            case "emit": {
-                var s = statement;
-                var emitInfo = {};
-                for (var name_1 in s.attributes) {
-                    var value = this.evaluateExpression(s.attributes[name_1]);
-                    emitInfo[name_1] = value;
-                }
-                return [emitInfo];
-            }
-        }
-    };
-    Context.prototype.evaluateStatements = function (statements) {
-        var result = [];
-        for (var _i = 0, statements_1 = statements; _i < statements_1.length; _i++) {
-            var s = statements_1[_i];
-            var v = this.evaluateStatement(s);
-            for (var _a = 0, v_1 = v; _a < v_1.length; _a++) {
-                var r = v_1[_a];
-                result.push(r);
-            }
-        }
-        return result;
-    };
-    Context.prototype.evaluateShape = function (shape, inputs) {
-        for (var name_2 in inputs) {
-            this.set(name_2, inputs[name_2]);
-        }
-        return this.evaluateStatements(shape.statements);
-    };
-    return Context;
-}());
-exports.Context = Context;
-
-},{"../exceptions":7,"../intrinsics":8,"../utils":22}],7:[function(require,module,exports){
-"use strict";
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
-// Base class for errors.
-var BaseError = (function (_super) {
-    __extends(BaseError, _super);
-    function BaseError(message) {
-        _super.call(this, message);
-        this.stack = (new Error(message)).stack;
-    }
-    return BaseError;
-}(Error));
-exports.BaseError = BaseError;
-// Parse error.
-var ParseError = (function (_super) {
-    __extends(ParseError, _super);
-    function ParseError(message, start, end) {
-        _super.call(this, message);
-        this.name = "ParseError";
-        this.message = message;
-        this.start = start;
-        this.end = end;
-    }
-    return ParseError;
-}(BaseError));
-exports.ParseError = ParseError;
-// Compile error.
-var CompileError = (function (_super) {
-    __extends(CompileError, _super);
-    function CompileError(message, start, end) {
-        _super.call(this, message);
-        this.name = "CompileError";
-        this.message = message;
-        this.start = start;
-        this.end = end;
-    }
-    return CompileError;
-}(BaseError));
-exports.CompileError = CompileError;
-// Runtime error.
-var RuntimeError = (function (_super) {
-    __extends(RuntimeError, _super);
-    function RuntimeError(message, start, end) {
-        _super.call(this, message);
-        this.name = "RuntimeError";
-        this.message = message;
-        this.start = start;
-        this.end = end;
-    }
-    return RuntimeError;
-}(BaseError));
-exports.RuntimeError = RuntimeError;
-
-},{}],8:[function(require,module,exports){
-"use strict";
-var utils_1 = require("./utils");
-var math_1 = require("./math");
-// Global intrinsic functions.
-var intrinsicFunctions = new utils_1.Dictionary();
-var intrinsicFunctionList = [];
-var typeConversions = new utils_1.Dictionary();
-var constants = new utils_1.Dictionary();
-function getInternalName(func) {
-    return "@" + func.name + ":" + func.argTypes.join(",") + ":" + func.returnType;
-}
-exports.getInternalName = getInternalName;
-function getIntrinsicFunction(internalName) {
-    if (!intrinsicFunctions.has(internalName)) {
-        console.log(internalName);
-    }
-    return intrinsicFunctions.get(internalName);
-}
-exports.getIntrinsicFunction = getIntrinsicFunction;
-function forEachIntrinsicFunction(callback) {
-    intrinsicFunctionList.forEach(callback);
-}
-exports.forEachIntrinsicFunction = forEachIntrinsicFunction;
-function addIntrinsicFunction(func) {
-    func.internalName = getInternalName(func);
-    intrinsicFunctions.set(func.internalName, func);
-    intrinsicFunctionList.push(func);
-}
-exports.addIntrinsicFunction = addIntrinsicFunction;
-function addConstant(name, type, value) {
-    var constant = {
-        name: name,
-        type: type,
-        value: value
-    };
-    constants.set(name, constant);
-}
-exports.addConstant = addConstant;
-function forEachConstant(callback) {
-    constants.forEach(callback);
-}
-exports.forEachConstant = forEachConstant;
-function forEachTypeConversion(callback) {
-    typeConversions.forEach(callback);
-}
-exports.forEachTypeConversion = forEachTypeConversion;
-function getTypeConversion(srcType, destType) {
-    return typeConversions.get(srcType + ":" + destType);
-}
-exports.getTypeConversion = getTypeConversion;
-function RegisterTypeConversion(srcType, destType, rank, func) {
-    var name = "cast:" + srcType + ":" + destType;
-    var info = {
-        name: name, argTypes: [srcType], returnType: destType, javascriptImplementation: func
-    };
-    addIntrinsicFunction(info);
-    typeConversions.set(srcType + ":" + destType, { internalName: info.internalName, rank: rank });
-}
-function RegisterFunction(name, argTypes, returnType, func) {
-    addIntrinsicFunction({
-        name: name, argTypes: argTypes, returnType: returnType, javascriptImplementation: func
-    });
-}
-function RegisterOperator(name, argTypes, returnType, func) {
-    addIntrinsicFunction({
-        name: "@" + name, argTypes: argTypes, returnType: returnType, javascriptImplementation: func
-    });
-}
-var RegisterConstructor = function (type, srcTypes, func) { return RegisterFunction(type, srcTypes, type, func); };
-// Basic arithmetics: +, -, *, /.
-RegisterOperator("+", ["float", "float"], "float", function (a, b) { return a + b; });
-RegisterOperator("-", ["float", "float"], "float", function (a, b) { return a - b; });
-RegisterOperator("*", ["float", "float"], "float", function (a, b) { return a * b; });
-RegisterOperator("/", ["float", "float"], "float", function (a, b) { return a / b; });
-RegisterOperator("+", ["float"], "float", function (a) { return +a; });
-RegisterOperator("-", ["float"], "float", function (a) { return -a; });
-RegisterOperator("%", ["int", "int"], "int", function (a, b) { return a % b; });
-RegisterOperator("%", ["float", "float"], "float", function (a, b) { return a % b; });
-RegisterOperator("+", ["int", "int"], "int", function (a, b) { return a + b; });
-RegisterOperator("-", ["int", "int"], "int", function (a, b) { return a - b; });
-RegisterOperator("*", ["int", "int"], "int", function (a, b) { return a * b; });
-RegisterOperator("/", ["int", "int"], "int", function (a, b) { return a / b; });
-RegisterOperator("+", ["int"], "int", function (a) { return +a; });
-RegisterOperator("-", ["int"], "int", function (a) { return -a; });
-RegisterOperator("+", ["Vector2", "Vector2"], "Vector2", function (a, b) { return [a[0] + b[0], a[1] + b[1]]; });
-RegisterOperator("-", ["Vector2", "Vector2"], "Vector2", function (a, b) { return [a[0] - b[0], a[1] - b[1]]; });
-RegisterOperator("*", ["Vector2", "Vector2"], "Vector2", function (a, b) { return [a[0] * b[0], a[1] * b[1]]; });
-RegisterOperator("/", ["Vector2", "Vector2"], "Vector2", function (a, b) { return [a[0] / b[0], a[1] / b[1]]; });
-RegisterOperator("+", ["Vector2"], "Vector2", function (a) { return a; });
-RegisterOperator("-", ["Vector2"], "Vector2", function (a) { return [-a[0], -a[1]]; });
-RegisterOperator("+", ["Vector3", "Vector3"], "Vector3", function (a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; });
-RegisterOperator("-", ["Vector3", "Vector3"], "Vector3", function (a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; });
-RegisterOperator("*", ["Vector3", "Vector3"], "Vector3", function (a, b) { return [a[0] * b[0], a[1] * b[1], a[2] * b[2]]; });
-RegisterOperator("/", ["Vector3", "Vector3"], "Vector3", function (a, b) { return [a[0] / b[0], a[1] / b[1], a[2] / b[2]]; });
-RegisterOperator("+", ["Vector3"], "Vector3", function (a) { return a; });
-RegisterOperator("-", ["Vector3"], "Vector3", function (a) { return [-a[0], -a[1], -a[2]]; });
-RegisterOperator("+", ["Vector4", "Vector4"], "Vector4", function (a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2], a[3] + b[3]]; });
-RegisterOperator("-", ["Vector4", "Vector4"], "Vector4", function (a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2], a[3] - b[3]]; });
-RegisterOperator("*", ["Vector4", "Vector4"], "Vector4", function (a, b) { return [a[0] * b[0], a[1] * b[1], a[2] * b[2], a[3] * b[3]]; });
-RegisterOperator("/", ["Vector4", "Vector4"], "Vector4", function (a, b) { return [a[0] / b[0], a[1] / b[1], a[2] / b[2], a[3] / b[3]]; });
-RegisterOperator("+", ["Vector4"], "Vector4", function (a) { return a; });
-RegisterOperator("-", ["Vector4"], "Vector4", function (a) { return [-a[0], -a[1], -a[2], -a[3]]; });
-RegisterOperator("*", ["float", "Vector2"], "Vector2", function (a, b) { return [a * b[0], a * b[1]]; });
-RegisterOperator("*", ["Vector2", "float"], "Vector2", function (a, b) { return [a[0] * b, a[1] * b]; });
-RegisterOperator("*", ["Vector2", "float"], "Vector2", function (a, b) { return [a[0] / b, a[1] / b]; });
-RegisterOperator("*", ["float", "Vector3"], "Vector3", function (a, b) { return [a * b[0], a * b[1], a * b[2]]; });
-RegisterOperator("*", ["Vector3", "float"], "Vector3", function (a, b) { return [a[0] * b, a[1] * b, a[2] * b]; });
-RegisterOperator("*", ["Vector3", "float"], "Vector3", function (a, b) { return [a[0] / b, a[1] / b, a[2] / b]; });
-RegisterOperator("*", ["float", "Vector4"], "Vector4", function (a, b) { return [a * b[0], a * b[1], a * b[2], a * b[3]]; });
-RegisterOperator("*", ["Vector4", "float"], "Vector4", function (a, b) { return [a[0] * b, a[1] * b, a[2] * b, a[3] * b]; });
-RegisterOperator("*", ["Vector4", "float"], "Vector4", function (a, b) { return [a[0] / b, a[1] / b, a[2] / b, a[3] / b]; });
-// Comparison operators.
-RegisterOperator("==", ["float", "float"], "bool", function (a, b) { return a == b ? 1 : 0; });
-RegisterOperator(">", ["float", "float"], "bool", function (a, b) { return a > b ? 1 : 0; });
-RegisterOperator("<", ["float", "float"], "bool", function (a, b) { return a < b ? 1 : 0; });
-RegisterOperator(">=", ["float", "float"], "bool", function (a, b) { return a >= b ? 1 : 0; });
-RegisterOperator("<=", ["float", "float"], "bool", function (a, b) { return a <= b ? 1 : 0; });
-RegisterOperator("==", ["int", "int"], "bool", function (a, b) { return a == b ? 1 : 0; });
-RegisterOperator(">", ["int", "int"], "bool", function (a, b) { return a > b ? 1 : 0; });
-RegisterOperator("<", ["int", "int"], "bool", function (a, b) { return a < b ? 1 : 0; });
-RegisterOperator(">=", ["int", "int"], "bool", function (a, b) { return a >= b ? 1 : 0; });
-RegisterOperator("<=", ["int", "int"], "bool", function (a, b) { return a <= b ? 1 : 0; });
-RegisterOperator("==", ["bool", "bool"], "bool", function (a, b) { return a == b ? 1 : 0; });
-// Boolean operators.
-RegisterOperator("!", ["bool"], "bool", function (a) { return !a ? 1 : 0; });
-RegisterOperator("&&", ["bool", "bool"], "bool", function (a, b) { return a && b ? 1 : 0; });
-RegisterOperator("||", ["bool", "bool"], "bool", function (a, b) { return a || b ? 1 : 0; });
-// Vector/quaternion constructors.
-RegisterConstructor("Vector2", ["float", "float"], function (a, b) { return [a, b]; });
-RegisterConstructor("Vector3", ["float", "float", "float"], function (a, b, c) { return [a, b, c]; });
-RegisterConstructor("Vector4", ["float", "float", "float", "float"], function (a, b, c, d) { return [a, b, c, d]; });
-RegisterConstructor("Color", ["float", "float", "float", "float"], function (a, b, c, d) { return [a, b, c, d]; });
-RegisterConstructor("Quaternion", ["float", "float", "float", "float"], function (a, b, c, d) { return [a, b, c, d]; });
-// Math functions.
-RegisterFunction("sqrt", ["float"], "float", function (a) { return Math.sqrt(a); });
-RegisterFunction("exp", ["float"], "float", function (a) { return Math.exp(a); });
-RegisterFunction("log", ["float"], "float", function (a) { return Math.log(a); });
-RegisterFunction("sin", ["float"], "float", function (a) { return Math.sin(a); });
-RegisterFunction("cos", ["float"], "float", function (a) { return Math.cos(a); });
-RegisterFunction("tan", ["float"], "float", function (a) { return Math.tan(a); });
-RegisterFunction("asin", ["float"], "float", function (a) { return Math.asin(a); });
-RegisterFunction("acos", ["float"], "float", function (a) { return Math.acos(a); });
-RegisterFunction("atan", ["float"], "float", function (a) { return Math.atan(a); });
-RegisterFunction("atan2", ["float", "float"], "float", function (a, b) { return Math.atan2(a, b); });
-RegisterFunction("min", ["int", "int"], "int", function (a, b) { return Math.min(a, b); });
-RegisterFunction("max", ["int", "int"], "int", function (a, b) { return Math.max(a, b); });
-RegisterFunction("min", ["float", "float"], "float", function (a, b) { return Math.min(a, b); });
-RegisterFunction("max", ["float", "float"], "float", function (a, b) { return Math.max(a, b); });
-RegisterFunction("ceil", ["float"], "float", function (a, b) { return Math.ceil(a); });
-RegisterFunction("floor", ["float"], "float", function (a, b) { return Math.floor(a); });
-RegisterFunction("mix", ["float", "float", "float"], "float", function (a, b, t) { return a + (b - a) * t; });
-// Vector functions.
-RegisterFunction("dot", ["Vector2", "Vector2"], "float", function (a, b) { return a[0] * b[0] + a[1] * b[1]; });
-RegisterFunction("dot", ["Vector3", "Vector3"], "float", function (a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; });
-RegisterFunction("dot", ["Vector4", "Vector4"], "float", function (a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3]; });
-RegisterFunction("length", ["Vector2"], "float", function (a) { return math_1.Vector2.FromArray(a).normalize().toArray(); });
-RegisterFunction("length", ["Vector3"], "float", function (a) { return math_1.Vector3.FromArray(a).normalize().toArray(); });
-RegisterFunction("length", ["Vector4"], "float", function (a) { return math_1.Quaternion.FromArray(a).normalize().toArray(); });
-RegisterFunction("length", ["Quaternion"], "float", function (a) { return math_1.Quaternion.FromArray(a).normalize().toArray(); });
-RegisterFunction("normalize", ["Vector2"], "Vector2", function (a) { return math_1.Vector2.FromArray(a).length(); });
-RegisterFunction("normalize", ["Vector3"], "Vector3", function (a) { return math_1.Vector3.FromArray(a).length(); });
-RegisterFunction("normalize", ["Vector4"], "Vector4", function (a) { return math_1.Quaternion.FromArray(a).length(); });
-RegisterFunction("normalize", ["Quaternion"], "Quaternion", function (a) { return math_1.Quaternion.FromArray(a).length(); });
-RegisterFunction("cross", ["Vector3", "Vector3"], "Vector3", function (a, b) {
-    return math_1.Vector3.FromArray(a).cross(math_1.Vector3.FromArray(b)).toArray();
-});
-// Quaternion functions.
-RegisterFunction("quat_mul", ["Quaternion", "Quaternion"], "Quaternion", function (a, b) {
-    return math_1.Quaternion.FromArray(a).mul(math_1.Quaternion.FromArray(b)).toArray();
-});
-RegisterFunction("quat_conj", ["Quaternion"], "Quaternion", function (a) {
-    return math_1.Quaternion.FromArray(a).conj().toArray();
-});
-RegisterFunction("quat_slerp", ["Quaternion", "Quaternion", "float"], "Quaternion", function (a, b, t) {
-    return math_1.Quaternion.Slerp(math_1.Quaternion.FromArray(a), math_1.Quaternion.FromArray(b), t).toArray();
-});
-RegisterFunction("quat_rotate", ["Quaternion", "Vector3"], "Vector3", function (q, v) {
-    return math_1.Quaternion.FromArray(q).rotate(math_1.Vector3.FromArray(v)).toArray();
-});
-RegisterFunction("quat_rotation", ["Vector3", "float"], "Quaternion", function (axis, angle) {
-    return math_1.Quaternion.Rotation(math_1.Vector3.FromArray(axis), angle).toArray();
-});
-// Color functions.
-RegisterConstructor("Color", ["float", "float", "float", "float"], function (r, g, b, a) { return [r, g, b, a]; });
-RegisterConstructor("Color", ["float", "float", "float"], function (r, g, b) { return [r, g, b, 1]; });
-RegisterConstructor("Color", ["float", "float"], function (v, a) { return [v, v, v, a]; });
-RegisterConstructor("Color", ["float"], function (v) { return [v, v, v, 1]; });
-RegisterFunction("lab2rgb", ["Color"], "Color", function (color) { return color; });
-RegisterFunction("hcl2rgb", ["Color"], "Color", function (color) { return color; });
-// Type conversions.
-// We only allow low-precision to high-precision conversions to be automated.
-RegisterTypeConversion("bool", "int", 1, function (a) { return a; });
-RegisterTypeConversion("int", "float", 1, function (a) { return a; });
-// Explicit conversions.
-RegisterFunction("int", ["float"], "int", function (a) { return Math.floor(a); });
-RegisterFunction("float", ["int"], "float", function (a) { return a; });
-RegisterTypeConversion("Quaternion", "Vector4", 0, function (a) { return a; });
-RegisterTypeConversion("Vector4", "Quaternion", 0, function (a) { return a; });
-RegisterTypeConversion("Color", "Vector4", 0, function (a) { return a; });
-RegisterTypeConversion("Vector4", "Color", 0, function (a) { return a; });
-// Constants
-addConstant("PI", "float", Math.PI);
-addConstant("SQRT2", "float", Math.SQRT2);
-addConstant("SQRT1_2", "float", Math.SQRT1_2);
-addConstant("RED", "Color", [1, 0, 0, 1]);
-
-},{"./math":12,"./utils":22}],9:[function(require,module,exports){
-"use strict";
-var parser_1 = require("../compiler/parser");
-var utils_1 = require("../utils");
-var modules = new utils_1.Dictionary();
-function importPrimitiveCode(name, code) {
-    var thisModule = null;
-    if (modules.has(name)) {
-        thisModule = modules.get(name);
-    }
-    else {
-        thisModule = new utils_1.Dictionary();
-        modules.set(name, thisModule);
-    }
-    var tree = parser_1.parseString(code);
-    for (var _i = 0, _a = tree.blocks; _i < _a.length; _i++) {
-        var f = _a[_i];
-        if (f.type == "function") {
-            var fn = f;
-            thisModule.set(fn.name, fn);
-        }
-    }
-}
-var P2D = require("./primitives2d");
-importPrimitiveCode("P2D", P2D.primitives);
-var P3D = require("./primitives3d");
-importPrimitiveCode("P3D", P3D.primitives);
-function getModuleFunction(name, functionName) {
-    return modules.get(name).get(functionName);
-}
-exports.getModuleFunction = getModuleFunction;
-function forEachModuleFunction(name, callback) {
-    return modules.get(name).forEach(callback);
-}
-exports.forEachModuleFunction = forEachModuleFunction;
-
-},{"../compiler/parser":4,"../utils":22,"./primitives2d":10,"./primitives3d":11}],10:[function(require,module,exports){
-"use strict";
-exports.primitives = "\n    shape Triangle(\n        Vector2 p1,\n        Vector2 p2,\n        Vector2 p3,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: p1, color: color },\n            { position: p2, color: color },\n            { position: p3, color: color }\n        ];\n    }\n\n    shape Rectangle(\n        Vector2 p1,\n        Vector2 p2,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p2.x, p1.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p1.x, p2.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n    }\n\n    shape OutlinedRectangle(\n        Vector2 p1,\n        Vector2 p2,\n        float width = 1,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        Rectangle(p1, Vector2(p1.x + width, p2.y - width), color);\n        Rectangle(Vector2(p1.x, p2.y - width), Vector2(p2.x - width, p2.y), color);\n        Rectangle(Vector2(p1.x + width, p1.y), Vector2(p2.x, p1.y + width), color);\n        Rectangle(Vector2(p2.x - width, p1.y + width), p2, color);\n    }\n\n    shape Hexagon(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..5) {\n            float a1 = i / 6.0 * PI * 2.0;\n            float a2 = (i + 1) / 6.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle16(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..15) {\n            float a1 = i / 16.0 * PI * 2.0;\n            float a2 = (i + 1) / 16.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle(\n        Vector2 center,\n        float radius,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..31) {\n            float a1 = i / 32.0 * PI * 2.0;\n            float a2 = (i + 1) / 32.0 * PI * 2.0;\n            Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Line(\n        Vector2 p1,\n        Vector2 p2,\n        float width = 1,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        Vector2 d = normalize(p2 - p1);\n        Vector2 t = Vector2(d.y, -d.x) * (width / 2);\n        emit [\n            { position: p1 + t, color: color },\n            { position: p1 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n        emit [\n            { position: p1 - t, color: color },\n            { position: p2 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n    }\n";
-
-},{}],11:[function(require,module,exports){
-"use strict";
-exports.primitives = "\n    shape Triangle(\n        Vector3 p1,\n        Vector3 p2,\n        Vector3 p3,\n        Color color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: p1, color: color },\n            { position: p2, color: color },\n            { position: p3, color: color }\n        ];\n    }\n\n    shape Tetrahedron(\n        Vector3 p1,\n        Vector3 p2,\n        Vector3 p3,\n        Vector3 p4\n    ) {\n        Triangle(p3, p4, p1);\n        Triangle(p1, p4, p2);\n        Triangle(p1, p2, p3);\n        Triangle(p2, p3, p4);\n    }\n";
-
-},{}],12:[function(require,module,exports){
-"use strict";
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
-var MathType = (function () {
-    function MathType() {
-    }
-    return MathType;
-}());
-exports.MathType = MathType;
-var Vector2 = (function (_super) {
-    __extends(Vector2, _super);
-    function Vector2(x, y) {
-        if (x === void 0) { x = 0; }
-        if (y === void 0) { y = 0; }
-        _super.call(this);
-        this.x = x;
-        this.y = y;
-    }
-    Vector2.prototype.clone = function () {
-        return new Vector2(this.x, this.y);
-    };
-    Vector2.prototype.add = function (rhs) {
-        return new Vector2(this.x + rhs.x, this.y + rhs.y);
-    };
-    Vector2.prototype.sub = function (rhs) {
-        return new Vector2(this.x - rhs.x, this.y - rhs.y);
-    };
-    Vector2.prototype.mul = function (rhs) {
-        return new Vector2(this.x * rhs.x, this.y * rhs.y);
-    };
-    Vector2.prototype.div = function (rhs) {
-        return new Vector2(this.x / rhs.x, this.y / rhs.y);
-    };
-    Vector2.prototype.scale = function (rhs) {
-        return new Vector2(this.x * rhs, this.y * rhs);
-    };
-    Vector2.prototype.dot = function (rhs) {
-        return this.x * rhs.x + this.y * rhs.y;
-    };
-    Vector2.prototype.length = function () {
-        return Math.sqrt(this.x * this.x + this.y * this.y);
-    };
-    Vector2.prototype.normalize = function () {
-        var l = Math.sqrt(this.x * this.x + this.y * this.y);
-        return new Vector3(this.x / l, this.y / l);
-    };
-    Vector2.prototype.toArray = function () {
-        return [this.x, this.y];
-    };
-    Vector2.FromArray = function (_a) {
-        var a = _a[0], b = _a[1];
-        return new Vector2(a, b);
-    };
-    return Vector2;
-}(MathType));
-exports.Vector2 = Vector2;
-var Vector3 = (function (_super) {
-    __extends(Vector3, _super);
-    function Vector3(x, y, z) {
-        if (x === void 0) { x = 0; }
-        if (y === void 0) { y = 0; }
-        if (z === void 0) { z = 0; }
-        _super.call(this);
-        this.x = x;
-        this.y = y;
-        this.z = z;
-    }
-    Vector3.prototype.clone = function () {
-        return new Vector3(this.x, this.y, this.z);
-    };
-    Vector3.prototype.add = function (rhs) {
-        return new Vector3(this.x + rhs.x, this.y + rhs.y, this.z + rhs.z);
-    };
-    Vector3.prototype.sub = function (rhs) {
-        return new Vector3(this.x - rhs.x, this.y - rhs.y, this.z - rhs.z);
-    };
-    Vector3.prototype.mul = function (rhs) {
-        return new Vector3(this.x * rhs.x, this.y * rhs.y, this.z * rhs.z);
-    };
-    Vector3.prototype.div = function (rhs) {
-        return new Vector3(this.x / rhs.x, this.y / rhs.y, this.z / rhs.z);
-    };
-    Vector3.prototype.scale = function (rhs) {
-        return new Vector3(this.x * rhs, this.y * rhs, this.z * rhs);
-    };
-    Vector3.prototype.dot = function (rhs) {
-        return this.x * rhs.x + this.y * rhs.y + this.z * rhs.z;
-    };
-    Vector3.prototype.cross = function (rhs) {
-        return new Vector3(this.y * rhs.z - this.z * rhs.y, this.z * rhs.x - this.x * rhs.z, this.x * rhs.y - this.y * rhs.x);
-    };
-    Vector3.prototype.length = function () {
-        return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
-    };
-    Vector3.prototype.normalize = function () {
-        var l = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
-        return new Vector3(this.x / l, this.y / l, this.z / l);
-    };
-    Vector3.prototype.toArray = function () {
-        return [this.x, this.y, this.z];
-    };
-    Vector3.FromArray = function (_a) {
-        var a = _a[0], b = _a[1], c = _a[2];
-        return new Vector3(a, b, c);
-    };
-    return Vector3;
-}(MathType));
-exports.Vector3 = Vector3;
-var Quaternion = (function (_super) {
-    __extends(Quaternion, _super);
-    function Quaternion(x, y, z, w) {
-        if (x === void 0) { x = 0; }
-        if (y === void 0) { y = 0; }
-        if (z === void 0) { z = 0; }
-        if (w === void 0) { w = 0; }
-        _super.call(this);
-        this.x = x;
-        this.y = y;
-        this.z = z;
-        this.w = w;
-    }
-    Quaternion.prototype.clone = function () {
-        return new Quaternion(this.x, this.y, this.z, this.w);
-    };
-    Quaternion.prototype.conj = function () {
-        return new Quaternion(-this.x, -this.y, -this.z, this.w);
-    };
-    Quaternion.prototype.mul = function (rhs) {
-        return new Quaternion(rhs.x * this.w + this.x * rhs.w + this.y * rhs.z - this.z * rhs.y, rhs.y * this.w + this.y * rhs.w + this.z * rhs.x - this.x * rhs.z, rhs.z * this.w + this.z * rhs.w + this.x * rhs.y - this.y * rhs.x, this.w * rhs.w - this.x * rhs.x - this.y * rhs.y - this.z * rhs.z);
-    };
-    Quaternion.prototype.rotate = function (vector) {
-        var q = new Quaternion(vector.x, vector.y, vector.z, 0);
-        var qv = this.mul(q).mul(this.conj());
-        return new Vector3(qv.x, qv.y, qv.z);
-    };
-    Quaternion.prototype.length = function () {
-        return Math.sqrt(this.x * this.x + this.y * this.y + this.w * this.w);
-    };
-    Quaternion.prototype.normalize = function () {
-        var s = Math.sqrt(this.x * this.x + this.y * this.y + this.w * this.w);
-        return new Quaternion(this.x / s, this.y / s, this.z / s, this.w / s);
-    };
-    Quaternion.prototype.slerp = function (rhs, t) {
-        return Quaternion.Slerp(this, rhs, t);
-    };
-    Quaternion.Slerp = function (q1, q2, t) {
-        var acos_arg = q1.x * q2.x + q1.y * q2.y + q1.z * q2.z + q1.w * q2.w;
-        if (acos_arg > 1)
-            acos_arg = 1;
-        if (acos_arg < -1)
-            acos_arg = -1;
-        var omega = Math.acos(acos_arg);
-        var st0, st1;
-        if (Math.abs(omega) < 1e-10) {
-            st0 = 1 - t;
-            st1 = t;
-        }
-        else {
-            var som = Math.sin(omega);
-            st0 = Math.sin((1 - t) * omega) / som;
-            st1 = Math.sin(t * omega) / som;
-        }
-        return new Quaternion(q1.x * st0 + q2.x * st1, q1.y * st0 + q2.y * st1, q1.z * st0 + q2.z * st1, q1.w * st0 + q2.w * st1);
-    };
-    Quaternion.Rotation = function (axis, angle) {
-        var axis_normal = axis.normalize().scale(Math.sin(angle / 2));
-        return new Quaternion(axis_normal.x, axis_normal.y, axis_normal.z, Math.cos(angle / 2));
-    };
-    Quaternion.prototype.toArray = function () {
-        return [this.x, this.y, this.z, this.w];
-    };
-    Quaternion.FromArray = function (_a) {
-        var a = _a[0], b = _a[1], c = _a[2], d = _a[3];
-        return new Quaternion(a, b, c, d);
-    };
-    return Quaternion;
-}(MathType));
-exports.Quaternion = Quaternion;
-var Pose = (function () {
-    function Pose(position, rotation) {
-        if (position === void 0) { position = new Vector3(0, 0, 0); }
-        if (rotation === void 0) { rotation = new Quaternion(0, 0, 0, 1); }
-        this.position = position;
-        this.rotation = rotation;
-    }
-    return Pose;
-}());
-exports.Pose = Pose;
-
-},{}],13:[function(require,module,exports){
-"use strict";
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
-var PlatformShapeData = (function () {
-    function PlatformShapeData() {
-    }
-    return PlatformShapeData;
-}());
-exports.PlatformShapeData = PlatformShapeData;
-var PlatformShape = (function () {
-    function PlatformShape() {
-    }
-    return PlatformShape;
-}());
-exports.PlatformShape = PlatformShape;
-var Viewport = (function () {
-    function Viewport() {
-    }
-    return Viewport;
-}());
-exports.Viewport = Viewport;
-var Viewport2D = (function (_super) {
-    __extends(Viewport2D, _super);
-    function Viewport2D(width, height) {
-        _super.call(this);
-        this.width = width;
-        this.height = height;
-    }
-    return Viewport2D;
-}(Viewport));
-exports.Viewport2D = Viewport2D;
-var Viewport3D = (function (_super) {
-    __extends(Viewport3D, _super);
-    function Viewport3D(width, height, fov) {
-        _super.call(this);
-        this.width = width;
-        this.height = height;
-        this.fov = fov;
-    }
-    return Viewport3D;
-}(Viewport));
-exports.Viewport3D = Viewport3D;
-var Platform = (function () {
-    function Platform() {
-    }
-    return Platform;
-}());
-exports.Platform = Platform;
-
-},{}],14:[function(require,module,exports){
-"use strict";
-var ScaleBinding = (function () {
-    function ScaleBinding(scale, returnType, argTypes) {
-        var args = [];
-        for (var _i = 3; _i < arguments.length; _i++) {
-            args[_i - 3] = arguments[_i];
-        }
-        this._scale = scale;
-        this._returnType = returnType;
-        this._argTypes = argTypes;
-        this._args = args;
-    }
-    ScaleBinding.prototype.getReturnType = function () {
-        return this._returnType;
-    };
-    ScaleBinding.prototype.getAttributes = function () {
-        var _this = this;
-        var result = [];
-        for (var _i = 0, _a = this._scale.getAttributes(); _i < _a.length; _i++) {
-            var attr = _a[_i];
-            result.push({
-                scaleBinding: this,
-                bindedName: "s" + attr.name,
-                name: attr.name,
-                type: attr.type,
-                binding: attr.binding
-            });
-        }
-        this._args.forEach(function (arg, index) {
-            if (arg instanceof ScaleBinding) {
-                var a = arg;
-                var attributes = a.getAttributes();
-                for (var _i = 0, attributes_1 = attributes; _i < attributes_1.length; _i++) {
-                    var attr = attributes_1[_i];
-                    result.push({
-                        scaleBinding: _this,
-                        bindedName: "a" + index + attr.bindedName,
-                        name: attr.name,
-                        type: attr.type,
-                        binding: attr.binding
-                    });
-                }
-            }
-            else {
-                // Binded values become attributes here.
-                result.push({
-                    scaleBinding: _this,
-                    bindedName: "a" + index,
-                    name: "a" + index,
-                    type: _this._argTypes[index],
-                    binding: arg
-                });
-            }
-        });
-        return result;
-    };
-    ScaleBinding.prototype.getExpression = function (attrs) {
-        var sAttrs = {};
-        for (var _i = 0, _a = this._scale.getAttributes(); _i < _a.length; _i++) {
-            var attr = _a[_i];
-            sAttrs[attr.name] = attrs[("s" + attr.name)];
-        }
-        var values = this._args.map(function (arg, index) {
-            if (arg instanceof ScaleBinding) {
-                var a = arg;
-                var attributes = a.getAttributes();
-                var aAttrs = {};
-                for (var _i = 0, attributes_2 = attributes; _i < attributes_2.length; _i++) {
-                    var attr = attributes_2[_i];
-                    aAttrs[attr.bindedName] = attrs[("a" + index + attr.bindedName)];
-                }
-                return arg.getExpression(aAttrs);
-            }
-            else {
-                return attrs[("a" + index)];
-            }
-        });
-        return (_b = this._scale).getExpression.apply(_b, [sAttrs].concat(values));
-        var _b;
-    };
-    return ScaleBinding;
-}());
-exports.ScaleBinding = ScaleBinding;
-
-},{}],15:[function(require,module,exports){
-"use strict";
-var scale_1 = require("./scale");
-var SC = require("../specConstruct");
-var scale;
-(function (scale_2) {
-    function linear(valueType) {
-        if (valueType === void 0) { valueType = "float"; }
-        var scale = (function () {
-            var args = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                args[_i - 0] = arguments[_i];
-            }
-            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, valueType, ["float"]], args)))();
-        });
-        var domain = [0, 1];
-        var range = [0, 1];
-        scale.domain = function (value) {
-            if (value == null)
-                return domain;
-            domain[0] = value[0];
-            domain[1] = value[1];
-            return scale;
-        };
-        scale.range = function (value) {
-            if (value == null)
-                return range;
-            range[0] = value[0];
-            range[1] = value[1];
-            return scale;
-        };
-        scale.getAttributes = function () {
-            return [
-                { name: "d0", type: valueType, binding: domain[0] },
-                { name: "d1", type: valueType, binding: domain[1] },
-                { name: "r0", type: valueType, binding: range[0] },
-                { name: "r1", type: valueType, binding: range[1] }
-            ];
-        };
-        scale.getExpression = function (attrs, value) {
-            return SC.mix(attrs["r0"], attrs["r1"], SC.div(SC.sub(value, attrs["d0"]), SC.sub(attrs["d1"], attrs["d0"])));
-        };
-        return scale;
-    }
-    scale_2.linear = linear;
-    function log(valueType) {
-        if (valueType === void 0) { valueType = "float"; }
-        var scale = (function () {
-            var args = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                args[_i - 0] = arguments[_i];
-            }
-            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, valueType, ["float"]], args)))();
-        });
-        var domain = [0, 1];
-        var range = [0, 1];
-        scale.domain = function (value) {
-            if (value == null)
-                return domain;
-            domain[0] = value[0];
-            domain[1] = value[1];
-            return scale;
-        };
-        scale.range = function (value) {
-            if (value == null)
-                return range;
-            range[0] = value[0];
-            range[1] = value[1];
-            return scale;
-        };
-        scale.getAttributes = function () {
-            return [
-                { name: "d0", type: valueType, binding: domain[0] },
-                { name: "d1", type: valueType, binding: domain[1] },
-                { name: "r0", type: valueType, binding: range[0] },
-                { name: "r1", type: valueType, binding: range[1] }
-            ];
-        };
-        scale.getExpression = function (attrs, value) {
-            return SC.mix(attrs["r0"], attrs["r1"], SC.div(SC.log(SC.div(value, attrs["d0"])), SC.log(SC.div(attrs["d1"], attrs["d0"]))));
-        };
-        return scale;
-    }
-    scale_2.log = log;
-    // Common arithmetics
-    function addScale() {
-        var scale = (function () {
-            var args = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                args[_i - 0] = arguments[_i];
-            }
-            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
-        });
-        scale.getAttributes = function () { return []; };
-        scale.getExpression = function (attrs, value1, value2) {
-            console.log(value1, value2);
-            return SC.add(value1, value2);
-        };
-        return scale;
-    }
-    scale_2.addScale = addScale;
-    function subScale() {
-        var scale = (function () {
-            var args = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                args[_i - 0] = arguments[_i];
-            }
-            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
-        });
-        scale.getAttributes = function () { return []; };
-        scale.getExpression = function (attrs, value1, value2) { return SC.sub(value1, value2); };
-        return scale;
-    }
-    scale_2.subScale = subScale;
-    function mulScale() {
-        var scale = (function () {
-            var args = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                args[_i - 0] = arguments[_i];
-            }
-            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
-        });
-        scale.getAttributes = function () { return []; };
-        scale.getExpression = function (attrs, value1, value2) { return SC.mul(value1, value2); };
-        return scale;
-    }
-    scale_2.mulScale = mulScale;
-    function divScale() {
-        var scale = (function () {
-            var args = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                args[_i - 0] = arguments[_i];
-            }
-            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, "float", ["float", "float"]], args)))();
-        });
-        scale.getAttributes = function () { return []; };
-        scale.getExpression = function (attrs, value1, value2) { return SC.div(value1, value2); };
-        return scale;
-    }
-    scale_2.divScale = divScale;
-    function add(value1, value2) {
-        return addScale()(value1, value2);
-    }
-    scale_2.add = add;
-    function sub(value1, value2) {
-        return subScale()(value1, value2);
-    }
-    scale_2.sub = sub;
-    function mul(value1, value2) {
-        return mulScale()(value1, value2);
-    }
-    scale_2.mul = mul;
-    function div(value1, value2) {
-        return divScale()(value1, value2);
-    }
-    scale_2.div = div;
-})(scale = exports.scale || (exports.scale = {}));
-
-},{"../specConstruct":18,"./scale":14}],16:[function(require,module,exports){
-"use strict";
-var binding_1 = require("./binding");
-var exceptions_1 = require("./exceptions");
-var utils_1 = require("./utils");
-var scale_1 = require("./scale/scale");
-;
-var Shape = (function () {
-    function Shape(spec, platform) {
-        this._spec = spec;
-        this._data = [];
-        this._platform = platform;
-        this._bindings = new utils_1.Dictionary();
-        this._shiftBindings = new utils_1.Dictionary();
-        this._platformShape = null;
-        this._shouldUploadData = true;
-        this._instanceFunction = null;
-        // Set bindings to default value whenever exists.
-        for (var name_1 in this._spec.input) {
-            if (this._spec.input.hasOwnProperty(name_1)) {
-                var input = this._spec.input[name_1];
-                if (input.default != null) {
-                    this._bindings.set(name_1, new binding_1.Binding(input.type, input.default));
-                }
-            }
-        }
-        // Assign shift bindings based on naming convention.
-        for (var name_2 in this._spec.input) {
-            if (this._spec.input.hasOwnProperty(name_2)) {
-                if (this._spec.input.hasOwnProperty(name_2 + "_pp")) {
-                    this._shiftBindings.set(name_2 + "_pp", new binding_1.ShiftBinding(name_2, -2));
-                }
-                if (this._spec.input.hasOwnProperty(name_2 + "_p")) {
-                    this._shiftBindings.set(name_2 + "_p", new binding_1.ShiftBinding(name_2, -1));
-                }
-                if (this._spec.input.hasOwnProperty(name_2 + "_n")) {
-                    this._shiftBindings.set(name_2 + "_n", new binding_1.ShiftBinding(name_2, +1));
-                }
-                if (this._spec.input.hasOwnProperty(name_2 + "_nn")) {
-                    this._shiftBindings.set(name_2 + "_nn", new binding_1.ShiftBinding(name_2, +2));
-                }
-            }
-        }
-    }
-    Object.defineProperty(Shape.prototype, "spec", {
-        get: function () {
-            return this._spec;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Shape.prototype.attr = function (name, value) {
-        if (value === undefined) {
-            if (!this._bindings.has(name)) {
-                throw new exceptions_1.RuntimeError("attr '" + name + " is undefined.");
-            }
-            var binding = this._bindings.get(name);
-            if (binding instanceof binding_1.Binding) {
-                return binding.value;
-            }
-            else {
-                return binding;
-            }
-        }
-        else {
-            if (!this._spec.input.hasOwnProperty(name)) {
-                throw new exceptions_1.RuntimeError("attr '" + name + " is undefined.");
-            }
-            if (value instanceof scale_1.ScaleBinding) {
-                if (this._platformShape) {
-                    if (this._bindings.get(name) != value) {
-                        this._platformShape = null;
-                    }
-                }
-                this._bindings.set(name, value);
-            }
-            else {
-                // Create new binding.
-                var newBinding = new binding_1.Binding(this._spec.input[name].type, value);
-                // Decide if we should recompile the platform code.
-                if (this._platformShape) {
-                    // Recompile if the input was compiled as input,
-                    // and the new binding is not a function.
-                    if (this._platformShape.isUniform(name) && !newBinding.isFunction) {
-                        this._platformShape.updateUniform(name, newBinding.specValue);
-                    }
-                    else {
-                        this._platformShape = null;
-                    }
-                }
-                this._bindings.set(name, newBinding);
-            }
-            return this;
-        }
-    };
-    Shape.prototype.data = function (data) {
-        if (data === undefined) {
-            return this._data;
-        }
-        else {
-            this._data = data.slice();
-            this._shouldUploadData = true;
-            return this;
-        }
-    };
-    Shape.prototype.instance = function (func) {
-        if (func === undefined) {
-            return this._instanceFunction;
-        }
-        else {
-            this._instanceFunction = func;
-        }
-    };
-    // Make alternative spec to include ScaleBinding values.
-    Shape.prototype.prepareSpecification = function () {
-        var newSpec = {
-            input: utils_1.shallowClone(this._spec.input),
-            output: this._spec.output,
-            statements: this._spec.statements.slice(),
-            variables: utils_1.shallowClone(this._spec.variables)
-        };
-        var newBindings = this._bindings.clone();
-        var shiftBindings = this._shiftBindings.clone();
-        this._bindings.forEach(function (binding, name) {
-            if (binding instanceof scale_1.ScaleBinding) {
-                var attributes = binding.getAttributes();
-                var attrs_1 = {};
-                attributes.forEach(function (attr) {
-                    var bindedName = name + attr.bindedName;
-                    newBindings.set(bindedName, new binding_1.Binding(attr.type, attr.binding));
-                    attrs_1[attr.bindedName] = {
-                        type: "variable",
-                        valueType: attr.type,
-                        variableName: bindedName
-                    };
-                    newSpec.input[bindedName] = {
-                        type: attr.type,
-                        default: null
-                    };
-                });
-                // Move the attribute to variables.
-                newSpec.variables[name] = newSpec.input[name].type;
-                newSpec.statements.splice(0, 0, {
-                    type: "assign",
-                    variableName: name,
-                    expression: binding.getExpression(attrs_1),
-                    valueType: newSpec.input[name].type
-                });
-                delete newSpec.input[name];
-                newBindings.delete(name);
-            }
-        });
-        return [newSpec, newBindings, shiftBindings];
-    };
-    Shape.prototype.uploadScaleUniforms = function () {
-        var _this = this;
-        this._bindings.forEach(function (binding, name) {
-            if (binding instanceof scale_1.ScaleBinding) {
-                var attributes = binding.getAttributes();
-                var attrs = {};
-                attributes.forEach(function (attr) {
-                    _this._platformShape.updateUniform(name + attr.bindedName, attr.binding);
-                });
-            }
-        });
-    };
-    Shape.prototype.prepare = function () {
-        var _this = this;
-        if (!this._platformShape) {
-            var _a = this.prepareSpecification(), spec = _a[0], binding = _a[1], shiftBinding = _a[2];
-            this._platformShape = this._platform.compile(this, spec, binding, shiftBinding);
-            this._shouldUploadData = true;
-        }
-        if (this._shouldUploadData) {
-            if (this._instanceFunction == null) {
-                this._platformShapeData = this._platformShape.uploadData(this._data);
-            }
-            else {
-                this._platformShapeData = this._data.map(function (datum, index) {
-                    var info = _this._instanceFunction(datum, index, _this._data);
-                    _this._platformShape.uploadData(info.data);
-                });
-            }
-            this._shouldUploadData = false;
-        }
-        return this;
-    };
-    Shape.prototype.render = function () {
-        var _this = this;
-        this.prepare();
-        this.uploadScaleUniforms();
-        if (this._instanceFunction == null) {
-            this._platformShape.render(this._platformShapeData);
-        }
-        else {
-            var datas_1 = this._platformShapeData;
-            this._data.forEach(function (datum, index) {
-                var info = _this._instanceFunction(datum, index, _this._data);
-                for (var attr in info.attrs) {
-                    if (info.attrs.hasOwnProperty(attr)) {
-                        _this._platformShape.updateUniform(attr, binding_1.getBindingValue(info.attrs[attr]));
-                    }
-                }
-                _this._platformShape.render(datas_1[index]);
-            });
-        }
-        return this;
-    };
-    return Shape;
-}());
-exports.Shape = Shape;
-
-},{"./binding":1,"./exceptions":7,"./scale/scale":14,"./utils":22}],17:[function(require,module,exports){
-"use strict";
-var compiler_1 = require("./compiler/compiler");
-var declare_1 = require("./compiler/declare");
-var shape_1 = require("./shape");
-var shape;
-(function (shape) {
-    function create(spec, platform) {
-        if (spec instanceof declare_1.CustomShape) {
-            return new shape_1.Shape(spec.compile(), platform);
-        }
-        else {
-            return new shape_1.Shape(spec, platform);
-        }
-    }
-    shape.create = create;
-    function custom() {
-        return new declare_1.CustomShape();
-    }
-    shape.custom = custom;
-    function compile(code) {
-        return compiler_1.compileString(code);
-    }
-    shape.compile = compile;
-    function circle(sides) {
-        if (sides === void 0) { sides = 32; }
-        return shape.compile("\n            shape Circle(\n                Vector2 center,\n                float radius,\n                Color color\n            ) {\n                for(i in 0.." + (sides - 1) + ") {\n                    float a1 = i / " + sides.toFixed(1) + " * PI * 2.0;\n                    float a2 = (i + 1) / " + sides.toFixed(1) + " * PI * 2.0;\n                    Vector2 p1 = Vector2(radius * cos(a1), radius * sin(a1));\n                    Vector2 p2 = Vector2(radius * cos(a2), radius * sin(a2));\n                    emit [\n                        { position: center + p1, color: color },\n                        { position: center, color: color },\n                        { position: center + p2, color: color }\n                    ];\n                }\n            }\n        ")["Circle"];
-    }
-    shape.circle = circle;
-    function line() {
-        return shape.compile("\n            shape Line(\n                Vector2 p1,\n                Vector2 p2,\n                float width = 1,\n                Color color = [ 0, 0, 0, 1 ]\n            ) {\n                Vector2 d = normalize(p2 - p1);\n                Vector2 t = Vector2(d.y, -d.x) * (width / 2);\n                emit [\n                    { position: p1 + t, color: color },\n                    { position: p1 - t, color: color },\n                    { position: p2 + t, color: color }\n                ];\n                emit [\n                    { position: p1 - t, color: color },\n                    { position: p2 - t, color: color },\n                    { position: p2 + t, color: color }\n                ];\n            }\n        ")["Line"];
-    }
-    shape.line = line;
-    function polyline() {
-        return shape.compile("\n            import Triangle from P2D;\n\n            shape Sector2(\n                Vector2 c,\n                Vector2 p1,\n                Vector2 p2,\n                Color color\n            ) {\n                auto pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Triangle(c, p1, pc, color);\n                Triangle(c, pc, p2, color);\n            }\n\n            shape Sector4(\n                Vector2 c,\n                Vector2 p1,\n                Vector2 p2,\n                Color color\n            ) {\n                auto pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Sector2(c, p1, pc, color);\n                Sector2(c, pc, p2, color);\n            }\n\n            shape PolylineRound(\n                Vector2 p, Vector2 p_p, Vector2 p_n, Vector2 p_nn,\n                float width,\n                Color color = [ 0, 0, 0, 1 ]\n            ) {\n                float EPS = 1e-5;\n                float w = width / 2;\n                Vector2 d = normalize(p - p_n);\n                Vector2 n = Vector2(d.y, -d.x);\n                Vector2 m1;\n                if(length(p - p_p) < EPS) {\n                    m1 = n * w;\n                } else {\n                    m1 = normalize(d + normalize(p - p_p)) * w;\n                }\n                Vector2 m2;\n                if(length(p_n - p_nn) < EPS) {\n                    m2 = -n * w;\n                } else {\n                    m2 = normalize(normalize(p_n - p_nn) - d) * w;\n                }\n                Vector2 c1a;\n                Vector2 c1b;\n                Vector2 a1;\n                Vector2 a2;\n                if(dot(m1, n) > 0) {\n                    c1a = p + m1;\n                    c1b = p + n * w;\n                    a2 = c1b;\n                    a1 = p - m1 * (w / dot(m1, n));\n                } else {\n                    c1a = p + m1;\n                    c1b = p - n * w;\n                    a2 = p + m1 * (w / dot(m1, n));\n                    a1 = c1b;\n                }\n                Vector2 c2a;\n                Vector2 c2b;\n                Vector2 b1;\n                Vector2 b2;\n                if(dot(m2, n) < 0) {\n                    c2a = p_n + m2;\n                    c2b = p_n - n * w;\n                    b1 = c2b;\n                    b2 = p_n + m2 * (w / dot(m2, n));\n                } else {\n                    c2a = p_n + m2;\n                    c2b = p_n + n * w;\n                    b2 = c2b;\n                    b1 = p_n - m2 * (w / dot(m2, n));\n                }\n                Sector4(p, c1a, c1b, color);\n                Sector4(p_n, c2a, c2b, color);\n                Triangle(p, a1, b1, color);\n                Triangle(p, b1, p_n, color);\n                Triangle(p, a2, b2, color);\n                Triangle(p, b2, p_n, color);\n            }\n        ")["PolylineRound"];
-    }
-    shape.polyline = polyline;
-})(shape = exports.shape || (exports.shape = {}));
-
-},{"./compiler/compiler":2,"./compiler/declare":3,"./shape":16}],18:[function(require,module,exports){
-"use strict";
-// Construct part of specification.
-var intrinsics_1 = require("./intrinsics");
-function func(name, returnType) {
-    var args = [];
-    for (var _i = 2; _i < arguments.length; _i++) {
-        args[_i - 2] = arguments[_i];
-    }
-    return {
-        type: "function",
-        functionName: intrinsics_1.getInternalName({
-            name: name,
-            argTypes: args.map(function (arg) { return arg.valueType; }),
-            returnType: returnType
-        }),
-        arguments: args,
-        valueType: returnType
-    };
-}
-exports.func = func;
-function op(name, returnType) {
-    var args = [];
-    for (var _i = 2; _i < arguments.length; _i++) {
-        args[_i - 2] = arguments[_i];
-    }
-    return {
-        type: "function",
-        functionName: intrinsics_1.getInternalName({
-            name: "@" + name,
-            argTypes: args.map(function (arg) { return arg.valueType; }),
-            returnType: returnType
-        }),
-        valueType: returnType,
-        arguments: args,
-    };
-}
-exports.op = op;
-function variable(varName, varType) {
-    return {
-        type: "variable",
-        variableName: varName,
-        valueType: varType
-    };
-}
-exports.variable = variable;
-function constant(value, valueType) {
-    return {
-        type: "constant",
-        value: value,
-        valueType: valueType
-    };
-}
-exports.constant = constant;
-function mix(a1, a2, t) {
-    return func("mix", a1.valueType, a1, a2, t);
-}
-exports.mix = mix;
-function exp(x) {
-    return func("exp", "float", x);
-}
-exports.exp = exp;
-function log(x) {
-    return func("log", "float", x);
-}
-exports.log = log;
-function add(a1, a2) {
-    return op("+", a1.valueType, a1, a2);
-}
-exports.add = add;
-function sub(a1, a2) {
-    return op("-", a1.valueType, a1, a2);
-}
-exports.sub = sub;
-function mul(a1, a2) {
-    return op("*", a1.valueType, a1, a2);
-}
-exports.mul = mul;
-function div(a1, a2) {
-    return op("/", a1.valueType, a1, a2);
-}
-exports.div = div;
-function greaterThan(a1, a2) {
-    return op(">", "bool", a1, a2);
-}
-exports.greaterThan = greaterThan;
-function lessThan(a1, a2) {
-    return op("<", "bool", a1, a2);
-}
-exports.lessThan = lessThan;
-
-},{"./intrinsics":8}],19:[function(require,module,exports){
-// Flattener: Resolve emit statements into individual render calls.
-"use strict";
-var SC = require("../specConstruct");
-var utils_1 = require("../utils");
-// Old recursive if statements - not as fast as the individual if statement version.
-// // For now, assume there is no conditional emits.
-// export function  FlattenEmits(shape: Specification.Shape): FlattenedEmits {
-//     let vertexIndexName = attemptName("s3idx", (c) => !shape.variables.hasOwnProperty(c) && !shape.input.hasOwnProperty(c));
-//     let newShape: Specification.Shape = {
-//         input: {},
-//         output: shape.output,
-//         variables: shape.variables,
-//         statements: []
-//     }
-//     for(let i in shape.input) {
-//         if(shape.input.hasOwnProperty(i)) {
-//             newShape.input[i] = shape.input[i];
-//         }
-//     }
-//     newShape.input[vertexIndexName] = {
-//         type: "float",
-//         default: 0
-//     };
-//     let emitStatementIndices: number[] = [];
-//     for(let i = 0; i < shape.statements.length; i++) {
-//         if(shape.statements[i].type == "emit") {
-//             emitStatementIndices.push(i);
-//         }
-//     }
-//     let compileEmitStatements = (indexStart: number, indexEnd: number): Specification.Statement[] => {
-//         if(indexStart == indexEnd) {
-//             let result: Specification.Statement[] = [];
-//             let i = emitStatementIndices[indexStart];
-//             for(let j = 0; j <= i; j++) {
-//                 let s = shape.statements[j];
-//                 if(s.type != "emit" || j == i) {
-//                     result.push(s);
-//                 }
-//             }
-//             return result;
-//         } else {
-//             let middle = Math.floor((indexStart + indexEnd) / 2);
-//             let condition: Specification.StatementCondition = {
-//                 type: "condition",
-//                 condition: {
-//                     type: "function",
-//                     valueType: "bool",
-//                     functionName: "@@<:float,float:bool",
-//                     arguments: [
-//                         { type: "variable", variableName: vertexIndexName, valueType: "float" } as Specification.ExpressionVariable,
-//                         { type: "constant", value: middle + 0.5, valueType: "float" } as Specification.ExpressionConstant
-//                     ]
-//                 } as Specification.ExpressionFunction,
-//                 trueStatements: compileEmitStatements(indexStart, middle),
-//                 falseStatements: compileEmitStatements(middle + 1, indexEnd)
-//             }
-//             return [ condition ];
-//         }
-//     };
-//     newShape.statements = compileEmitStatements(0, emitStatementIndices.length - 1);
-//     return {
-//         specification: newShape,
-//         count: emitStatementIndices.length,
-//         indexVariable: vertexIndexName
-//     };
-// }
-// For now, assume there is no conditional emits.
-function FlattenEmits(shape) {
-    var vertexIndexName = utils_1.attemptName("s3idx", function (c) { return !shape.variables.hasOwnProperty(c) && !shape.input.hasOwnProperty(c); });
-    var emitIndexName = utils_1.attemptName("s3emitidx", function (c) { return !shape.variables.hasOwnProperty(c) && !shape.input.hasOwnProperty(c); });
-    var newShape = {
-        input: {},
-        output: shape.output,
-        variables: shape.variables,
-        statements: []
-    };
-    for (var i in shape.input) {
-        if (shape.input.hasOwnProperty(i)) {
-            newShape.input[i] = shape.input[i];
-        }
-    }
-    newShape.input[vertexIndexName] = {
-        type: "float",
-        default: 0
-    };
-    newShape.variables[emitIndexName] = "float";
-    newShape.statements.push({
-        type: "assign",
-        variableName: emitIndexName,
-        expression: SC.constant(-0.5, "float")
-    });
-    var generateStatements = function (statements) {
-        var result = [];
-        var maxNumberEmits = 0;
-        for (var i = 0; i < statements.length; i++) {
-            switch (statements[i].type) {
-                case "emit":
-                    {
-                        result.push({
-                            type: "condition",
-                            condition: SC.greaterThan(SC.variable(vertexIndexName, "float"), SC.variable(emitIndexName, "float")),
-                            trueStatements: [statements[i]],
-                            falseStatements: []
-                        });
-                        result.push({
-                            type: "assign",
-                            variableName: emitIndexName,
-                            expression: SC.add(SC.variable(emitIndexName, "float"), SC.constant(1, "float"))
-                        });
-                        maxNumberEmits += 1;
-                    }
-                    break;
-                case "for":
-                    {
-                        var forStatement = statements[i];
-                        var _a = generateStatements(forStatement.statements), generatedStatements_1 = _a[0], maxNumber = _a[1];
-                        result.push({
-                            type: "for",
-                            variableName: forStatement.variableName,
-                            rangeMin: forStatement.rangeMin,
-                            rangeMax: forStatement.rangeMax,
-                            statements: generatedStatements_1
-                        });
-                        maxNumberEmits += (forStatement.rangeMax - forStatement.rangeMin + 1) * maxNumber;
-                    }
-                    break;
-                case "condition":
-                    {
-                        var condStatement = statements[i];
-                        var _b = generateStatements(condStatement.trueStatements), gTrueStatements = _b[0], gTrueStatementsMax = _b[1];
-                        var _c = generateStatements(condStatement.falseStatements), gFalseStatements = _c[0], gFalseStatementsMax = _c[1];
-                        result.push({
-                            type: "condition",
-                            condition: condStatement.condition,
-                            trueStatements: gTrueStatements,
-                            falseStatements: gFalseStatements
-                        });
-                        maxNumberEmits = Math.max(gTrueStatementsMax, gFalseStatementsMax);
-                    }
-                    break;
-                default:
-                    {
-                        result.push(statements[i]);
-                    }
-                    break;
-            }
-        }
-        return [result, maxNumberEmits];
-    };
-    var _a = generateStatements(shape.statements), generatedStatements = _a[0], maxNumberEmits = _a[1];
-    newShape.statements = newShape.statements.concat(generatedStatements);
-    return {
-        specification: newShape,
-        count: maxNumberEmits,
-        indexVariable: vertexIndexName
-    };
-}
-exports.FlattenEmits = FlattenEmits;
-
-},{"../specConstruct":18,"../utils":22}],20:[function(require,module,exports){
-"use strict";
-var flattener_1 = require("./flattener");
-exports.FlattenEmits = flattener_1.FlattenEmits;
-
-},{"./flattener":19}],21:[function(require,module,exports){
-// Basic types.
-"use strict";
-function MakeType(name, size, primitive, primitiveCount) {
-    return {
-        name: name,
-        size: size,
-        primitive: primitive,
-        primitiveCount: primitiveCount
-    };
-}
-exports.types = {
-    "float": MakeType("float", 4, "float", 1),
-    "int": MakeType("int", 4, "int", 1),
-    "Vector2": MakeType("Vector2", 8, "float", 2),
-    "Vector3": MakeType("Vector3", 12, "float", 3),
-    "Quaternion": MakeType("Quaternion", 16, "float", 4),
-    "Color": MakeType("Color", 16, "float", 4)
-};
-
-},{}],22:[function(require,module,exports){
-"use strict";
-var Dictionary = (function () {
-    function Dictionary() {
-        this._dict = {};
-    }
-    Dictionary.prototype.set = function (key, value) {
-        this._dict[key] = value;
-    };
-    Dictionary.prototype.has = function (key) {
-        return this._dict.hasOwnProperty(key);
-    };
-    Dictionary.prototype.delete = function (key) {
-        delete this._dict[key];
-    };
-    Dictionary.prototype.get = function (key) {
-        if (this._dict.hasOwnProperty(key)) {
-            return this._dict[key];
-        }
-        else {
-            return undefined;
-        }
-    };
-    Dictionary.prototype.forEach = function (cb) {
-        for (var key in this._dict) {
-            if (this._dict.hasOwnProperty(key)) {
-                cb(this._dict[key], key);
-            }
-        }
-    };
-    Dictionary.prototype.clone = function () {
-        var result = new Dictionary();
-        this.forEach(function (value, key) {
-            result.set(key, value);
-        });
-        return result;
-    };
-    return Dictionary;
-}());
-exports.Dictionary = Dictionary;
-function shallowClone(object) {
-    var result = {};
-    for (var key in object) {
-        if (object.hasOwnProperty(key)) {
-            result[key] = object[key];
-        }
-    }
-    return result;
-}
-exports.shallowClone = shallowClone;
-function attemptName(prefix, check) {
-    if (check(prefix))
-        return prefix;
-    for (var i = 1;; i++) {
-        var c = prefix + i.toString();
-        if (check(c))
-            return c;
-    }
-}
-exports.attemptName = attemptName;
-function timeTask(name, cb) {
-    var t0 = new Date().getTime();
-    cb();
-    var t1 = new Date().getTime();
-    console.log(name + ": " + ((t1 - t0) / 1000).toFixed(3) + "s");
-}
-exports.timeTask = timeTask;
-
-},{}],23:[function(require,module,exports){
-"use strict";
-function __export(m) {
-    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
-}
-exports.version = "0.0.1";
-// Math classes and utilities
-__export(require("./core/utils"));
-__export(require("./core/math"));
-// Shape class and shape specification
-__export(require("./core/shapeModule"));
-__export(require("./core/shape"));
-__export(require("./core/binding"));
-__export(require("./core/intrinsics"));
-__export(require("./core/types"));
-__export(require("./core/exceptions"));
-// Parsing and compiling
-__export(require("./core/compiler/parser"));
-__export(require("./core/compiler/compiler"));
-__export(require("./core/compiler/declare"));
-// Code transformation
-__export(require("./core/transform/transforms"));
-// Javascript context
-__export(require("./core/evaluator/evaluator"));
-// Platform base class
-__export(require("./core/platform"));
-// Scales
-__export(require("./core/scale/scale"));
-var scales_1 = require("./core/scale/scales");
-exports.scale = scales_1.scale;
-
-},{"./core/binding":1,"./core/compiler/compiler":2,"./core/compiler/declare":3,"./core/compiler/parser":4,"./core/evaluator/evaluator":6,"./core/exceptions":7,"./core/intrinsics":8,"./core/math":12,"./core/platform":13,"./core/scale/scale":14,"./core/scale/scales":15,"./core/shape":16,"./core/shapeModule":17,"./core/transform/transforms":20,"./core/types":21,"./core/utils":22}],24:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -6475,7 +34,7 @@ var Compile = (function (_super) {
 }(Action));
 exports.Compile = Compile;
 
-},{"flux":57}],25:[function(require,module,exports){
+},{"flux":33}],2:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -6483,6 +42,7 @@ var __extends = (this && this.__extends) || function (d, b) {
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
 var React = require("react");
+var d3 = require("d3");
 var VerticalDivider = (function (_super) {
     __extends(VerticalDivider, _super);
     function VerticalDivider() {
@@ -6499,9 +59,11 @@ var VerticalDivider = (function (_super) {
         var onMouseUp = function () {
             window.removeEventListener("mousemove", onMouseMove);
             window.removeEventListener("mouseup", onMouseUp);
+            d3.selectAll("iframe").style("pointer-events", "auto");
         };
         window.addEventListener("mousemove", onMouseMove);
         window.addEventListener("mouseup", onMouseUp);
+        d3.selectAll("iframe").style("pointer-events", "none");
     };
     VerticalDivider.prototype.render = function () {
         var _this = this;
@@ -6526,9 +88,11 @@ var HorizontalDivider = (function (_super) {
         var onMouseUp = function () {
             window.removeEventListener("mousemove", onMouseMove);
             window.removeEventListener("mouseup", onMouseUp);
+            d3.selectAll("iframe").style("pointer-events", "auto");
         };
         window.addEventListener("mousemove", onMouseMove);
         window.addEventListener("mouseup", onMouseUp);
+        d3.selectAll("iframe").style("pointer-events", "none");
     };
     HorizontalDivider.prototype.render = function () {
         var _this = this;
@@ -6538,7 +102,7 @@ var HorizontalDivider = (function (_super) {
 }(React.Component));
 exports.HorizontalDivider = HorizontalDivider;
 
-},{"react":204}],26:[function(require,module,exports){
+},{"d3":7,"react":180}],3:[function(require,module,exports){
 /// <reference path="../../node_modules/monaco-editor/monaco.d.ts" />
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
@@ -6601,7 +165,7 @@ var MonacoEditor = (function (_super) {
 }(React.Component));
 exports.MonacoEditor = MonacoEditor;
 
-},{"react":204}],27:[function(require,module,exports){
+},{"react":180}],4:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -6609,322 +173,283 @@ var __extends = (this && this.__extends) || function (d, b) {
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
 var React = require('react');
-var Stardust = require("stardust-core");
-var StardustWebGL = require("stardust-webgl");
-var d3 = require("d3");
-var videoSaver_1 = require("../videoSaver");
-var S3RenderingView = (function (_super) {
-    __extends(S3RenderingView, _super);
-    function S3RenderingView(props) {
+var iFrameHTMLTemplate = "\n    <!DOCTYPE html>\n    <html>\n        <head>\n            <meta charset=\"utf-8\" />\n            <style type=\"text/css\">\n            body { margin: 0; padding: 0; }\n            canvas { margin: 0; padding: 0; position: absolute; left: 0; top: 0; }\n            svg { margin: 0; padding: 0; position: absolute; left: 0; top: 0; }\n            </style>\n        </head>\n        <body>\n            <script type=\"text/javascript\" src=\"_USER_CODE_DATAURL_\"></script>\n            <script type=\"text/javascript\" src=\"runtime/iframe-webgl.js\"></script>\n        </body>\n    </html>\n";
+var S3OverlayView = (function (_super) {
+    __extends(S3OverlayView, _super);
+    function S3OverlayView(props) {
         _super.call(this, props);
         this.state = {
             messages: [],
             controls: []
         };
+        this.onMessage = this.onMessage.bind(this);
     }
-    S3RenderingView.prototype.componentDidMount = function () {
-        var options = {
-            preserveDrawingBuffer: true
-        };
-        this._GL = (this.refs.canvas.getContext("webgl", options) || this.refs.canvas.getContext("experimental-webgl", options));
-        this._platform = new StardustWebGL.WebGLPlatform(this._GL);
-        this._GL.clearColor(this.props.backgroundColor[0], this.props.backgroundColor[1], this.props.backgroundColor[2], 1);
-        this._GL.clear(this._GL.COLOR_BUFFER_BIT | this._GL.DEPTH_BUFFER_BIT);
-        this._GL.disable(this._GL.DEPTH_TEST);
-        this._GL.enable(this._GL.BLEND);
-        this._GL.blendFuncSeparate(this._GL.SRC_ALPHA, this._GL.ONE_MINUS_SRC_ALPHA, this._GL.ONE, this._GL.ONE_MINUS_SRC_ALPHA);
-        this.startUserProgram();
-    };
-    S3RenderingView.prototype.componentDidUpdate = function (prevProps) {
-        this._GL.clearColor(this.props.backgroundColor[0], this.props.backgroundColor[1], this.props.backgroundColor[2], 1);
-        if (prevProps.jsCode != this.props.jsCode || prevProps.viewType != this.props.viewType || prevProps.compileIndex != this.props.compileIndex) {
-            this.setViewport();
-            this.startUserProgram();
-        }
-        else if (prevProps.viewType != this.props.viewType || prevProps.width != this.props.width || prevProps.height != this.props.height) {
-            this.setViewport();
-            if (this._reRender) {
-                this._reRender();
-            }
-        }
-    };
-    S3RenderingView.prototype.componentWillUnmount = function () {
-        this.stopUserProgram();
-    };
-    S3RenderingView.prototype.printMessage = function (message) {
-        this.state.messages.push(message);
-        var maxMessages = 10;
-        if (this.state.messages.length > maxMessages) {
-            this.state.messages.splice(0, this.state.messages.length - maxMessages);
-        }
+    S3OverlayView.prototype.reset = function () {
         this.setState({
-            messages: this.state.messages
+            messages: [],
+            controls: []
         });
     };
-    S3RenderingView.prototype.clearMessages = function () {
-        this.setState({
-            messages: []
-        });
+    S3OverlayView.prototype.componentDidMount = function () {
+        window.addEventListener("message", this.onMessage);
     };
-    S3RenderingView.prototype.addControl = function (info) {
-        this.state.controls.push(info);
-        this.setState({
-            controls: this.state.controls
-        });
+    S3OverlayView.prototype.componentWillUnmount = function () {
+        window.removeEventListener("message", this.onMessage);
     };
-    S3RenderingView.prototype.updateControl = function (info) {
-        this.setState({
-            controls: this.state.controls
-        });
+    S3OverlayView.prototype.onMessage = function (e) {
+        if (e.source == this.props.parent.refs.frame.contentWindow) {
+            var msg = e.data;
+            switch (msg.type) {
+                case "message":
+                    {
+                        this.state.messages.push(msg.message);
+                        var maxMessages = 10;
+                        if (this.state.messages.length > maxMessages) {
+                            this.state.messages.splice(0, this.state.messages.length - maxMessages);
+                        }
+                        this.setState({
+                            messages: this.state.messages
+                        });
+                    }
+                    break;
+                case "control.add":
+                    {
+                        this.state.controls.push(msg.control);
+                        this.setState({
+                            controls: this.state.controls
+                        });
+                    }
+                    break;
+            }
+        }
     };
-    S3RenderingView.prototype.clearControls = function () {
-        this.state.controls.splice(0, this.state.controls.length);
-        this.setState({
-            controls: this.state.controls
-        });
+    S3OverlayView.prototype.postMessage = function (msg) {
+        this.props.parent.refs.frame.contentWindow.postMessage(msg, "*");
     };
-    S3RenderingView.prototype.startUserProgram = function () {
+    S3OverlayView.prototype.renderControl = function (control, index) {
         var _this = this;
-        this.clearMessages();
-        this.clearControls();
-        this.stopUserProgram();
-        this.setViewport();
-        var dataFile = this.props.dataFile;
-        if (dataFile != null && dataFile != "") {
-            if (dataFile.match(/\.csv$/i)) {
-                d3.csv(dataFile, function (err, data) {
-                    _this.startUserProgramWithData(data);
-                });
+        switch (control.type) {
+            case "slider": {
+                var cval = (control.value - control.min) / (control.max - control.min) * 1000;
+                return (React.createElement("div", {className: "row", key: "c" + index}, 
+                    React.createElement("label", null, control.name), 
+                    React.createElement("input", {type: "range", min: 0, max: 1000, value: cval.toString(), onChange: function (e) {
+                        control.value = parseFloat(e.target.value) / 1000 * (control.max - control.min) + control.min;
+                        _this.setState({
+                            controls: _this.state.controls
+                        });
+                        _this.postMessage({
+                            type: "control.event",
+                            controlEvent: {
+                                name: control.name,
+                                value: control.value
+                            }
+                        });
+                    }})));
             }
-            if (dataFile.match(/\.json$/i)) {
-                d3.json(dataFile, function (err, data) {
-                    _this.startUserProgramWithData(data);
-                });
-            }
-        }
-        else {
-            this.startUserProgramWithData(null);
         }
     };
-    S3RenderingView.prototype.startUserProgramWithData = function (data) {
+    S3OverlayView.prototype.render = function () {
         var _this = this;
-        var GL = this._GL;
-        var D3 = d3;
-        var addSlider = function (name, shape, attr, initial, min, max) {
-            shape.attr(attr, initial);
-            var control = {
-                type: "slider",
-                name: name,
-                value: initial,
-                min: min,
-                max: max,
-                onChange: function (val) {
-                    control.value = val;
-                    shape.attr(attr, val);
-                    _this.updateControl(control);
-                    _this._reRender();
-                }
-            };
-            _this.addControl(control);
-        };
-        var userRender;
-        var userAnimate = null;
-        var userFinalize = null;
-        var doRender = function () {
-            GL.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
-            try {
-                if (userRender)
-                    userRender();
-            }
-            catch (e) {
-                _this.printMessage(e.message);
-            }
-        };
-        var runUserCode = function () {
-            var render = undefined;
-            var animate = undefined;
-            var finalize = undefined;
-            var DATA = data;
-            var d3 = D3;
-            var s3 = Stardust;
-            window["d3"] = d3;
-            window["Stardust"] = Stardust;
-            window["platform"] = _this._platform;
-            var GL = _this._GL;
-            var svg = d3.select(_this.refs.svg);
-            var reRender = doRender;
-            var print = function (m) { return _this.printMessage(m); };
-            try {
-                eval(_this.props.jsCode + "; userRender = render; userAnimate = animate; userFinalize = finalize;");
-            }
-            catch (e) {
-                _this.printMessage(e.message);
-                _this.printMessage(e.stack);
-            }
-        };
-        runUserCode();
-        doRender();
-        var t0 = new Date().getTime();
-        if (userAnimate) {
-            this._timerCurrent = setInterval(function () {
-                var t = (new Date().getTime() - t0) / 1000;
-                userAnimate(t);
-                doRender();
-            }, 10);
-        }
-        this._reRender = doRender;
-        this._userCodeFinalize = userFinalize;
+        return (React.createElement("div", {className: "overlay"}, 
+            React.createElement("div", {className: "messages"}, this.state.messages.map(function (m, index) { return React.createElement("pre", {key: "m" + index, className: "message-" + m.type}, m.message); })), 
+            React.createElement("div", {className: "controls"}, this.state.controls.map(function (c, index) { return _this.renderControl(c, index); }))));
     };
-    S3RenderingView.prototype.onMouseDown = function (event) {
-        var _this = this;
-        var pose0 = this._platform.pose;
-        var x0 = event.screenX;
-        var y0 = event.screenY;
-        var onMouseMove = function (e) {
-            var x1 = e.screenX;
-            var y1 = e.screenY;
-            var dx = x1 - x0;
-            var dy = y1 - y0;
-            if (dx == 0 && dy == 0) {
-                _this._platform.setPose(pose0);
-            }
-            else {
-                var len = Math.sqrt(dx * dx + dy * dy);
-                var cq = Stardust.Quaternion.Rotation(new Stardust.Vector3(dy / len, dx / len, 0), -len / 100);
-                var newPose = new Stardust.Pose(pose0.rotation.rotate(cq.rotate(pose0.rotation.conj().rotate(pose0.position))), pose0.rotation.mul(cq));
-                _this._platform.setPose(newPose);
-            }
-            if (_this._reRender)
-                _this._reRender();
+    return S3OverlayView;
+}(React.Component));
+exports.S3OverlayView = S3OverlayView;
+var S3RenderingView = (function (_super) {
+    __extends(S3RenderingView, _super);
+    function S3RenderingView(props) {
+        _super.call(this, props);
+        this.state = {
+            iFrameSrc: ""
         };
-        var onMouseUp = function () {
-            window.removeEventListener("mousemove", onMouseMove);
-            window.removeEventListener("mouseup", onMouseUp);
+    }
+    ;
+    S3RenderingView.prototype.toDataURL = function (code, type) {
+        return "data:" + type + ";base64," + btoa(code);
+    };
+    S3RenderingView.prototype.componentWillMount = function () {
+        this.updateInnerHTML(this.props);
+    };
+    S3RenderingView.prototype.componentWillReceiveProps = function (nextProps) {
+        if (this.props.viewType != nextProps.viewType ||
+            this.props.dataFile != nextProps.dataFile ||
+            this.props.backgroundColor != nextProps.backgroundColor ||
+            this.props.jsCode != nextProps.jsCode ||
+            this.props.compileIndex != nextProps.compileIndex) {
+            this.updateInnerHTML(nextProps);
+        }
+    };
+    S3RenderingView.prototype.updateInnerHTML = function (props) {
+        var config = {
+            dataFile: props.dataFile,
+            backgroundColor: props.backgroundColor,
+            compileIndex: props.compileIndex,
+            viewType: props.viewType
         };
-        window.addEventListener("mousemove", onMouseMove);
-        window.addEventListener("mouseup", onMouseUp);
+        var methodNames = ["render", "animate", "setup"];
+        var userCode = "\n            let UserCodeConfig = " + JSON.stringify(config) + ";\n            let UserCodeExports = {};\n            function UserCode() {\n                " + props.jsCode + "\n                " + methodNames.map(function (name) {
+            return "\n                        if(typeof(" + name + ") != \"undefined\" && " + name + " != null) {\n                            UserCodeExports." + name + " = " + name + ";\n                        }\n                    ";
+        }).join("\n") + "\n            }\n        ";
+        var innerHTML = iFrameHTMLTemplate.replace("_USER_CODE_DATAURL_", this.toDataURL(userCode, "text/javascript"));
+        if (this.state.iFrameSrc != innerHTML) {
+            if (this.refs.overlay)
+                this.refs.overlay.reset();
+            this.setState({
+                iFrameSrc: innerHTML
+            });
+        }
     };
-    S3RenderingView.prototype.setViewport = function () {
-        var platform = this._platform;
-        var canvas = this.refs.canvas;
-        var scale = 2;
-        if (canvas.width != this.props.width * scale) {
-            canvas.width = this.props.width * scale;
-        }
-        if (canvas.height != this.props.height * scale) {
-            canvas.height = this.props.height * scale;
-        }
-        if (this.props.viewType == "3D") {
-            platform.set3DView(Math.PI / 4, this.props.width / this.props.height, 0.1, 1000);
-            platform.setPose(new Stardust.Pose(new Stardust.Vector3(0, 0, 500), new Stardust.Quaternion(0, 0, 0, 1)));
-        }
-        else {
-            platform.set2DView(this.props.width, this.props.height);
-            platform.setPose(new Stardust.Pose());
-        }
-        this._GL.viewport(0, 0, canvas.width, canvas.height);
-    };
-    S3RenderingView.prototype.stopUserProgram = function () {
-        if (this._timerCurrent) {
-            clearInterval(this._timerCurrent);
-            this._timerCurrent = null;
-        }
-        if (this._userCodeFinalize) {
-            this._userCodeFinalize();
-        }
-        this._userCodeFinalize = null;
-        this._reRender = null;
-    };
-    S3RenderingView.prototype.doMakeVideo = function (control) {
-        var _this = this;
-        var frames = 60;
-        var currentFrame = 0;
-        var videoSaver = new videoSaver_1.VideoSaver("http://localhost:3000/", 60);
-        var doCurrentFrame = function () {
-            var v = currentFrame / (frames - 1) * (control.max - control.min) + control.min;
-            control.onChange(v);
-            setTimeout(function () {
-                var data = _this.refs.canvas.toDataURL("image/png");
-                videoSaver.add(data);
-                currentFrame += 1;
-                if (currentFrame < frames) {
-                    doCurrentFrame();
-                }
-                else {
-                    videoSaver.end();
-                }
-            }, 10);
-        };
-        doCurrentFrame();
-    };
-    S3RenderingView.prototype.renderControl = function (control, index) {
-        var _this = this;
-        if (control.type == "slider") {
-            var c_1 = control;
-            var cval = (c_1.value - c_1.min) / (c_1.max - c_1.min) * 1000;
-            return (React.createElement("div", {className: "row", key: "c" + index}, 
-                React.createElement("label", null, c_1.name), 
-                React.createElement("input", {type: "range", min: 0, max: 1000, value: cval.toString(), onChange: function (e) { return c_1.onChange(parseFloat(e.target.value) / 1000 * (c_1.max - c_1.min) + c_1.min); }}), 
-                React.createElement("button", {onClick: function (e) { return _this.doMakeVideo(c_1); }}, "Make Video")));
-        }
+    S3RenderingView.prototype.shouldComponentUpdate = function (nextProps, nextState) {
+        if (this.props.width != nextProps.width ||
+            this.props.height != nextProps.height ||
+            this.props.viewType != nextProps.viewType ||
+            this.props.dataFile != nextProps.dataFile ||
+            this.props.backgroundColor != nextProps.backgroundColor ||
+            this.props.jsCode != nextProps.jsCode ||
+            this.props.compileIndex != nextProps.compileIndex)
+            return true;
+        return false;
     };
     S3RenderingView.prototype.render = function () {
-        var _this = this;
         return (React.createElement("div", {className: "s3rendering-view", style: { width: this.props.width + "px", height: this.props.height + "px" }}, 
-            React.createElement("canvas", {ref: "canvas", style: { width: this.props.width + "px", height: this.props.height + "px" }, onMouseDown: this.props.viewType == "3D" ? (function (e) { return _this.onMouseDown(e); }) : null}), 
-            React.createElement("svg", {ref: "svg", style: { width: this.props.width + "px", height: this.props.height + "px" }}), 
-            React.createElement("div", {className: "overlay"}, 
-                React.createElement("div", {className: "messages"}, this.state.messages.map(function (m, index) { return React.createElement("pre", {key: "m" + index}, m); })), 
-                React.createElement("div", {className: "controls"}, this.state.controls.map(function (c, index) { return _this.renderControl(c, index); })))));
+            React.createElement("iframe", {ref: "frame", srcDoc: this.state.iFrameSrc, width: this.props.width, height: this.props.height, style: {
+                border: "none"
+            }}), 
+            React.createElement(S3OverlayView, {ref: "overlay", parent: this})));
     };
     return S3RenderingView;
 }(React.Component));
 exports.S3RenderingView = S3RenderingView;
 
-},{"../videoSaver":30,"d3":31,"react":204,"stardust-core":23,"stardust-webgl":211}],28:[function(require,module,exports){
+},{"react":180}],5:[function(require,module,exports){
 "use strict";
-exports.examples = [];
-function removeCommonIndent(code) {
-    code = code.replace("\r", "");
-    var lines = code.split("\n");
-    var commonIndentionLength = 100;
-    for (var _i = 0, lines_1 = lines; _i < lines_1.length; _i++) {
-        var line = lines_1[_i];
-        if (line.trim() == "")
-            continue;
-        var w = 0;
-        for (var i = 0; i < line.length; i++) {
-            if (line[i] == " ")
-                w += 1;
-            else
-                break;
-        }
-        if (commonIndentionLength > w) {
-            commonIndentionLength = w;
-        }
+exports.examples = [
+    {
+        "name": "Simple Bar Chart",
+        "viewType": "2D",
+        "dataFile": "",
+        "jsCode": "var shapes = Stardust.shape.compile(`\n    import Rectangle from P2D;\n\n    shape Bar(\n        index: float,\n        height: float,\n        N: float,\n        x0: float = -1, x1: float = 1, ratio: float = 0.9,\n        scale: float = 1,\n        y0: float = 0\n    ) {\n        let step = (x1 - x0) / N;\n        let c = x0 + index * step + step / 2;\n        Rectangle(\n            Vector2(c - step * ratio / 2, y0),\n            Vector2(c + step * ratio / 2, y0 - height * scale)\n        );\n    }\n`);\n\nvar area = Stardust.shape.create(shapes.Bar, platform);\narea.attr(\"index\", (d, i) => i);\narea.attr(\"height\", (d, i) => d);\narea.attr(\"x0\", 10.5);\narea.attr(\"x1\", 490.5);\narea.attr(\"N\", 6);\narea.attr(\"y0\", 200);\narea.attr(\"ratio\", 1);\narea.attr(\"scale\", 2);\n\naddSlider(\"Scale\", area, \"scale\", 30, 1, 100);\n\nlet array = [];\n\nfor(let i = 0; i < 100000; i++) array.push(Math.cos(i / 2534) + Math.sin(i /  534));\n\narea.attr(\"N\", array.length);\narea.data(array);\n\nvar bar = Stardust.shape.create(shapes.Bar, platform);\nbar.attr(\"index\", (d, i) => i);\nbar.attr(\"height\", (d, i) => d);\nbar.attr(\"x0\", 10);\nbar.attr(\"x1\", 490);\nbar.attr(\"N\", 6);\nbar.attr(\"ratio\", 0.9);\nbar.attr(\"scale\", 30);\nbar.attr(\"y0\", 400);\n\narray = [];\nfor(let i = 0; i < 20; i++) array.push(Math.cos(i) + 2);\nbar.attr(\"N\", array.length);\nbar.data(array);\n\nfunction render() {\n    area.render();\n    bar.render();\n}\n",
+        "background": [
+            1,
+            1,
+            1,
+            1
+        ]
+    },
+    {
+        "name": "Sincos 2D Plot",
+        "viewType": "2D",
+        "dataFile": "",
+        "jsCode": "var shape = Stardust.shape.custom()\n    .input(\"x\", \"float\")\n    .input(\"k\", \"float\")\n    .input(\"k2\", \"float\")\n    .input(\"k3\", \"float\")\n    .input(\"size\", \"float\", \"0.3\");\nshape.add(\"P2D.Hexagon\")\n    .attr(\"center\", \"Vector2(cos(k2 * x) * 5 + cos(x * k) * size, sin(x * k) * size + sin(x * k3) * 5) * 30 + Vector2(250, 250)\")\n    .attr(\"radius\", 1)\n    .attr(\"color\", \"Color(0, 0, 0, 0.1)\");\n\nshape = Stardust.shape.create(shape, platform);\n\nshape.attr(\"x\", (d) => d);\naddSlider(\"k\", shape, \"k\", 101, 1, 200);\naddSlider(\"k2\", shape, \"k2\", 3, 0, 20);\naddSlider(\"k3\", shape, \"k3\", 13, 0, 20);\n\nvar data = [];\nvar N = 100000;\nfor(var k = 0; k < N; k++) {\n    var x = k / N * Math.PI * 2 * 20;\n    data.push(x);\n}\nshape.data(data);\n\nfunction render() {\n    shape.render();\n}\nfunction animate(t) {\n    shape.attr(\"size\", Math.sin(t) * 0.5);\n}\n",
+        "background": [
+            1,
+            1,
+            1,
+            1
+        ]
+    },
+    {
+        "name": "Sin 3D",
+        "viewType": "3D",
+        "dataFile": "",
+        "jsCode": "var shapes = Stardust.shape.compile(`\n    import Triangle from P3D;\n\n    let k1: float;\n    let k2: float;\n    let k3: float;\n\n    function getP(x: float): Vector3 {\n        return Vector3(cos(x * k1), cos(x * k2), cos(x * k3)) * 100;\n    }\n\n    shape Shape(\n        x: float\n    ) {\n        let sz = 1.0;\n        let p = getP(x);\n        let n = getP(x + PI * 2 * 20 / 100000);\n        Triangle(\n            p, p + Vector3(sz, 0, 0), n,\n            Color(0, 0, 0, 0.5)\n        );\n    }\n`);\n\nvar shape = Stardust.shape.create(shapes.Shape, platform);\nshape.attr(\"x\", (d) => d);\naddSlider(\"k1\", shape, \"k1\", 16.707, 0, 20);\naddSlider(\"k2\", shape, \"k2\", 14.317, 0, 20);\naddSlider(\"k3\", shape, \"k3\", 17.049, 0, 20);\n\nvar data = [];\nvar N = 100000;\nfor(var k = 0; k < N; k++) {\n    var x = k / N * Math.PI * 2 * 20;\n    data.push(x);\n}\nshape.data(data);\n\nfunction render() {\n    shape.render();\n}\n",
+        "background": [
+            1,
+            1,
+            1,
+            1
+        ]
+    },
+    {
+        "name": "SandDance",
+        "viewType": "3D",
+        "dataFile": "data/demovoteclean.tsv",
+        "jsCode": "let demovote = DATA;\n\nlet shape = Stardust.shape.compile(`\n    import Cube from P3D;\n\n    let longitude: float;\n    let latitude: float;\n    let state: float;\n    let stateBinIndex: float;\n    let xBin: float;\n    let yBin: float;\n    let xyBinIndex: float;\n    let index: float;\n\n    function getPositionScatterplot(): Vector3 {\n        let scaleX = 0.15;\n        let scaleY = 0.22;\n        return Vector3(\n            scaleX * (longitude - (-95.9386152570054)),\n            scaleY * (latitude - (37.139536624928695)),\n            0\n        );\n    }\n\n    function getPositionStateBins(): Vector3 {\n        return Vector3(\n            (state - 48 / 2) * 0.2 + (stateBinIndex % 10 - 4.5) * 0.012,\n            floor(stateBinIndex / 10) * 0.012 - 1.0, 0\n        );\n    }\n\n    function getPositionXYBinning(): Vector3 {\n        let n = 5;\n        let txy = xyBinIndex % (n * n);\n        let tx = txy % n;\n        let ty = floor(txy / n);\n        let tz = floor(xyBinIndex / (n * n));\n        return Vector3(\n            (xBin - 9 / 2) * 0.6 + (tx - n / 2 + 0.5) * 0.02,\n            tz * 0.02 - 2.0,\n            (yBin - 6 / 2) * 0.6 + (ty - n / 2 + 0.5) * 0.02\n        );\n    }\n\n    function clamp01(t: float): float {\n        if(t < 0) t = 0;\n        if(t > 1) t = 1;\n        return t;\n    }\n\n    shape Shape(color: Color, t1: float, t2: float, t3: float, ki1: float, ki2: float, ki3: float) {\n        let p1 = getPositionScatterplot();\n        let p2 = getPositionStateBins();\n        let p3 = getPositionXYBinning();\n        let p = p1 * clamp01(t1 + ki1 * index) +\n            p2 * clamp01(t2 + ki2 * index) +\n            p3 * clamp01(t3 + ki3 * index);\n        Cube(\n            p * 50,\n            0.25,\n            color\n        );\n    }\n`)[\"Shape\"];\nlet shapes = Stardust.shape.create(shape, platform);\n\ndemovote.forEach(d => {\n    d.Longitude = +d.Longitude;\n    d.Latitude = +d.Latitude;\n});\n\nlet longitudeExtent = d3.extent(demovote, d => d.Longitude);\nlet latitudeExtent = d3.extent(demovote, d => d.Latitude);\n\nlet longitudeScale = d3.scale.linear().domain(longitudeExtent).range([ 0, 1 ])\nlet latitudeScale = d3.scale.linear().domain(latitudeExtent).range([ 0, 1 ])\n\n// Map states to integer.\nlet states = new Set();\nlet state2number = {};\nlet state2count = {};\ndemovote.forEach(d => states.add(d.StateAbb));\nstates = Array.from(states);\nstates.sort();\nstates.forEach((d, i) => {\n    state2number[d] = i;\n    state2count[d] = 0;\n});\n\nlet xyBinCounter = {};\n\nlet xBinCount = 10;\nlet yBinCount = 7;\n\ndemovote.sort((a, b) => a.Obama - b.Obama);\ndemovote.forEach((d, i) => {\n    d.index = i;\n    if(state2count[d.StateAbb] == null) state2count[d.StateAbb] = 0;\n    d.stateBinIndex = state2count[d.StateAbb]++;\n\n    let xBin = Math.floor(longitudeScale(d.Longitude) * xBinCount);\n    let yBin = Math.floor(latitudeScale(d.Latitude) * yBinCount);\n    let bin = yBin * (xBinCount + 1) + xBin;\n    d.xBin = xBin;\n    d.yBin = yBin;\n    if(xyBinCounter[bin] == null) xyBinCounter[bin] = 0;\n    d.xyBinIndex = xyBinCounter[bin]++;\n});\n\n\nlet s1 = d3.interpolateLab(\"#f7f7f7\", \"#0571b0\");\nlet s2 = d3.interpolateLab(\"#f7f7f7\", \"#ca0020\");\n\nlet strToRGBA = (str) => {\n    let rgb = d3.rgb(str);\n    return [ rgb.r / 255, rgb.g / 255, rgb.b / 255, 1 ];\n}\n\nlet scaleColor = (value) => {\n    if(value > 0.5) {\n        return strToRGBA(s1((value - 0.5) * 2));\n    } else {\n        return strToRGBA(s2((0.5 - value) * 2));\n    }\n}\n\nshapes\n    .attr(\"index\", d => d.index / (demovote.length - 1))\n    .attr(\"longitude\", d => d.Longitude)\n    .attr(\"latitude\", d => d.Latitude)\n    .attr(\"state\", (d) => state2number[d.StateAbb])\n    .attr(\"stateBinIndex\", (d) => d.stateBinIndex)\n    .attr(\"xBin\", (d) => d.xBin)\n    .attr(\"yBin\", (d) => d.yBin)\n    .attr(\"xyBinIndex\", (d) => d.xyBinIndex)\n    .attr(\"color\", (d) => scaleColor(d.Obama));\n\nfunction setT(t) {\n    if(t >= 0 && t <= 1) {\n        let tt = t * 1.3 - 0.3;\n        shapes.attr(\"t1\", 1 - tt).attr(\"t2\", tt).attr(\"t3\", 0).attr(\"ki1\", -0.3).attr(\"ki2\", +0.3).attr(\"ki3\", 0);\n    } else if(t >= 1 && t <= 2) {\n        shapes.attr(\"t1\", 0).attr(\"t2\", 1).attr(\"t3\", 0).attr(\"ki1\", 0).attr(\"ki2\", 0).attr(\"ki3\", 0);\n    } else if(t >= 2 && t <= 3) {\n        let tt = (t - 2) * 1.3 - 0.3;\n        shapes.attr(\"t1\", 0).attr(\"t2\", 1 - tt).attr(\"t3\", tt).attr(\"ki1\", 0).attr(\"ki2\", -0.3).attr(\"ki3\", +0.3);\n    } else if(t >= 3 && t <= 4) {\n        shapes.attr(\"t1\", 0).attr(\"t2\", 0).attr(\"t3\", 1).attr(\"ki1\", 0).attr(\"ki2\", 0).attr(\"ki3\", 0);\n    } else if(t >= 4 && t <= 5) {\n        let tt = (t - 4) * 1.3 - 0.3;\n        shapes.attr(\"t1\", tt).attr(\"t2\", 0).attr(\"t3\", 1 - tt).attr(\"ki1\", +0.3).attr(\"ki2\", 0).attr(\"ki3\", -0.3);\n    } else {\n        shapes.attr(\"t1\", 1).attr(\"t2\", 0).attr(\"t3\", 0).attr(\"ki1\", 0).attr(\"ki2\", 0).attr(\"ki3\", 0);\n    }\n}\n\nshapes.data(demovote);\n\nfunction render() {\n    shapes.render();\n}\n\nfunction animate(t) {\n    t = t % 6;\n    setT(t);\n}\n",
+        "background": [
+            0,
+            0,
+            0,
+            1
+        ]
+    },
+    {
+        "name": "Squares",
+        "viewType": "2D",
+        "dataFile": "data/mnist.csv",
+        "jsCode": "var shapes = Stardust.shape.compile(`\n    import Rectangle, OutlinedRectangle from P2D;\n\n    let size: float = 2;\n    let spacing: float = 3;\n    let x0: float = 10;\n    let xSpacing: float = 85;\n    let y1: float = 700;\n    let binSpacing: float = 47;\n\n    let CMsp: float = 1.6;\n    let CMspacing: float = 55;\n    let CMx0: float = 50;\n    let CMy0: float = 110;\n\n    let t: float = 0;\n\n    let binIx: float;\n    let binIy: float;\n    let CMIx: float;\n    let CMIy: float;\n    let CMwh: float;\n    let bin: float;\n    let assigned: float;\n    let label: float;\n    let color: Color;\n\n    shape BinnedSquare() {\n        let x = x0 + xSpacing * assigned;\n        let y = y1 - bin * binSpacing;\n        let bx = binIx * spacing;\n        let by = binIy * spacing;\n        x = x + bx;\n        y = y + by;\n        let p1a = Vector2(x, y);\n        let p2a = Vector2(x + size, y + size);\n        let CMx = CMx0 + assigned * CMspacing;\n        let CMy = CMy0 + label * CMspacing;\n        let dx = CMsp * CMIx;\n        let dy = CMsp * CMIy;\n        CMx = CMx + dx - CMwh / 2 * CMsp;\n        CMy = CMy + dy - CMwh / 2 * CMsp;\n        let p1b = Vector2(CMx, CMy);\n        let p2b = Vector2(CMx + size, CMy + size);\n        Rectangle(p1a * (1 - t) + p1b * t, p2a * (1 - t) + p2b * t, color);\n    }\n\n    shape BinnedOutlinedSquare() {\n        let x = x0 + xSpacing * label;\n        let y = y1 - bin * binSpacing;\n        let bx = binIx * spacing;\n        let by = binIy * spacing;\n        x = x - bx - spacing;\n        y = y + by;\n        let p1a = Vector2(x, y);\n        let p2a = Vector2(x + size, y + size);\n        let CMx = CMx0 + assigned * CMspacing;\n        let CMy = CMy0 + label * CMspacing;\n        let dx = CMsp * CMIx;\n        let dy = CMsp * CMIy;\n        CMx = CMx + dx - CMwh / 2 * CMsp;\n        CMy = CMy + dy - CMwh / 2 * CMsp;\n        let p1b = Vector2(CMx, CMy);\n        let p2b = Vector2(CMx + size, CMy + size);\n        OutlinedRectangle(p1a * (1 - t) + p1b * t, p2a * (1 - t) + p2b * t, 0.5, color);\n    }\n`);\n\nvar Nbins = 15;\nvar Nclasses = 10;\nvar CM = [];\nvar CMBin = [];\n\nvar instances = DATA.map(function(d) {\n    return {\n        label: parseInt(d.Label.substr(1)),\n        assigned: parseInt(d.Assigned.substr(1)),\n        score: d[d.Assigned],\n        scoreBin: Math.min(Nbins - 1, Math.max(0, Math.floor(parseFloat(d[d.Assigned]) * Nbins)))\n    };\n});\n\nfor(var i = 0; i < Nclasses; i++) {\n    CM[i] = [];\n    CMBin[i] = [];\n    for(var j = 0; j < Nclasses; j++) {\n        CM[i][j] = 0;\n        CMBin[i][j] = [];\n        for(var k = 0; k < Nbins; k++) {\n            CMBin[i][j][k] = 0;\n        }\n    }\n}\n\ninstances.sort(function(a, b) {\n    if(a.label == a.assigned) return b.label == b.assigned ? 0 : +1;\n    if(b.label == b.assigned) return a.label == a.assigned ? 0 : -1;\n    if(a.assigned != b.assigned)\n        return a.assigned - b.assigned;\n    if(a.label != b.label)\n        return a.label - b.label;\n    return a.score - b.score;\n})\n\ninstances.forEach(function(d) {\n    d.CMIndex = CM[d.label][d.assigned];\n    CM[d.label][d.assigned] += 1;\n    d.binIndex = CMBin[0][d.assigned][d.scoreBin];\n    CMBin[0][d.assigned][d.scoreBin] += 1;\n});\n\ninstances.sort(function(a, b) {\n    if(a.label == a.assigned) return b.label == b.assigned ? 0 : +1;\n    if(b.label == b.assigned) return a.label == a.assigned ? 0 : -1;\n    if(a.assigned != b.assigned)\n        return -(a.assigned - b.assigned);\n    if(a.label != b.label)\n        return a.label - b.label;\n    return a.score - b.score;\n})\n\ninstances.forEach(function(d) {\n    d.binIndex2 = CMBin[1][d.label][d.scoreBin];\n    CMBin[1][d.label][d.scoreBin] += 1;\n});\n\ninstances.forEach(function(d) {\n    d.CMCount = CM[d.label][d.assigned];\n});\n\nvar colors = [[31,119,180],[255,127,14],[44,160,44],[214,39,40],[148,103,189],[140,86,75],[227,119,194],[127,127,127],[188,189,34],[23,190,207]];\ncolors = colors.map((x) => [ x[0] / 255, x[1] / 255, x[2] / 255, 1 ]);\n\nvar shape = Stardust.shape.create(shapes.BinnedSquare, platform);\nshape.attr(\"color\", (d) => colors[d.label]);\nshape.attr(\"label\", (d) => d.label);\nshape.attr(\"assigned\", (d) => d.assigned);\nshape.attr(\"binIx\", (d) => Math.floor(d.binIndex / 15));\nshape.attr(\"binIy\", (d) => d.binIndex % 15);\nshape.attr(\"CMwh\", (d) => Math.ceil(Math.sqrt(d.CMCount)));\nshape.attr(\"CMIx\", (d) => Math.floor(d.CMIndex / shape.attr(\"CMwh\")(d)));\nshape.attr(\"CMIy\", (d) => d.CMIndex % shape.attr(\"CMwh\")(d));\nshape.attr(\"bin\", (d) => d.scoreBin);\n\nvar shape2 = Stardust.shape.create(shapes.BinnedOutlinedSquare, platform);\nshape2.attr(\"color\", (d) => colors[d.assigned]);\nshape2.attr(\"label\", (d) => d.label);\nshape2.attr(\"assigned\", (d) => d.assigned);\nshape2.attr(\"binIx\", (d) => Math.floor(d.binIndex2 / 15));\nshape2.attr(\"binIy\", (d) => d.binIndex2 % 15);\nshape2.attr(\"CMwh\", (d) => Math.ceil(Math.sqrt(d.CMCount)));\nshape2.attr(\"CMIx\", (d) => Math.floor(d.CMIndex / shape2.attr(\"CMwh\")(d)));\nshape2.attr(\"CMIy\", (d) => d.CMIndex % shape2.attr(\"CMwh\")(d));\nshape2.attr(\"bin\", (d) => d.scoreBin);\n\naddSlider(\"t\", shape, \"t\", 0, 0, 1);\n\nshape.data(instances);\nshape2.data(instances.filter((d) => d.label != d.assigned));\n\nfunction render() {\n    shape2.attr(\"t\", shape.attr(\"t\"));\n    shape2.render();\n    shape.render();\n}\n",
+        "background": [
+            1,
+            1,
+            1,
+            1
+        ]
+    },
+    {
+        "name": "Parallel Coordinates",
+        "viewType": "2D",
+        "dataFile": "data/mnist.csv",
+        "jsCode": "var shapes = Stardust.shape.compile(`\n    import Triangle from P2D;\n\n    shape PCLine(\n        p1: Vector2,\n        p2: Vector2,\n        width: float,\n        color: Color\n    ) {\n        let w2 = width / (p1.x - p2.x) * (p1.y - p2.y);\n        let s = sqrt(width * width + w2 * w2) / 2;\n        let m1 = Vector2(p1.x, p1.y + s);\n        let m2 = Vector2(p1.x, p1.y - s);\n        let n1 = Vector2(p2.x, p2.y + s);\n        let n2 = Vector2(p2.x, p2.y - s);\n        Triangle(m1, m2, n1, color);\n        Triangle(m2, n2, n1, color);\n    }\n\n    shape PC(\n        x0: float, x1: float, x2: float,\n        y0: float, y1: float, y2: float,\n        alpha: float,\n        color: Color\n    ) {\n        PCLine(Vector2(x0, y0), Vector2(x1, y1), 1, color);\n        PCLine(Vector2(x1, y1), Vector2(x2, y2), 1, color);\n    }\n`);\n\nvar shape = Stardust.shape.create(shapes.PC, platform);\n\nvar instances = DATA.map(function(d) {\n    return {\n        C0: +d.C0, C1: +d.C1, C2: +d.C2, C3: +d.C3, C4: +d.C4,\n        C5: +d.C5, C6: +d.C6, C7: +d.C7, C8: +d.C8, C9: +d.C9,\n        assigned: parseInt(d.Assigned.substr(1))\n    };\n});\n\nvar colors = [[31,119,180],[255,127,14],[44,160,44],[214,39,40],[148,103,189],[140,86,75],[227,119,194],[127,127,127],[188,189,34],[23,190,207]];\ncolors = colors.map((x) => [ x[0] / 255, x[1] / 255, x[2] / 255, 0.1 ]);\n\nvar mY = Stardust.scale.log().domain([ 0.01, 1 ]).range([ 500, 100 ]);\n\nvar xScale = d3.scale.linear().domain([ 0, 2 ]).range([ 100, 700 ]);\nshape.attr(\"y0\", mY((d) => d.C0)).attr(\"x0\", xScale(0));\nshape.attr(\"y1\", mY((d) => d.C1)).attr(\"x1\", xScale(1));\nshape.attr(\"y2\", mY((d) => d.C2)).attr(\"x2\", xScale(2));\nshape.attr(\"color\", (d) => colors[d.assigned]);\nshape.data(instances);\n\naddSlider(\"Alpha\", shape, \"alpha\", 0.02, 0, 0.1);\n\nfunction render() {\n    shape.render();\n}\n",
+        "background": [
+            1,
+            1,
+            1,
+            1
+        ]
+    },
+    {
+        "name": "Parallel Coordinates (Polylines)",
+        "viewType": "2D",
+        "dataFile": "data/mnist.csv",
+        "jsCode": "var polyline = Stardust.shape.polyline();\nvar shape = Stardust.shape.create(polyline, platform);\n\nvar instances = DATA.map(function(d) {\n    return {\n        C0: +d.C0, C1: +d.C1, C2: +d.C2, C3: +d.C3, C4: +d.C4,\n        C5: +d.C5, C6: +d.C6, C7: +d.C7, C8: +d.C8, C9: +d.C9,\n        assigned: parseInt(d.Assigned.substr(1))\n    };\n});\n\nvar colors = [[31,119,180],[255,127,14],[44,160,44],[214,39,40],[148,103,189],[140,86,75],[227,119,194],[127,127,127],[188,189,34],[23,190,207]];\ncolors = colors.map((x) => [ x[0] / 255, x[1] / 255, x[2] / 255, 0.5 ]);\n\nvar yScale = Stardust.scale.linear().domain([ 0, 1 ]).range([ 500, 100 ]);\nvar xScale = Stardust.scale.linear().domain([ 0, 9 ]).range([ 100, 700 ]);\n\nshape.attr(\"p\", Stardust.scale.Vector2(\n    xScale(d => d[0]),\n    yScale(d => d[1])\n));\nshape.attr(\"width\", 1);\nshape.attr(\"color\", [ 0, 0, 0, 1 ]);\n\nlet indices = [ 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9 ];\nlet convertInstance = (inst) => indices.map(i => [i, inst[\"C\" + i]]);\n\nshape.instance((d) => {\n    return {\n        data: convertInstance(d),\n        attrs: {\n            color: colors[d.assigned]\n        }\n    }\n})\n\nshape.data(instances.slice(0, 300));\n\naddSlider(\"Width\", shape, \"width\", 1, 0, 2);\n\nfunction render() {\n    shape.render();\n}\n",
+        "background": [
+            1,
+            1,
+            1,
+            1
+        ]
+    },
+    {
+        "name": "Facebook Graph",
+        "viewType": "2D",
+        "dataFile": "data/facebook_1912.json",
+        "jsCode": "var snodes = Stardust.shape.create(Stardust.shape.circle(8), platform);\nvar sedges = Stardust.shape.create(Stardust.shape.line(), platform);\n\nvar width = 600;\nvar height = 600;\n\nvar nodes = DATA.nodes;\nvar edges = DATA.edges;\nvar N = nodes.length;\n\nfor(var i = 0; i < N; i++) {\n    nodes[i].x = Math.random() * width;\n    nodes[i].y = Math.random() * height;\n}\n\nsnodes.attr(\"center\", (d) => [ d.x, d.y ]);\nsnodes.attr(\"radius\", 3);\nsnodes.attr(\"color\", [ 0, 0, 0, 0.5 ]);\nsedges.attr(\"p1\", (d) => [ d.source.x, d.source.y ]);\nsedges.attr(\"p2\", (d) => [ d.target.x, d.target.y ]);\nsedges.attr(\"color\", [ 0, 0, 0, 0.02 ]);\n\nvar force = d3.layout.force()\n    .size([ width, height ])\n    .nodes(nodes)\n    .links(edges);\n\nforce.linkStrength(0.05);\nforce.gravity(0.2);\nforce.linkDistance(100);\nforce.start();\nforce.on(\"tick\", () => {\n    snodes.data(nodes);\n    sedges.data(edges);\n    reRender();\n});\n\nfunction render() {\n    sedges.render();\n    snodes.render();\n}\n\nfunction finalize() {\n    force.stop();\n}\n",
+        "background": [
+            1,
+            1,
+            1,
+            1
+        ]
+    },
+    {
+        "name": "Facebook Graph (D3-based Version)",
+        "viewType": "2D",
+        "dataFile": "data/facebook_1912.json",
+        "jsCode": "var width = 600;\nvar height = 600;\n\nvar nodes = DATA.nodes;\nvar edges = DATA.edges;\nvar N = nodes.length;\n\nfor(var i = 0; i < N; i++) {\n    nodes[i].x = Math.random() * width;\n    nodes[i].y = Math.random() * height;\n}\n\nvar sedges = svg.selectAll(\"line\").data(edges);\nsedges.enter().append(\"line\");\nvar snodes = svg.selectAll(\"circle\").data(nodes);\nsnodes.enter().append(\"circle\");\n\nsnodes.attr(\"cx\", (d) => d.x);\nsnodes.attr(\"cy\", (d) => d.y);\nsnodes.attr(\"r\", 2);\nsedges.attr(\"x1\", (d) => d.source.x);\nsedges.attr(\"y1\", (d) => d.source.y);\nsedges.attr(\"x2\", (d) => d.target.x);\nsedges.attr(\"y2\", (d) => d.target.y);\n\nsnodes.style(\"fill\", \"rgba(0, 0, 0, 0.5)\");\nsedges.style(\"stroke\", \"rgba(0, 0, 0, 0.02)\");\n\nvar force = d3.layout.force()\n    .size([ width, height ])\n    .nodes(nodes)\n    .links(edges);\n\nforce.linkStrength(0.05);\nforce.gravity(0.2);\nforce.linkDistance(100);\nforce.start();\nforce.on(\"tick\", () => {\n    reRender();\n});\n\nfunction render() {\n    snodes.attr(\"cx\", (d) => d.x);\n    snodes.attr(\"cy\", (d) => d.y);\n    sedges.attr(\"x1\", (d) => d.source.x);\n    sedges.attr(\"y1\", (d) => d.source.y);\n    sedges.attr(\"x2\", (d) => d.target.x);\n    sedges.attr(\"y2\", (d) => d.target.y);\n}\n\nfunction finalize() {\n    force.stop();\n}\n",
+        "background": [
+            1,
+            1,
+            1,
+            1
+        ]
+    },
+    {
+        "name": "Seattle Public Library Dataset",
+        "viewType": "3D",
+        "dataFile": "data/beethoven.json",
+        "jsCode": "let shapes = Stardust.shape.compile(`\n    import Triangle from P3D;\n\n    shape Point(\n        center: Vector3,\n        size: float,\n        color: Color\n    ) {\n        let p1 = Vector3(center.x + size, center.y + size, center.z - size);\n        let p2 = Vector3(center.x + size, center.y - size, center.z + size);\n        let p3 = Vector3(center.x - size, center.y + size, center.z + size);\n        let p4 = Vector3(center.x - size, center.y - size, center.z - size);\n        Triangle(p1, p2, p3, color);\n        Triangle(p4, p1, p2, color);\n        Triangle(p4, p2, p3, color);\n        Triangle(p4, p3, p1, color);\n    }\n\n    shape Line(\n        p1: Vector3, p2: Vector3,\n        size: float,\n        color: Color\n    ) {\n        let x1 = Vector3(p1.x, p1.y, p1.z - size);\n        let x2 = Vector3(p1.x, p1.y, p1.z + size);\n        let x3 = Vector3(p2.x, p2.y, p2.z + size);\n        let x4 = Vector3(p2.x, p2.y, p2.z - size);\n        Triangle(x1, x2, x3, color);\n        Triangle(x4, x1, x2, color);\n        Triangle(x4, x2, x3, color);\n        Triangle(x4, x3, x1, color);\n    }\n\n    function getPosition(year: float, dayOfYear: float, secondOfDay: float): Vector3 {\n        let angle = dayOfYear / 366 * PI * 2;\n        let dayScaler = (secondOfDay / 86400 - 0.5);\n        let r = (year - 2006) / (2015 - 2006) * 200 + 50 + dayScaler * 50;\n        let x = cos(angle) * r;\n        let y = sin(angle) * r;\n        let z = dayScaler * 50;\n        return Vector3(x, y, z);\n    }\n\n    function getPosition2(year: float, dayOfYear: float, secondOfDay: float): Vector3 {\n        let angle = dayOfYear / 366 * PI * 2;\n        let r = secondOfDay / 86400 * 200 + 50;\n        let x = cos(angle) * r;\n        let y = sin(angle) * r;\n        let z = 0;\n        return Vector3(x, y, z);\n    }\n\n    shape Glyph(\n        year: float,\n        dayOfYear: float,\n        secondOfDay: float,\n        duration: float,\n        t: float,\n        color: Color\n    ) {\n        let p = getPosition(year, dayOfYear, secondOfDay);\n        let p2 = getPosition2(year, dayOfYear, secondOfDay);\n        Point(p * (1 - t) + p2 * t, log(1 + duration) / 2, color = color);\n    }\n\n    shape LineChart(\n        year1: float,\n        dayOfYear1: float,\n        secondOfDay1: float,\n        year2: float,\n        dayOfYear2: float,\n        secondOfDay2: float,\n        c1: float,\n        c2: float,\n        t: float\n    ) {\n        let p1 = getPosition(year1, dayOfYear1, secondOfDay1);\n        let p1p = getPosition2(year1, dayOfYear1, secondOfDay1);\n        let p2 = getPosition(year2, dayOfYear2, secondOfDay2);\n        let p2p = getPosition2(year2, dayOfYear2, secondOfDay2);\n        p1 = p1 + (p1p - p1) * t;\n        p2 = p2 + (p2p - p2) * t;\n        p1 = Vector3(p1.x, p1.y, c1);\n        p2 = Vector3(p2.x, p2.y, c2);\n        Line(p1, p2, 0.5, Color(1, 1, 1, 0.8));\n    }\n`);\n\nlet shape = Stardust.shape.create(shapes.Glyph, platform);\nlet lineChart = Stardust.shape.create(shapes.LineChart, platform);\n\nDATA.forEach((d) => {\n    d.duration = (d.checkInFirst - d.checkOut) / 86400;\n    d.checkOut = new Date(d.checkOut * 1000);\n    d.checkIn = new Date(d.checkInFirst * 1000);\n});\nDATA = DATA.filter((d) => {\n    if(!d.checkIn || !d.checkOut) return false;\n    if(d.duration > 360) return false;\n    return d.checkOut.getFullYear() >= 2007 && d.checkOut.getFullYear() < 2016 && d.checkIn.getFullYear() >= 2007 && d.checkIn.getFullYear() < 2016;\n});\n\n// Daily summary.\nlet days = new Map();\nDATA.forEach((d) => {\nlet day = Math.floor(d.checkOut.getTime() / 1000 / 86400) * 86400;\nif(!days.has(day)) days.set(day, 1);\nelse days.set(day, days.get(day) + 1);\n});\nlet daysArray = [];\ndays.forEach((count, day) => {\n    daysArray.push({ day: new Date(day * 1000), count: count });\n});\ndaysArray.sort((a, b) => a.day.getTime() - b.day.getTime());\n\nlet colorScale = d3.scale.category10();\nlet color = (d) => {\n    let rgb = d3.rgb(colorScale(d.deweyClass));\n    return [ rgb.r / 255, rgb.g / 255, rgb.b / 255, 0.5 ];\n};\n\nlet dayOfYear = (d) => {\n    return Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);\n}\nlet secondOfDay = (d) => {\n    return d.getMinutes() * 60 + d.getHours() * 3600 + d.getSeconds();\n}\nshape.attr(\"duration\", (d) => d.duration);\nshape.attr(\"year\", (d) => d.checkOut.getFullYear());\nshape.attr(\"dayOfYear\", (d) => dayOfYear(d.checkOut));\nshape.attr(\"secondOfDay\", (d) => secondOfDay(d.checkOut));\nshape.attr(\"color\", color);\n// shape.attr(\"inYear\", (d) => d.checkIn.getFullYear());\n// shape.attr(\"inDayOfYear\", (d) => dayOfYear(d.checkIn));\n// shape.attr(\"inSecondOfDay\", (d) => secondOfDay(d.checkIn));\nshape.data(DATA);\n\nlineChart.attr(\"year1\", (d) => d.day.getFullYear());\nlineChart.attr(\"dayOfYear1\", (d) => dayOfYear(d.day));\nlineChart.attr(\"secondOfDay1\", (d) => secondOfDay(d.day));\nlineChart.attr(\"year2\", (d, i) => daysArray[i + 1].day.getFullYear());\nlineChart.attr(\"dayOfYear2\", (d, i) => dayOfYear(daysArray[i + 1].day));\nlineChart.attr(\"secondOfDay2\", (d, i) => secondOfDay(daysArray[i + 1].day));\nlet zScale = Stardust.scale.linear().domain([ 0, d3.max(daysArray, (d) => d.count) ]).range([20, 60]);\nlineChart.attr(\"c1\", zScale((d) => d.count));\nlineChart.attr(\"c2\", zScale((d, i) => daysArray[i + 1].count));\nlineChart.data(daysArray.slice(0, -1));\n\naddSlider(\"t\", shape, \"t\", 0, 0, 1);\n\nfunction render() {\n    lineChart.attr(\"t\", shape.attr(\"t\"));\n    lineChart.render();\n    shape.render();\n}\n",
+        "background": [
+            1,
+            1,
+            1,
+            1
+        ]
     }
-    return lines.map(function (x) { return x.substr(commonIndentionLength); }).join("\n").trim();
-}
-function DefineExample(name, viewType, dataFile, jsCode) {
-    exports.examples.push({
-        name: name,
-        viewType: viewType,
-        dataFile: dataFile,
-        jsCode: removeCommonIndent(jsCode)
-    });
-}
-exports.DefineExample = DefineExample;
-DefineExample("SPL", "3D", "data/beethoven.json", "\n    let shapes = Stardust.shape.compile(`\n        import Triangle from P3D;\n\n        shape Point(\n            Vector3 center,\n            float size,\n            Color color\n        ) {\n            Vector3 p1 = Vector3(center.x + size, center.y + size, center.z - size);\n            Vector3 p2 = Vector3(center.x + size, center.y - size, center.z + size);\n            Vector3 p3 = Vector3(center.x - size, center.y + size, center.z + size);\n            Vector3 p4 = Vector3(center.x - size, center.y - size, center.z - size);\n            Triangle(p1, p2, p3, color);\n            Triangle(p4, p1, p2, color);\n            Triangle(p4, p2, p3, color);\n            Triangle(p4, p3, p1, color);\n        }\n\n        shape Line(\n            Vector3 p1, Vector3 p2,\n            float size,\n            Color color\n        ) {\n            Vector3 x1 = Vector3(p1.x, p1.y, p1.z - size);\n            Vector3 x2 = Vector3(p1.x, p1.y, p1.z + size);\n            Vector3 x3 = Vector3(p2.x, p2.y, p2.z + size);\n            Vector3 x4 = Vector3(p2.x, p2.y, p2.z - size);\n            Triangle(x1, x2, x3, color);\n            Triangle(x4, x1, x2, color);\n            Triangle(x4, x2, x3, color);\n            Triangle(x4, x3, x1, color);\n        }\n\n        Vector3 getPosition(float year, float dayOfYear, float secondOfDay) {\n            float angle = dayOfYear / 366 * PI * 2;\n            float dayScaler = (secondOfDay / 86400 - 0.5);\n            float r = (year - 2006) / (2015 - 2006) * 200 + 50 + dayScaler * 50;\n            float x = cos(angle) * r;\n            float y = sin(angle) * r;\n            float z = dayScaler * 50;\n            return Vector3(x, y, z);\n        }\n\n        Vector3 getPosition2(float year, float dayOfYear, float secondOfDay) {\n            float angle = dayOfYear / 366 * PI * 2;\n            float r = secondOfDay / 86400 * 200 + 50;\n            float x = cos(angle) * r;\n            float y = sin(angle) * r;\n            float z = 0;\n            return Vector3(x, y, z);\n        }\n\n        shape Glyph(\n            float year,\n            float dayOfYear,\n            float secondOfDay,\n            float duration,\n            float t,\n            Color color\n            // float inYear,\n            // float inDayOfYear,\n            // float inSecondOfDay\n        ) {\n            Vector3 p = getPosition(year, dayOfYear, secondOfDay);\n            Vector3 p2 = getPosition2(year, dayOfYear, secondOfDay);\n            Point(p * (1 - t) + p2 * t, log(1 + duration) / 2, color = color);\n        }\n\n        shape LineChart(\n            float year1,\n            float dayOfYear1,\n            float secondOfDay1,\n            float year2,\n            float dayOfYear2,\n            float secondOfDay2,\n            float c1,\n            float c2,\n            float t\n        ) {\n            Vector3 p1 = getPosition(year1, dayOfYear1, secondOfDay1);\n            Vector3 p1p = getPosition2(year1, dayOfYear1, secondOfDay1);\n            Vector3 p2 = getPosition(year2, dayOfYear2, secondOfDay2);\n            Vector3 p2p = getPosition2(year2, dayOfYear2, secondOfDay2);\n            p1 = p1 + (p1p - p1) * t;\n            p2 = p2 + (p2p - p2) * t;\n            p1 = Vector3(p1.x, p1.y, c1);\n            p2 = Vector3(p2.x, p2.y, c2);\n            Line(p1, p2, 0.5, Color(0, 0, 0, 0.5));\n        }\n    `);\n    let shape = Stardust.shape.create(shapes.Glyph, platform);\n    let lineChart = Stardust.shape.create(shapes.LineChart, platform);\n\n    DATA.forEach((d) => {\n        d.duration = (d.checkInFirst - d.checkOut) / 86400;\n        d.checkOut = new Date(d.checkOut * 1000);\n        d.checkIn = new Date(d.checkInFirst * 1000);\n    });\n    DATA = DATA.filter((d) => {\n        if(!d.checkIn || !d.checkOut) return false;\n        if(d.duration > 360) return false;\n        return d.checkOut.getFullYear() >= 2007 && d.checkOut.getFullYear() < 2016 && d.checkIn.getFullYear() >= 2007 && d.checkIn.getFullYear() < 2016;\n    });\n\n    // Daily summary.\n    let days = new Map();\n    DATA.forEach((d) => {\n    let day = Math.floor(d.checkOut.getTime() / 1000 / 86400) * 86400;\n    if(!days.has(day)) days.set(day, 1);\n    else days.set(day, days.get(day) + 1);\n    });\n    let daysArray = [];\n    days.forEach((count, day) => {\n        daysArray.push({ day: new Date(day * 1000), count: count });\n    });\n    daysArray.sort((a, b) => a.day.getTime() - b.day.getTime());\n\n    let colorScale = d3.scale.category10();\n    let color = (d) => {\n        let rgb = d3.rgb(colorScale(d.deweyClass));\n        return [ rgb.r / 255, rgb.g / 255, rgb.b / 255, 0.1 ];\n    };\n\n    let dayOfYear = (d) => {\n        return Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);\n    }\n    let secondOfDay = (d) => {\n        return d.getMinutes() * 60 + d.getHours() * 3600 + d.getSeconds();\n    }\n    shape.attr(\"duration\", (d) => d.duration);\n    shape.attr(\"year\", (d) => d.checkOut.getFullYear());\n    shape.attr(\"dayOfYear\", (d) => dayOfYear(d.checkOut));\n    shape.attr(\"secondOfDay\", (d) => secondOfDay(d.checkOut));\n    shape.attr(\"color\", color);\n    // shape.attr(\"inYear\", (d) => d.checkIn.getFullYear());\n    // shape.attr(\"inDayOfYear\", (d) => dayOfYear(d.checkIn));\n    // shape.attr(\"inSecondOfDay\", (d) => secondOfDay(d.checkIn));\n    shape.data(DATA);\n\n    lineChart.attr(\"year1\", (d) => d.day.getFullYear());\n    lineChart.attr(\"dayOfYear1\", (d) => dayOfYear(d.day));\n    lineChart.attr(\"secondOfDay1\", (d) => secondOfDay(d.day));\n    lineChart.attr(\"year2\", (d, i) => daysArray[i + 1].day.getFullYear());\n    lineChart.attr(\"dayOfYear2\", (d, i) => dayOfYear(daysArray[i + 1].day));\n    lineChart.attr(\"secondOfDay2\", (d, i) => secondOfDay(daysArray[i + 1].day));\n    let zScale = Stardust.scale.linear().domain([ 0, d3.max(daysArray, (d) => d.count) ]).range([20, 60]);\n    lineChart.attr(\"c1\", zScale((d) => d.count));\n    lineChart.attr(\"c2\", zScale((d, i) => daysArray[i + 1].count));\n    lineChart.data(daysArray.slice(0, -1));\n\n    addSlider(\"t\", shape, \"t\", 0, 0, 1);\n\n    function render() {\n        lineChart.attr(\"t\", shape.attr(\"t\"));\n        lineChart.render();\n        shape.render();\n    }\n");
-DefineExample("DensityPlot", "2D", "data/mnist.csv", "\n    var shapes = Stardust.shape.compile(`\n        import Triangle from P2D;\n\n        shape PCLine(\n            Vector2 p1,\n            Vector2 p2,\n            float width,\n            Color color\n        ) {\n            float w2 = width / (p1.x - p2.x) * (p1.y - p2.y);\n            float s = sqrt(width * width + w2 * w2) / 2;\n            Vector2 m1 = Vector2(p1.x, p1.y + s);\n            Vector2 m2 = Vector2(p1.x, p1.y - s);\n            Vector2 n1 = Vector2(p2.x, p2.y + s);\n            Vector2 n2 = Vector2(p2.x, p2.y - s);\n            Triangle(m1, m2, n1, color);\n            Triangle(m2, n2, n1, color);\n        }\n\n        shape PC(\n            float x0, float x1, float x2,\n            float y0, float y1, float y2,\n            float alpha,\n            Color color\n        ) {\n            PCLine(Vector2(x0, y0), Vector2(x1, y1), 1, color);\n            PCLine(Vector2(x1, y1), Vector2(x2, y2), 1, color);\n        }\n    `);\n    var shape = Stardust.shape.create(shapes.PC, platform);\n\n    var instances = DATA.map(function(d) {\n        return {\n            C0: +d.C0, C1: +d.C1, C2: +d.C2, C3: +d.C3, C4: +d.C4,\n            C5: +d.C5, C6: +d.C6, C7: +d.C7, C8: +d.C8, C9: +d.C9,\n            assigned: parseInt(d.Assigned.substr(1))\n        };\n    });\n\n    var colors = [[31,119,180],[255,127,14],[44,160,44],[214,39,40],[148,103,189],[140,86,75],[227,119,194],[127,127,127],[188,189,34],[23,190,207]];\n    colors = colors.map((x) => [ x[0] / 255, x[1] / 255, x[2] / 255, 0.1 ]);\n\n    var mY = Stardust.scale.log().domain([ 0.01, 1 ]).range([ 500, 100 ]);\n\n    var xScale = d3.scale.linear().domain([ 0, 2 ]).range([ 100, 700 ]);\n    shape.attr(\"y0\", mY((d) => d.C0)).attr(\"x0\", xScale(0));\n    shape.attr(\"y1\", mY((d) => d.C1)).attr(\"x1\", xScale(1));\n    shape.attr(\"y2\", mY((d) => d.C2)).attr(\"x2\", xScale(2));\n    shape.attr(\"color\", (d) => colors[d.assigned]);\n    shape.data(instances);\n\n    addSlider(\"Alpha\", shape, \"alpha\", 0.02, 0, 0.1);\n\n    function render() {\n        shape.render();\n    }\n");
-DefineExample("Sin3D", "3D", "", "\n    var shapes = Stardust.shape.compile(`\n        import Triangle from P3D;\n\n        float k1;\n        float k2;\n        float k3;\n\n        Vector3 getP(float x) {\n            return Vector3(cos(x * k1), cos(x * k2), cos(x * k3)) * 100;\n        }\n\n        shape Shape(\n            float x\n        ) {\n            float sz = 1;\n            Vector3 p = getP(x);\n            Vector3 n = getP(x + PI * 2 * 20 / 100000);\n            Triangle(\n                p, p + Vector3(sz, 0, 0), n,\n                Color(0, 0, 0, 0.5)\n            );\n        }\n    `);\n    var shape = Stardust.shape.create(shapes.Shape, platform);\n    shape.attr(\"x\", (d) => d);\n    addSlider(\"k1\", shape, \"k1\", 16.707, 0, 20);\n    addSlider(\"k2\", shape, \"k2\", 14.317, 0, 20);\n    addSlider(\"k3\", shape, \"k3\", 17.049, 0, 20);\n\n    var data = [];\n    var N = 100000;\n    for(var k = 0; k < N; k++) {\n        var x = k / N * Math.PI * 2 * 20;\n        data.push(x);\n    }\n    shape.data(data);\n\n    function render() {\n        shape.render();\n    }\n");
-DefineExample("Squares", "2D", "data/mnist.csv", "\n    var shapes = Stardust.shape.compile(`\n        import Rectangle, OutlinedRectangle from P2D;\n\n        float size = 2;\n        float spacing = 3;\n        float x0 = 10;\n        float xSpacing = 85;\n        float y1 = 700;\n        float binSpacing = 47;\n\n        float CMsp = 1.6;\n        float CMspacing = 55;\n        float CMx0 = 50;\n        float CMy0 = 110;\n\n        float t = 0;\n\n        float binIx;\n        float binIy;\n        float CMIx;\n        float CMIy;\n        float CMwh;\n        float bin;\n        float assigned;\n        float label;\n        Color color;\n\n        shape BinnedSquare() {\n            float x = x0 + xSpacing * assigned;\n            float y = y1 - bin * binSpacing;\n            float bx = binIx * spacing;\n            float by = binIy * spacing;\n            x = x + bx;\n            y = y + by;\n            Vector2 p1a = Vector2(x, y);\n            Vector2 p2a = Vector2(x + size, y + size);\n            float CMx = CMx0 + assigned * CMspacing;\n            float CMy = CMy0 + label * CMspacing;\n            float dx = CMsp * CMIx;\n            float dy = CMsp * CMIy;\n            CMx = CMx + dx - CMwh / 2 * CMsp;\n            CMy = CMy + dy - CMwh / 2 * CMsp;\n            Vector2 p1b = Vector2(CMx, CMy);\n            Vector2 p2b = Vector2(CMx + size, CMy + size);\n            Rectangle(p1a * (1 - t) + p1b * t, p2a * (1 - t) + p2b * t, color);\n        }\n\n        shape BinnedOutlinedSquare() {\n            float x = x0 + xSpacing * label;\n            float y = y1 - bin * binSpacing;\n            float bx = binIx * spacing;\n            float by = binIy * spacing;\n            x = x - bx - spacing;\n            y = y + by;\n            Vector2 p1a = Vector2(x, y);\n            Vector2 p2a = Vector2(x + size, y + size);\n            float CMx = CMx0 + assigned * CMspacing;\n            float CMy = CMy0 + label * CMspacing;\n            float dx = CMsp * CMIx;\n            float dy = CMsp * CMIy;\n            CMx = CMx + dx - CMwh / 2 * CMsp;\n            CMy = CMy + dy - CMwh / 2 * CMsp;\n            Vector2 p1b = Vector2(CMx, CMy);\n            Vector2 p2b = Vector2(CMx + size, CMy + size);\n            OutlinedRectangle(p1a * (1 - t) + p1b * t, p2a * (1 - t) + p2b * t, 0.5, color);\n        }\n    `);\n    var Nbins = 15;\n    var Nclasses = 10;\n    var CM = [];\n    var CMBin = [];\n\n    var instances = DATA.map(function(d) {\n        return {\n            label: parseInt(d.Label.substr(1)),\n            assigned: parseInt(d.Assigned.substr(1)),\n            score: d[d.Assigned],\n            scoreBin: Math.min(Nbins - 1, Math.max(0, Math.floor(parseFloat(d[d.Assigned]) * Nbins)))\n        };\n    });\n\n    for(var i = 0; i < Nclasses; i++) {\n        CM[i] = [];\n        CMBin[i] = [];\n        for(var j = 0; j < Nclasses; j++) {\n            CM[i][j] = 0;\n            CMBin[i][j] = [];\n            for(var k = 0; k < Nbins; k++) {\n                CMBin[i][j][k] = 0;\n            }\n        }\n    }\n\n    instances.sort(function(a, b) {\n        if(a.label == a.assigned) return b.label == b.assigned ? 0 : +1;\n        if(b.label == b.assigned) return a.label == a.assigned ? 0 : -1;\n        if(a.assigned != b.assigned)\n            return a.assigned - b.assigned;\n        if(a.label != b.label)\n            return a.label - b.label;\n        return a.score - b.score;\n    })\n\n    instances.forEach(function(d) {\n        d.CMIndex = CM[d.label][d.assigned];\n        CM[d.label][d.assigned] += 1;\n        d.binIndex = CMBin[0][d.assigned][d.scoreBin];\n        CMBin[0][d.assigned][d.scoreBin] += 1;\n    });\n\n    instances.sort(function(a, b) {\n        if(a.label == a.assigned) return b.label == b.assigned ? 0 : +1;\n        if(b.label == b.assigned) return a.label == a.assigned ? 0 : -1;\n        if(a.assigned != b.assigned)\n            return -(a.assigned - b.assigned);\n        if(a.label != b.label)\n            return a.label - b.label;\n        return a.score - b.score;\n    })\n\n    instances.forEach(function(d) {\n        d.binIndex2 = CMBin[1][d.label][d.scoreBin];\n        CMBin[1][d.label][d.scoreBin] += 1;\n    });\n\n    instances.forEach(function(d) {\n        d.CMCount = CM[d.label][d.assigned];\n    });\n\n    var colors = [[31,119,180],[255,127,14],[44,160,44],[214,39,40],[148,103,189],[140,86,75],[227,119,194],[127,127,127],[188,189,34],[23,190,207]];\n    colors = colors.map((x) => [ x[0] / 255, x[1] / 255, x[2] / 255, 1 ]);\n\n    var shape = Stardust.shape.create(shapes.BinnedSquare, platform);\n    shape.attr(\"color\", (d) => colors[d.label]);\n    shape.attr(\"label\", (d) => d.label);\n    shape.attr(\"assigned\", (d) => d.assigned);\n    shape.attr(\"binIx\", (d) => Math.floor(d.binIndex / 15));\n    shape.attr(\"binIy\", (d) => d.binIndex % 15);\n    shape.attr(\"CMwh\", (d) => Math.ceil(Math.sqrt(d.CMCount)));\n    shape.attr(\"CMIx\", (d) => Math.floor(d.CMIndex / shape.attr(\"CMwh\")(d)));\n    shape.attr(\"CMIy\", (d) => d.CMIndex % shape.attr(\"CMwh\")(d));\n    shape.attr(\"bin\", (d) => d.scoreBin);\n\n    var shape2 = Stardust.shape.create(shapes.BinnedOutlinedSquare, platform);\n    shape2.attr(\"color\", (d) => colors[d.assigned]);\n    shape2.attr(\"label\", (d) => d.label);\n    shape2.attr(\"assigned\", (d) => d.assigned);\n    shape2.attr(\"binIx\", (d) => Math.floor(d.binIndex2 / 15));\n    shape2.attr(\"binIy\", (d) => d.binIndex2 % 15);\n    shape2.attr(\"CMwh\", (d) => Math.ceil(Math.sqrt(d.CMCount)));\n    shape2.attr(\"CMIx\", (d) => Math.floor(d.CMIndex / shape2.attr(\"CMwh\")(d)));\n    shape2.attr(\"CMIy\", (d) => d.CMIndex % shape2.attr(\"CMwh\")(d));\n    shape2.attr(\"bin\", (d) => d.scoreBin);\n\n    addSlider(\"t\", shape, \"t\", 0, 0, 1);\n\n    shape.data(instances);\n    shape2.data(instances.filter((d) => d.label != d.assigned));\n\n    function render() {\n        shape2.attr(\"t\", shape.attr(\"t\"));\n        shape2.render();\n        shape.render();\n    }\n");
-DefineExample("Sincos 2D Plot", "2D", "", "\n    var shape = Stardust.shape.custom()\n        .input(\"x\", \"float\")\n        .input(\"k\", \"float\")\n        .input(\"k2\", \"float\")\n        .input(\"k3\", \"float\")\n        .input(\"size\", \"float\", \"0.3\");\n    shape.add(\"P2D.Hexagon\")\n        .attr(\"center\", \"Vector2(cos(k2 * x) * 5 + cos(x * k) * size, sin(x * k) * size + sin(x * k3) * 5) * 30 + Vector2(250, 250)\")\n        .attr(\"radius\", 1)\n        .attr(\"color\", \"Color(0, 0, 0, 0.1)\");\n\n    shape = Stardust.shape.create(shape, platform);\n\n    shape.attr(\"x\", (d) => d);\n    addSlider(\"k\", shape, \"k\", 101, 1, 200);\n    addSlider(\"k2\", shape, \"k2\", 3, 0, 20);\n    addSlider(\"k3\", shape, \"k3\", 13, 0, 20);\n\n    var data = [];\n    var N = 100000;\n    for(var k = 0; k < N; k++) {\n        var x = k / N * Math.PI * 2 * 20;\n        data.push(x);\n    }\n    shape.data(data);\n\n    function render() {\n        shape.render();\n    }\n    function animate(t) {\n        shape.attr(\"size\", Math.sin(t) * 0.5);\n    }\n");
-DefineExample("Simple Bar Chart", "2D", "", "\n    var shapes = Stardust.shape.compile(`\n        import Rectangle from P2D;\n\n        shape Bar(\n            float index,\n            float height,\n            float N,\n            float x0 = -1, float x1 = 1, float ratio = 0.9,\n            float scale = 1,\n            float y0 = 0\n        ) {\n            float step = (x1 - x0) / N;\n            float c = x0 + index * step + step / 2;\n            Rectangle(\n                Vector2(c - step * ratio / 2, y0),\n                Vector2(c + step * ratio / 2, y0 - height * scale)\n            );\n        }\n    `);\n    var area = Stardust.shape.create(shapes.Bar, platform);\n    area.attr(\"index\", (d, i) => i);\n    area.attr(\"height\", (d, i) => d);\n    area.attr(\"x0\", 10.5);\n    area.attr(\"x1\", 490.5);\n    area.attr(\"N\", 6);\n    area.attr(\"y0\", 200);\n    area.attr(\"ratio\", 1);\n    area.attr(\"scale\", 2);\n\n    addSlider(\"Scale\", area, \"scale\", 30, 1, 100);\n\n    let array = [];\n\n    for(let i = 0; i < 100000; i++) array.push(Math.cos(i / 2534) + Math.sin(i /  534));\n\n    area.attr(\"N\", array.length);\n    area.data(array);\n\n    var bar = Stardust.shape.create(shapes.Bar, platform);\n    bar.attr(\"index\", (d, i) => i);\n    bar.attr(\"height\", (d, i) => d);\n    bar.attr(\"x0\", 10);\n    bar.attr(\"x1\", 490);\n    bar.attr(\"N\", 6);\n    bar.attr(\"ratio\", 0.9);\n    bar.attr(\"scale\", 30);\n    bar.attr(\"y0\", 400);\n\n    array = [];\n    for(let i = 0; i < 20; i++) array.push(Math.cos(i) + 2);\n    bar.attr(\"N\", array.length);\n    bar.data(array);\n\n    function render() {\n        area.render();\n        bar.render();\n    }\n");
-DefineExample("Graph", "2D", "", "\n    var snodes = Stardust.shape.create(Stardust.shape.circle(8), platform);\n    var sedges = Stardust.shape.create(Stardust.shape.line(), platform);\n\n    var width = 600;\n    var height = 600;\n\n    var nodes = [];\n    var K = 100;\n\n    for(var i = 0; i < K * K; i++) {\n        nodes.push({\n            x: Math.random() * width,\n            y: Math.random() * height\n        })\n    }\n    var edges = [];\n\n    // Create a 2D grid.\n    for(var i = 0; i < K - 1; i++) {\n        for(var j = 0; j < K - 1; j++) {\n            edges.push({\n                source: i * K + j,\n                target: (i + 1) * K + j\n            });\n            edges.push({\n                source: i * K + j,\n                target: i * K + (j + 1)\n            });\n        }\n        edges.push({\n            source: (K - 1) * K + i,\n            target: (K - 1) * K + i + 1\n        });\n        edges.push({\n            source: i * K + K - 1,\n            target: (i + 1) * K + K - 1\n        });\n    }\n\n    for(var i = 0; i < K; i++) {\n        edges.push({\n            source: Math.floor(Math.random() * nodes.length),\n            target: Math.floor(Math.random() * nodes.length)\n        });\n    }\n\n    snodes.attr(\"center\", (d) => [ d.x, d.y ]);\n    snodes.attr(\"radius\", 2);\n    snodes.attr(\"color\", [ 0, 0, 0, 0.5 ]);\n    sedges.attr(\"p1\", (d) => [ d.source.x, d.source.y ]);\n    sedges.attr(\"p2\", (d) => [ d.target.x, d.target.y ]);\n    sedges.attr(\"color\", [ 0, 0, 0, 0.02 ]);\n\n    var force = d3.layout.force()\n        .size([ width, height ])\n        .nodes(nodes)\n        .links(edges);\n\n    force.linkStrength(8);\n    force.gravity(5);\n    force.linkDistance(0);\n\n    function animate() {\n        force.start();\n        force.tick();\n        force.stop();\n        snodes.data(nodes);\n        sedges.data(edges);\n    }\n\n    function render() {\n        sedges.render();\n        snodes.render();\n    }\n");
-DefineExample("Facebook Graph", "2D", "data/facebook_1912.json", "\n    var snodes = Stardust.shape.create(Stardust.shape.circle(8), platform);\n    var sedges = Stardust.shape.create(Stardust.shape.line(), platform);\n\n    var width = 600;\n    var height = 600;\n\n    var nodes = DATA.nodes;\n    var edges = DATA.edges;\n    var N = nodes.length;\n\n    for(var i = 0; i < N; i++) {\n        nodes[i].x = Math.random() * width;\n        nodes[i].y = Math.random() * height;\n    }\n\n    snodes.attr(\"center\", (d) => [ d.x, d.y ]);\n    snodes.attr(\"radius\", 3);\n    snodes.attr(\"color\", [ 0, 0, 0, 0.5 ]);\n    sedges.attr(\"p1\", (d) => [ d.source.x, d.source.y ]);\n    sedges.attr(\"p2\", (d) => [ d.target.x, d.target.y ]);\n    sedges.attr(\"color\", [ 0, 0, 0, 0.02 ]);\n\n    var force = d3.layout.force()\n        .size([ width, height ])\n        .nodes(nodes)\n        .links(edges);\n\n    force.linkStrength(0.05);\n    force.gravity(0.2);\n    force.linkDistance(100);\n    force.start();\n    force.on(\"tick\", () => {\n        snodes.data(nodes);\n        sedges.data(edges);\n        reRender();\n    });\n\n    function render() {\n        sedges.render();\n        snodes.render();\n    }\n\n    function finalize() {\n        force.stop();\n    }\n\n    print(`${nodes.length} nodes, ${edges.length} edges.`);\n");
-DefineExample("Facebook Graph D3 SVG", "2D", "data/facebook_1912.json", "\n    var width = 600;\n    var height = 600;\n\n    var nodes = DATA.nodes;\n    var edges = DATA.edges;\n    var N = nodes.length;\n\n    for(var i = 0; i < N; i++) {\n        nodes[i].x = Math.random() * width;\n        nodes[i].y = Math.random() * height;\n    }\n\n    var sedges = svg.selectAll(\"line\").data(edges);\n    sedges.enter().append(\"line\");\n    var snodes = svg.selectAll(\"circle\").data(nodes);\n    snodes.enter().append(\"circle\");\n\n    snodes.attr(\"cx\", (d) => d.x);\n    snodes.attr(\"cy\", (d) => d.y);\n    snodes.attr(\"r\", 2);\n    sedges.attr(\"x1\", (d) => d.source.x);\n    sedges.attr(\"y1\", (d) => d.source.y);\n    sedges.attr(\"x2\", (d) => d.target.x);\n    sedges.attr(\"y2\", (d) => d.target.y);\n\n    snodes.style(\"fill\", \"rgba(0, 0, 0, 0.5)\");\n    sedges.style(\"stroke\", \"rgba(0, 0, 0, 0.02)\");\n\n    var force = d3.layout.force()\n        .size([ width, height ])\n        .nodes(nodes)\n        .links(edges);\n\n    force.linkStrength(0.05);\n    force.gravity(0.2);\n    force.linkDistance(100);\n    force.start();\n    force.on(\"tick\", () => {\n        //reRender();\n    });\n\n    function render() {\n        snodes.attr(\"cx\", (d) => d.x);\n        snodes.attr(\"cy\", (d) => d.y);\n        sedges.attr(\"x1\", (d) => d.source.x);\n        sedges.attr(\"y1\", (d) => d.source.y);\n        sedges.attr(\"x2\", (d) => d.target.x);\n        sedges.attr(\"y2\", (d) => d.target.y);\n    }\n\n    function finalize() {\n        force.stop();\n    }\n\n    print(`${nodes.length} nodes, ${edges.length} edges.`);\n");
+];
 
-},{}],29:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -6936,7 +461,7 @@ var ReactDom = require("react-dom");
 var Actions = require("./actions");
 var d3 = require("d3");
 // Components.
-var s3rendering_1 = require("./components/s3rendering");
+var s3renderingIFrame_1 = require("./components/s3renderingIFrame");
 var editor_1 = require("./components/editor");
 var divider_1 = require("./components/divider");
 var examples_1 = require("./examples");
@@ -6962,7 +487,7 @@ var ToolbarView = (function (_super) {
             "Load example: ", 
             React.createElement("select", {ref: "selectExample", onChange: function (event) { return new Actions.LoadExample(_this.refs.selectExample.value).dispatch(); }}, examples_1.examples.map(function (example, index) { return React.createElement("option", {key: index, value: example.name}, example.name); })), 
             " ", 
-            React.createElement("button", {onClick: function (event) { return new Actions.Compile().dispatch(); }}, "Compile")));
+            React.createElement("button", {onClick: function (event) { return new Actions.Compile().dispatch(); }}, "Run")));
     };
     return ToolbarView;
 }(React.Component));
@@ -6999,7 +524,15 @@ var PlaygroundRootView = (function (_super) {
                 _this.setState({
                     dataFile: example.dataFile,
                     viewType: example.viewType,
-                    jsCode: example.jsCode
+                    jsCode: example.jsCode,
+                    backgroundColor: example.background,
+                    compiled: {
+                        dataFile: example.dataFile,
+                        viewType: example.viewType,
+                        backgroundColor: example.background,
+                        jsCode: example.jsCode,
+                        compileIndex: new Date().getTime()
+                    }
                 });
             }
             if (action instanceof Actions.Compile) {
@@ -7039,7 +572,7 @@ var PlaygroundRootView = (function (_super) {
                     )
                 )), 
             React.createElement(divider_1.VerticalDivider, {left: this.state.panelWidth, onDrag: function (newLeft) { return _this.setState({ panelWidth: Math.min(_this.state.width - 30, Math.max(30, newLeft)) }); }}), 
-            React.createElement("div", {className: "s3rendering-container", style: { left: this.state.panelWidth + 5 + "px" }}, this.state.compiled ? React.createElement(s3rendering_1.S3RenderingView, {dataFile: this.state.dataFile, viewType: this.state.compiled.viewType, jsCode: this.state.compiled.jsCode, width: this.state.width - 5 - this.state.panelWidth, height: this.state.height - 30, compileIndex: this.state.compiled.compileIndex, backgroundColor: this.state.compiled.backgroundColor}) : null)));
+            React.createElement("div", {className: "s3rendering-container", style: { left: this.state.panelWidth + 5 + "px" }}, this.state.compiled ? React.createElement(s3renderingIFrame_1.S3RenderingView, {dataFile: this.state.compiled.dataFile, viewType: this.state.compiled.viewType, jsCode: this.state.compiled.jsCode, width: this.state.width - 5 - this.state.panelWidth, height: this.state.height - 30, compileIndex: this.state.compiled.compileIndex, backgroundColor: this.state.compiled.backgroundColor}) : null)));
     };
     return PlaygroundRootView;
 }(React.Component));
@@ -7049,39 +582,7 @@ window["playgroundInitialize"] = function () {
     ReactDom.render(React.createElement(PlaygroundRootView, null), document.getElementById("root"));
 };
 
-},{"./actions":24,"./components/divider":25,"./components/editor":26,"./components/s3rendering":27,"./examples":28,"d3":31,"react":204,"react-dom":61}],30:[function(require,module,exports){
-"use strict";
-var d3 = require("d3");
-var VideoSaver = (function () {
-    function VideoSaver(url, fps) {
-        this._frameIndex = 0;
-        this._url = url;
-        d3.xhr(this._url).header("content-type", "application/json").post(JSON.stringify({
-            type: "init",
-            fps: fps
-        }), function (err, data) {
-        });
-    }
-    VideoSaver.prototype.add = function (dataurl) {
-        d3.xhr(this._url).header("content-type", "application/json").post(JSON.stringify({
-            type: "frame",
-            index: this._frameIndex,
-            dataurl: dataurl
-        }), function (err, data) {
-        });
-        this._frameIndex += 1;
-    };
-    VideoSaver.prototype.end = function () {
-        d3.xhr(this._url).header("content-type", "application/json").post(JSON.stringify({
-            type: "end"
-        }), function (err, data) {
-        });
-    };
-    return VideoSaver;
-}());
-exports.VideoSaver = VideoSaver;
-
-},{"d3":31}],31:[function(require,module,exports){
+},{"./actions":1,"./components/divider":2,"./components/editor":3,"./components/s3renderingIFrame":4,"./examples":5,"d3":7,"react":180,"react-dom":37}],7:[function(require,module,exports){
 !function() {
   var d3 = {
     version: "3.5.17"
@@ -16636,7 +10137,7 @@ exports.VideoSaver = VideoSaver;
   });
   if (typeof define === "function" && define.amd) this.d3 = d3, define(d3); else if (typeof module === "object" && module.exports) module.exports = d3; else this.d3 = d3;
 }();
-},{}],32:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -16722,7 +10223,7 @@ var EventListener = {
 
 module.exports = EventListener;
 }).call(this,require('_process'))
-},{"./emptyFunction":39,"_process":60}],33:[function(require,module,exports){
+},{"./emptyFunction":15,"_process":36}],9:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -16758,7 +10259,7 @@ var ExecutionEnvironment = {
 };
 
 module.exports = ExecutionEnvironment;
-},{}],34:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 "use strict";
 
 /**
@@ -16790,7 +10291,7 @@ function camelize(string) {
 }
 
 module.exports = camelize;
-},{}],35:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -16830,7 +10331,7 @@ function camelizeStyleName(string) {
 }
 
 module.exports = camelizeStyleName;
-},{"./camelize":34}],36:[function(require,module,exports){
+},{"./camelize":10}],12:[function(require,module,exports){
 'use strict';
 
 /**
@@ -16870,7 +10371,7 @@ function containsNode(outerNode, innerNode) {
 }
 
 module.exports = containsNode;
-},{"./isTextNode":49}],37:[function(require,module,exports){
+},{"./isTextNode":25}],13:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -16999,7 +10500,7 @@ function createArrayFromMixed(obj) {
 
 module.exports = createArrayFromMixed;
 }).call(this,require('_process'))
-},{"./invariant":47,"_process":60}],38:[function(require,module,exports){
+},{"./invariant":23,"_process":36}],14:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -17085,7 +10586,7 @@ function createNodesFromMarkup(markup, handleScript) {
 
 module.exports = createNodesFromMarkup;
 }).call(this,require('_process'))
-},{"./ExecutionEnvironment":33,"./createArrayFromMixed":37,"./getMarkupWrap":43,"./invariant":47,"_process":60}],39:[function(require,module,exports){
+},{"./ExecutionEnvironment":9,"./createArrayFromMixed":13,"./getMarkupWrap":19,"./invariant":23,"_process":36}],15:[function(require,module,exports){
 "use strict";
 
 /**
@@ -17124,7 +10625,7 @@ emptyFunction.thatReturnsArgument = function (arg) {
 };
 
 module.exports = emptyFunction;
-},{}],40:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -17146,7 +10647,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = emptyObject;
 }).call(this,require('_process'))
-},{"_process":60}],41:[function(require,module,exports){
+},{"_process":36}],17:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -17173,7 +10674,7 @@ function focusNode(node) {
 }
 
 module.exports = focusNode;
-},{}],42:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 'use strict';
 
 /**
@@ -17208,7 +10709,7 @@ function getActiveElement() /*?DOMElement*/{
 }
 
 module.exports = getActiveElement;
-},{}],43:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -17305,7 +10806,7 @@ function getMarkupWrap(nodeName) {
 
 module.exports = getMarkupWrap;
 }).call(this,require('_process'))
-},{"./ExecutionEnvironment":33,"./invariant":47,"_process":60}],44:[function(require,module,exports){
+},{"./ExecutionEnvironment":9,"./invariant":23,"_process":36}],20:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -17344,7 +10845,7 @@ function getUnboundedScrollPosition(scrollable) {
 }
 
 module.exports = getUnboundedScrollPosition;
-},{}],45:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 'use strict';
 
 /**
@@ -17377,7 +10878,7 @@ function hyphenate(string) {
 }
 
 module.exports = hyphenate;
-},{}],46:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -17416,7 +10917,7 @@ function hyphenateStyleName(string) {
 }
 
 module.exports = hyphenateStyleName;
-},{"./hyphenate":45}],47:[function(require,module,exports){
+},{"./hyphenate":21}],23:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -17468,7 +10969,7 @@ function invariant(condition, format, a, b, c, d, e, f) {
 
 module.exports = invariant;
 }).call(this,require('_process'))
-},{"_process":60}],48:[function(require,module,exports){
+},{"_process":36}],24:[function(require,module,exports){
 'use strict';
 
 /**
@@ -17491,7 +10992,7 @@ function isNode(object) {
 }
 
 module.exports = isNode;
-},{}],49:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 'use strict';
 
 /**
@@ -17516,7 +11017,7 @@ function isTextNode(object) {
 }
 
 module.exports = isTextNode;
-},{"./isNode":48}],50:[function(require,module,exports){
+},{"./isNode":24}],26:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -17566,7 +11067,7 @@ var keyMirror = function keyMirror(obj) {
 
 module.exports = keyMirror;
 }).call(this,require('_process'))
-},{"./invariant":47,"_process":60}],51:[function(require,module,exports){
+},{"./invariant":23,"_process":36}],27:[function(require,module,exports){
 "use strict";
 
 /**
@@ -17601,7 +11102,7 @@ var keyOf = function keyOf(oneKeyObj) {
 };
 
 module.exports = keyOf;
-},{}],52:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -17631,7 +11132,7 @@ function memoizeStringOnly(callback) {
 }
 
 module.exports = memoizeStringOnly;
-},{}],53:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -17654,7 +11155,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = performance || {};
-},{"./ExecutionEnvironment":33}],54:[function(require,module,exports){
+},{"./ExecutionEnvironment":9}],30:[function(require,module,exports){
 'use strict';
 
 /**
@@ -17688,7 +11189,7 @@ if (performance.now) {
 }
 
 module.exports = performanceNow;
-},{"./performance":53}],55:[function(require,module,exports){
+},{"./performance":29}],31:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -17756,7 +11257,7 @@ function shallowEqual(objA, objB) {
 }
 
 module.exports = shallowEqual;
-},{}],56:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-2015, Facebook, Inc.
@@ -17825,7 +11326,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = warning;
 }).call(this,require('_process'))
-},{"./emptyFunction":39,"_process":60}],57:[function(require,module,exports){
+},{"./emptyFunction":15,"_process":36}],33:[function(require,module,exports){
 /**
  * Copyright (c) 2014-2015, Facebook, Inc.
  * All rights reserved.
@@ -17837,7 +11338,7 @@ module.exports = warning;
 
 module.exports.Dispatcher = require('./lib/Dispatcher');
 
-},{"./lib/Dispatcher":58}],58:[function(require,module,exports){
+},{"./lib/Dispatcher":34}],34:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2014-2015, Facebook, Inc.
@@ -18071,7 +11572,7 @@ var Dispatcher = (function () {
 
 module.exports = Dispatcher;
 }).call(this,require('_process'))
-},{"_process":60,"fbjs/lib/invariant":47}],59:[function(require,module,exports){
+},{"_process":36,"fbjs/lib/invariant":23}],35:[function(require,module,exports){
 'use strict';
 /* eslint-disable no-unused-vars */
 var hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -18156,7 +11657,7 @@ module.exports = shouldUseNative() ? Object.assign : function (target, source) {
 	return to;
 };
 
-},{}],60:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -18338,12 +11839,12 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],61:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 'use strict';
 
 module.exports = require('react/lib/ReactDOM');
 
-},{"react/lib/ReactDOM":99}],62:[function(require,module,exports){
+},{"react/lib/ReactDOM":75}],38:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -18368,7 +11869,7 @@ var AutoFocusUtils = {
 };
 
 module.exports = AutoFocusUtils;
-},{"./ReactDOMComponentTree":103,"fbjs/lib/focusNode":41}],63:[function(require,module,exports){
+},{"./ReactDOMComponentTree":79,"fbjs/lib/focusNode":17}],39:[function(require,module,exports){
 /**
  * Copyright 2013-present Facebook, Inc.
  * All rights reserved.
@@ -18759,7 +12260,7 @@ var BeforeInputEventPlugin = {
 };
 
 module.exports = BeforeInputEventPlugin;
-},{"./EventConstants":77,"./EventPropagators":81,"./FallbackCompositionState":82,"./SyntheticCompositionEvent":160,"./SyntheticInputEvent":164,"fbjs/lib/ExecutionEnvironment":33,"fbjs/lib/keyOf":51}],64:[function(require,module,exports){
+},{"./EventConstants":53,"./EventPropagators":57,"./FallbackCompositionState":58,"./SyntheticCompositionEvent":136,"./SyntheticInputEvent":140,"fbjs/lib/ExecutionEnvironment":9,"fbjs/lib/keyOf":27}],40:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -18908,7 +12409,7 @@ var CSSProperty = {
 };
 
 module.exports = CSSProperty;
-},{}],65:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -19116,7 +12617,7 @@ var CSSPropertyOperations = {
 
 module.exports = CSSPropertyOperations;
 }).call(this,require('_process'))
-},{"./CSSProperty":64,"./ReactInstrumentation":133,"./dangerousStyleValue":178,"_process":60,"fbjs/lib/ExecutionEnvironment":33,"fbjs/lib/camelizeStyleName":35,"fbjs/lib/hyphenateStyleName":46,"fbjs/lib/memoizeStringOnly":52,"fbjs/lib/warning":56}],66:[function(require,module,exports){
+},{"./CSSProperty":40,"./ReactInstrumentation":109,"./dangerousStyleValue":154,"_process":36,"fbjs/lib/ExecutionEnvironment":9,"fbjs/lib/camelizeStyleName":11,"fbjs/lib/hyphenateStyleName":22,"fbjs/lib/memoizeStringOnly":28,"fbjs/lib/warning":32}],42:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -19225,7 +12726,7 @@ PooledClass.addPoolingTo(CallbackQueue);
 
 module.exports = CallbackQueue;
 }).call(this,require('_process'))
-},{"./PooledClass":86,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"object-assign":59}],67:[function(require,module,exports){
+},{"./PooledClass":62,"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23,"object-assign":35}],43:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -19551,7 +13052,7 @@ var ChangeEventPlugin = {
 };
 
 module.exports = ChangeEventPlugin;
-},{"./EventConstants":77,"./EventPluginHub":78,"./EventPropagators":81,"./ReactDOMComponentTree":103,"./ReactUpdates":153,"./SyntheticEvent":162,"./getEventTarget":186,"./isEventSupported":193,"./isTextInputElement":194,"fbjs/lib/ExecutionEnvironment":33,"fbjs/lib/keyOf":51}],68:[function(require,module,exports){
+},{"./EventConstants":53,"./EventPluginHub":54,"./EventPropagators":57,"./ReactDOMComponentTree":79,"./ReactUpdates":129,"./SyntheticEvent":138,"./getEventTarget":162,"./isEventSupported":169,"./isTextInputElement":170,"fbjs/lib/ExecutionEnvironment":9,"fbjs/lib/keyOf":27}],44:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -19748,7 +13249,7 @@ var DOMChildrenOperations = {
 
 module.exports = DOMChildrenOperations;
 }).call(this,require('_process'))
-},{"./DOMLazyTree":69,"./Danger":73,"./ReactDOMComponentTree":103,"./ReactInstrumentation":133,"./ReactMultiChildUpdateTypes":138,"./createMicrosoftUnsafeLocalFunction":177,"./setInnerHTML":199,"./setTextContent":200,"_process":60}],69:[function(require,module,exports){
+},{"./DOMLazyTree":45,"./Danger":49,"./ReactDOMComponentTree":79,"./ReactInstrumentation":109,"./ReactMultiChildUpdateTypes":114,"./createMicrosoftUnsafeLocalFunction":153,"./setInnerHTML":175,"./setTextContent":176,"_process":36}],45:[function(require,module,exports){
 /**
  * Copyright 2015-present, Facebook, Inc.
  * All rights reserved.
@@ -19867,7 +13368,7 @@ DOMLazyTree.queueHTML = queueHTML;
 DOMLazyTree.queueText = queueText;
 
 module.exports = DOMLazyTree;
-},{"./DOMNamespaces":70,"./createMicrosoftUnsafeLocalFunction":177,"./setInnerHTML":199,"./setTextContent":200}],70:[function(require,module,exports){
+},{"./DOMNamespaces":46,"./createMicrosoftUnsafeLocalFunction":153,"./setInnerHTML":175,"./setTextContent":176}],46:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -19888,7 +13389,7 @@ var DOMNamespaces = {
 };
 
 module.exports = DOMNamespaces;
-},{}],71:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -20097,7 +13598,7 @@ var DOMProperty = {
 
 module.exports = DOMProperty;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],72:[function(require,module,exports){
+},{"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23}],48:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -20321,7 +13822,7 @@ var DOMPropertyOperations = {
 
 module.exports = DOMPropertyOperations;
 }).call(this,require('_process'))
-},{"./DOMProperty":71,"./ReactDOMComponentTree":103,"./ReactInstrumentation":133,"./quoteAttributeValueForBrowser":196,"_process":60,"fbjs/lib/warning":56}],73:[function(require,module,exports){
+},{"./DOMProperty":47,"./ReactDOMComponentTree":79,"./ReactInstrumentation":109,"./quoteAttributeValueForBrowser":172,"_process":36,"fbjs/lib/warning":32}],49:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -20372,7 +13873,7 @@ var Danger = {
 
 module.exports = Danger;
 }).call(this,require('_process'))
-},{"./DOMLazyTree":69,"./reactProdInvariant":197,"_process":60,"fbjs/lib/ExecutionEnvironment":33,"fbjs/lib/createNodesFromMarkup":38,"fbjs/lib/emptyFunction":39,"fbjs/lib/invariant":47}],74:[function(require,module,exports){
+},{"./DOMLazyTree":45,"./reactProdInvariant":173,"_process":36,"fbjs/lib/ExecutionEnvironment":9,"fbjs/lib/createNodesFromMarkup":14,"fbjs/lib/emptyFunction":15,"fbjs/lib/invariant":23}],50:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -20400,7 +13901,7 @@ var keyOf = require('fbjs/lib/keyOf');
 var DefaultEventPluginOrder = [keyOf({ ResponderEventPlugin: null }), keyOf({ SimpleEventPlugin: null }), keyOf({ TapEventPlugin: null }), keyOf({ EnterLeaveEventPlugin: null }), keyOf({ ChangeEventPlugin: null }), keyOf({ SelectEventPlugin: null }), keyOf({ BeforeInputEventPlugin: null })];
 
 module.exports = DefaultEventPluginOrder;
-},{"fbjs/lib/keyOf":51}],75:[function(require,module,exports){
+},{"fbjs/lib/keyOf":27}],51:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -20451,7 +13952,7 @@ var DisabledInputUtils = {
 };
 
 module.exports = DisabledInputUtils;
-},{}],76:[function(require,module,exports){
+},{}],52:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -20557,7 +14058,7 @@ var EnterLeaveEventPlugin = {
 };
 
 module.exports = EnterLeaveEventPlugin;
-},{"./EventConstants":77,"./EventPropagators":81,"./ReactDOMComponentTree":103,"./SyntheticMouseEvent":166,"fbjs/lib/keyOf":51}],77:[function(require,module,exports){
+},{"./EventConstants":53,"./EventPropagators":57,"./ReactDOMComponentTree":79,"./SyntheticMouseEvent":142,"fbjs/lib/keyOf":27}],53:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -20655,7 +14156,7 @@ var EventConstants = {
 };
 
 module.exports = EventConstants;
-},{"fbjs/lib/keyMirror":50}],78:[function(require,module,exports){
+},{"fbjs/lib/keyMirror":26}],54:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -20909,7 +14410,7 @@ var EventPluginHub = {
 
 module.exports = EventPluginHub;
 }).call(this,require('_process'))
-},{"./EventPluginRegistry":79,"./EventPluginUtils":80,"./ReactErrorUtils":124,"./accumulateInto":173,"./forEachAccumulated":182,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],79:[function(require,module,exports){
+},{"./EventPluginRegistry":55,"./EventPluginUtils":56,"./ReactErrorUtils":100,"./accumulateInto":149,"./forEachAccumulated":158,"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23}],55:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -21159,7 +14660,7 @@ var EventPluginRegistry = {
 
 module.exports = EventPluginRegistry;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],80:[function(require,module,exports){
+},{"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23}],56:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -21391,7 +14892,7 @@ var EventPluginUtils = {
 
 module.exports = EventPluginUtils;
 }).call(this,require('_process'))
-},{"./EventConstants":77,"./ReactErrorUtils":124,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],81:[function(require,module,exports){
+},{"./EventConstants":53,"./ReactErrorUtils":100,"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23,"fbjs/lib/warning":32}],57:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -21531,7 +15032,7 @@ var EventPropagators = {
 
 module.exports = EventPropagators;
 }).call(this,require('_process'))
-},{"./EventConstants":77,"./EventPluginHub":78,"./EventPluginUtils":80,"./accumulateInto":173,"./forEachAccumulated":182,"_process":60,"fbjs/lib/warning":56}],82:[function(require,module,exports){
+},{"./EventConstants":53,"./EventPluginHub":54,"./EventPluginUtils":56,"./accumulateInto":149,"./forEachAccumulated":158,"_process":36,"fbjs/lib/warning":32}],58:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -21627,7 +15128,7 @@ _assign(FallbackCompositionState.prototype, {
 PooledClass.addPoolingTo(FallbackCompositionState);
 
 module.exports = FallbackCompositionState;
-},{"./PooledClass":86,"./getTextContentAccessor":190,"object-assign":59}],83:[function(require,module,exports){
+},{"./PooledClass":62,"./getTextContentAccessor":166,"object-assign":35}],59:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -21840,7 +15341,7 @@ var HTMLDOMPropertyConfig = {
 };
 
 module.exports = HTMLDOMPropertyConfig;
-},{"./DOMProperty":71}],84:[function(require,module,exports){
+},{"./DOMProperty":47}],60:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -21900,7 +15401,7 @@ var KeyEscapeUtils = {
 };
 
 module.exports = KeyEscapeUtils;
-},{}],85:[function(require,module,exports){
+},{}],61:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -22039,7 +15540,7 @@ var LinkedValueUtils = {
 
 module.exports = LinkedValueUtils;
 }).call(this,require('_process'))
-},{"./ReactPropTypeLocations":143,"./ReactPropTypes":144,"./ReactPropTypesSecret":145,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],86:[function(require,module,exports){
+},{"./ReactPropTypeLocations":119,"./ReactPropTypes":120,"./ReactPropTypesSecret":121,"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23,"fbjs/lib/warning":32}],62:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -22163,7 +15664,7 @@ var PooledClass = {
 
 module.exports = PooledClass;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],87:[function(require,module,exports){
+},{"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23}],63:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -22255,7 +15756,7 @@ var React = {
 
 module.exports = React;
 }).call(this,require('_process'))
-},{"./ReactChildren":90,"./ReactClass":92,"./ReactComponent":93,"./ReactDOMFactories":106,"./ReactElement":121,"./ReactElementValidator":122,"./ReactPropTypes":144,"./ReactPureComponent":146,"./ReactVersion":154,"./onlyChild":195,"_process":60,"fbjs/lib/warning":56,"object-assign":59}],88:[function(require,module,exports){
+},{"./ReactChildren":66,"./ReactClass":68,"./ReactComponent":69,"./ReactDOMFactories":82,"./ReactElement":97,"./ReactElementValidator":98,"./ReactPropTypes":120,"./ReactPureComponent":122,"./ReactVersion":130,"./onlyChild":171,"_process":36,"fbjs/lib/warning":32,"object-assign":35}],64:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -22586,7 +16087,7 @@ var ReactBrowserEventEmitter = _assign({}, ReactEventEmitterMixin, {
 });
 
 module.exports = ReactBrowserEventEmitter;
-},{"./EventConstants":77,"./EventPluginRegistry":79,"./ReactEventEmitterMixin":125,"./ViewportMetrics":172,"./getVendorPrefixedEventName":191,"./isEventSupported":193,"object-assign":59}],89:[function(require,module,exports){
+},{"./EventConstants":53,"./EventPluginRegistry":55,"./ReactEventEmitterMixin":101,"./ViewportMetrics":148,"./getVendorPrefixedEventName":167,"./isEventSupported":169,"object-assign":35}],65:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-present, Facebook, Inc.
@@ -22743,7 +16244,7 @@ var ReactChildReconciler = {
 
 module.exports = ReactChildReconciler;
 }).call(this,require('_process'))
-},{"./KeyEscapeUtils":84,"./ReactComponentTreeHook":96,"./ReactReconciler":148,"./instantiateReactComponent":192,"./shouldUpdateReactComponent":201,"./traverseAllChildren":202,"_process":60,"fbjs/lib/warning":56}],90:[function(require,module,exports){
+},{"./KeyEscapeUtils":60,"./ReactComponentTreeHook":72,"./ReactReconciler":124,"./instantiateReactComponent":168,"./shouldUpdateReactComponent":177,"./traverseAllChildren":178,"_process":36,"fbjs/lib/warning":32}],66:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -22935,7 +16436,7 @@ var ReactChildren = {
 };
 
 module.exports = ReactChildren;
-},{"./PooledClass":86,"./ReactElement":121,"./traverseAllChildren":202,"fbjs/lib/emptyFunction":39}],91:[function(require,module,exports){
+},{"./PooledClass":62,"./ReactElement":97,"./traverseAllChildren":178,"fbjs/lib/emptyFunction":15}],67:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -22992,7 +16493,7 @@ var ReactChildrenMutationWarningHook = {
 
 module.exports = ReactChildrenMutationWarningHook;
 }).call(this,require('_process'))
-},{"./ReactComponentTreeHook":96,"_process":60,"fbjs/lib/warning":56}],92:[function(require,module,exports){
+},{"./ReactComponentTreeHook":72,"_process":36,"fbjs/lib/warning":32}],68:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -23727,7 +17228,7 @@ var ReactClass = {
 
 module.exports = ReactClass;
 }).call(this,require('_process'))
-},{"./ReactComponent":93,"./ReactElement":121,"./ReactNoopUpdateQueue":140,"./ReactPropTypeLocationNames":142,"./ReactPropTypeLocations":143,"./reactProdInvariant":197,"_process":60,"fbjs/lib/emptyObject":40,"fbjs/lib/invariant":47,"fbjs/lib/keyMirror":50,"fbjs/lib/keyOf":51,"fbjs/lib/warning":56,"object-assign":59}],93:[function(require,module,exports){
+},{"./ReactComponent":69,"./ReactElement":97,"./ReactNoopUpdateQueue":116,"./ReactPropTypeLocationNames":118,"./ReactPropTypeLocations":119,"./reactProdInvariant":173,"_process":36,"fbjs/lib/emptyObject":16,"fbjs/lib/invariant":23,"fbjs/lib/keyMirror":26,"fbjs/lib/keyOf":27,"fbjs/lib/warning":32,"object-assign":35}],69:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -23848,7 +17349,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactComponent;
 }).call(this,require('_process'))
-},{"./ReactNoopUpdateQueue":140,"./canDefineProperty":175,"./reactProdInvariant":197,"_process":60,"fbjs/lib/emptyObject":40,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],94:[function(require,module,exports){
+},{"./ReactNoopUpdateQueue":116,"./canDefineProperty":151,"./reactProdInvariant":173,"_process":36,"fbjs/lib/emptyObject":16,"fbjs/lib/invariant":23,"fbjs/lib/warning":32}],70:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -23879,7 +17380,7 @@ var ReactComponentBrowserEnvironment = {
 };
 
 module.exports = ReactComponentBrowserEnvironment;
-},{"./DOMChildrenOperations":68,"./ReactDOMIDOperations":108}],95:[function(require,module,exports){
+},{"./DOMChildrenOperations":44,"./ReactDOMIDOperations":84}],71:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-present, Facebook, Inc.
@@ -23927,7 +17428,7 @@ var ReactComponentEnvironment = {
 
 module.exports = ReactComponentEnvironment;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],96:[function(require,module,exports){
+},{"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23}],72:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2016-present, Facebook, Inc.
@@ -24272,7 +17773,7 @@ var ReactComponentTreeHook = {
 
 module.exports = ReactComponentTreeHook;
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":98,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],97:[function(require,module,exports){
+},{"./ReactCurrentOwner":74,"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23,"fbjs/lib/warning":32}],73:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -25179,7 +18680,7 @@ var ReactCompositeComponent = {
 
 module.exports = ReactCompositeComponent;
 }).call(this,require('_process'))
-},{"./ReactComponentEnvironment":95,"./ReactCurrentOwner":98,"./ReactElement":121,"./ReactErrorUtils":124,"./ReactInstanceMap":132,"./ReactInstrumentation":133,"./ReactNodeTypes":139,"./ReactPropTypeLocations":143,"./ReactReconciler":148,"./checkReactTypeSpec":176,"./reactProdInvariant":197,"./shouldUpdateReactComponent":201,"_process":60,"fbjs/lib/emptyObject":40,"fbjs/lib/invariant":47,"fbjs/lib/shallowEqual":55,"fbjs/lib/warning":56,"object-assign":59}],98:[function(require,module,exports){
+},{"./ReactComponentEnvironment":71,"./ReactCurrentOwner":74,"./ReactElement":97,"./ReactErrorUtils":100,"./ReactInstanceMap":108,"./ReactInstrumentation":109,"./ReactNodeTypes":115,"./ReactPropTypeLocations":119,"./ReactReconciler":124,"./checkReactTypeSpec":152,"./reactProdInvariant":173,"./shouldUpdateReactComponent":177,"_process":36,"fbjs/lib/emptyObject":16,"fbjs/lib/invariant":23,"fbjs/lib/shallowEqual":31,"fbjs/lib/warning":32,"object-assign":35}],74:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -25211,7 +18712,7 @@ var ReactCurrentOwner = {
 };
 
 module.exports = ReactCurrentOwner;
-},{}],99:[function(require,module,exports){
+},{}],75:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -25324,7 +18825,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactDOM;
 }).call(this,require('_process'))
-},{"./ReactDOMComponentTree":103,"./ReactDOMNullInputValuePropHook":110,"./ReactDOMUnknownPropertyHook":117,"./ReactDefaultInjection":120,"./ReactInstrumentation":133,"./ReactMount":136,"./ReactReconciler":148,"./ReactUpdates":153,"./ReactVersion":154,"./findDOMNode":180,"./getHostComponentFromComposite":187,"./renderSubtreeIntoContainer":198,"_process":60,"fbjs/lib/ExecutionEnvironment":33,"fbjs/lib/warning":56}],100:[function(require,module,exports){
+},{"./ReactDOMComponentTree":79,"./ReactDOMNullInputValuePropHook":86,"./ReactDOMUnknownPropertyHook":93,"./ReactDefaultInjection":96,"./ReactInstrumentation":109,"./ReactMount":112,"./ReactReconciler":124,"./ReactUpdates":129,"./ReactVersion":130,"./findDOMNode":156,"./getHostComponentFromComposite":163,"./renderSubtreeIntoContainer":174,"_process":36,"fbjs/lib/ExecutionEnvironment":9,"fbjs/lib/warning":32}],76:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -25349,7 +18850,7 @@ var ReactDOMButton = {
 };
 
 module.exports = ReactDOMButton;
-},{"./DisabledInputUtils":75}],101:[function(require,module,exports){
+},{"./DisabledInputUtils":51}],77:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -26358,7 +19859,7 @@ _assign(ReactDOMComponent.prototype, ReactDOMComponent.Mixin, ReactMultiChild.Mi
 
 module.exports = ReactDOMComponent;
 }).call(this,require('_process'))
-},{"./AutoFocusUtils":62,"./CSSPropertyOperations":65,"./DOMLazyTree":69,"./DOMNamespaces":70,"./DOMProperty":71,"./DOMPropertyOperations":72,"./EventConstants":77,"./EventPluginHub":78,"./EventPluginRegistry":79,"./ReactBrowserEventEmitter":88,"./ReactDOMButton":100,"./ReactDOMComponentFlags":102,"./ReactDOMComponentTree":103,"./ReactDOMInput":109,"./ReactDOMOption":111,"./ReactDOMSelect":112,"./ReactDOMTextarea":115,"./ReactInstrumentation":133,"./ReactMultiChild":137,"./ReactServerRenderingTransaction":150,"./escapeTextContentForBrowser":179,"./isEventSupported":193,"./reactProdInvariant":197,"./validateDOMNesting":203,"_process":60,"fbjs/lib/emptyFunction":39,"fbjs/lib/invariant":47,"fbjs/lib/keyOf":51,"fbjs/lib/shallowEqual":55,"fbjs/lib/warning":56,"object-assign":59}],102:[function(require,module,exports){
+},{"./AutoFocusUtils":38,"./CSSPropertyOperations":41,"./DOMLazyTree":45,"./DOMNamespaces":46,"./DOMProperty":47,"./DOMPropertyOperations":48,"./EventConstants":53,"./EventPluginHub":54,"./EventPluginRegistry":55,"./ReactBrowserEventEmitter":64,"./ReactDOMButton":76,"./ReactDOMComponentFlags":78,"./ReactDOMComponentTree":79,"./ReactDOMInput":85,"./ReactDOMOption":87,"./ReactDOMSelect":88,"./ReactDOMTextarea":91,"./ReactInstrumentation":109,"./ReactMultiChild":113,"./ReactServerRenderingTransaction":126,"./escapeTextContentForBrowser":155,"./isEventSupported":169,"./reactProdInvariant":173,"./validateDOMNesting":179,"_process":36,"fbjs/lib/emptyFunction":15,"fbjs/lib/invariant":23,"fbjs/lib/keyOf":27,"fbjs/lib/shallowEqual":31,"fbjs/lib/warning":32,"object-assign":35}],78:[function(require,module,exports){
 /**
  * Copyright 2015-present, Facebook, Inc.
  * All rights reserved.
@@ -26377,7 +19878,7 @@ var ReactDOMComponentFlags = {
 };
 
 module.exports = ReactDOMComponentFlags;
-},{}],103:[function(require,module,exports){
+},{}],79:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -26568,7 +20069,7 @@ var ReactDOMComponentTree = {
 
 module.exports = ReactDOMComponentTree;
 }).call(this,require('_process'))
-},{"./DOMProperty":71,"./ReactDOMComponentFlags":102,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],104:[function(require,module,exports){
+},{"./DOMProperty":47,"./ReactDOMComponentFlags":78,"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23}],80:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -26604,7 +20105,7 @@ function ReactDOMContainerInfo(topLevelWrapper, node) {
 
 module.exports = ReactDOMContainerInfo;
 }).call(this,require('_process'))
-},{"./validateDOMNesting":203,"_process":60}],105:[function(require,module,exports){
+},{"./validateDOMNesting":179,"_process":36}],81:[function(require,module,exports){
 /**
  * Copyright 2014-present, Facebook, Inc.
  * All rights reserved.
@@ -26665,7 +20166,7 @@ _assign(ReactDOMEmptyComponent.prototype, {
 });
 
 module.exports = ReactDOMEmptyComponent;
-},{"./DOMLazyTree":69,"./ReactDOMComponentTree":103,"object-assign":59}],106:[function(require,module,exports){
+},{"./DOMLazyTree":45,"./ReactDOMComponentTree":79,"object-assign":35}],82:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -26838,7 +20339,7 @@ var ReactDOMFactories = {
 
 module.exports = ReactDOMFactories;
 }).call(this,require('_process'))
-},{"./ReactElement":121,"./ReactElementValidator":122,"_process":60}],107:[function(require,module,exports){
+},{"./ReactElement":97,"./ReactElementValidator":98,"_process":36}],83:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -26857,7 +20358,7 @@ var ReactDOMFeatureFlags = {
 };
 
 module.exports = ReactDOMFeatureFlags;
-},{}],108:[function(require,module,exports){
+},{}],84:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -26892,7 +20393,7 @@ var ReactDOMIDOperations = {
 };
 
 module.exports = ReactDOMIDOperations;
-},{"./DOMChildrenOperations":68,"./ReactDOMComponentTree":103}],109:[function(require,module,exports){
+},{"./DOMChildrenOperations":44,"./ReactDOMComponentTree":79}],85:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -27164,7 +20665,7 @@ function _handleChange(event) {
 
 module.exports = ReactDOMInput;
 }).call(this,require('_process'))
-},{"./DOMPropertyOperations":72,"./DisabledInputUtils":75,"./LinkedValueUtils":85,"./ReactDOMComponentTree":103,"./ReactUpdates":153,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56,"object-assign":59}],110:[function(require,module,exports){
+},{"./DOMPropertyOperations":48,"./DisabledInputUtils":51,"./LinkedValueUtils":61,"./ReactDOMComponentTree":79,"./ReactUpdates":129,"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23,"fbjs/lib/warning":32,"object-assign":35}],86:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -27210,7 +20711,7 @@ var ReactDOMNullInputValuePropHook = {
 
 module.exports = ReactDOMNullInputValuePropHook;
 }).call(this,require('_process'))
-},{"./ReactComponentTreeHook":96,"_process":60,"fbjs/lib/warning":56}],111:[function(require,module,exports){
+},{"./ReactComponentTreeHook":72,"_process":36,"fbjs/lib/warning":32}],87:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -27336,7 +20837,7 @@ var ReactDOMOption = {
 
 module.exports = ReactDOMOption;
 }).call(this,require('_process'))
-},{"./ReactChildren":90,"./ReactDOMComponentTree":103,"./ReactDOMSelect":112,"_process":60,"fbjs/lib/warning":56,"object-assign":59}],112:[function(require,module,exports){
+},{"./ReactChildren":66,"./ReactDOMComponentTree":79,"./ReactDOMSelect":88,"_process":36,"fbjs/lib/warning":32,"object-assign":35}],88:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -27540,7 +21041,7 @@ function _handleChange(event) {
 
 module.exports = ReactDOMSelect;
 }).call(this,require('_process'))
-},{"./DisabledInputUtils":75,"./LinkedValueUtils":85,"./ReactDOMComponentTree":103,"./ReactUpdates":153,"_process":60,"fbjs/lib/warning":56,"object-assign":59}],113:[function(require,module,exports){
+},{"./DisabledInputUtils":51,"./LinkedValueUtils":61,"./ReactDOMComponentTree":79,"./ReactUpdates":129,"_process":36,"fbjs/lib/warning":32,"object-assign":35}],89:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -27753,7 +21254,7 @@ var ReactDOMSelection = {
 };
 
 module.exports = ReactDOMSelection;
-},{"./getNodeForCharacterOffset":189,"./getTextContentAccessor":190,"fbjs/lib/ExecutionEnvironment":33}],114:[function(require,module,exports){
+},{"./getNodeForCharacterOffset":165,"./getTextContentAccessor":166,"fbjs/lib/ExecutionEnvironment":9}],90:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -27920,7 +21421,7 @@ _assign(ReactDOMTextComponent.prototype, {
 
 module.exports = ReactDOMTextComponent;
 }).call(this,require('_process'))
-},{"./DOMChildrenOperations":68,"./DOMLazyTree":69,"./ReactDOMComponentTree":103,"./escapeTextContentForBrowser":179,"./reactProdInvariant":197,"./validateDOMNesting":203,"_process":60,"fbjs/lib/invariant":47,"object-assign":59}],115:[function(require,module,exports){
+},{"./DOMChildrenOperations":44,"./DOMLazyTree":45,"./ReactDOMComponentTree":79,"./escapeTextContentForBrowser":155,"./reactProdInvariant":173,"./validateDOMNesting":179,"_process":36,"fbjs/lib/invariant":23,"object-assign":35}],91:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -28078,7 +21579,7 @@ function _handleChange(event) {
 
 module.exports = ReactDOMTextarea;
 }).call(this,require('_process'))
-},{"./DisabledInputUtils":75,"./LinkedValueUtils":85,"./ReactDOMComponentTree":103,"./ReactUpdates":153,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56,"object-assign":59}],116:[function(require,module,exports){
+},{"./DisabledInputUtils":51,"./LinkedValueUtils":61,"./ReactDOMComponentTree":79,"./ReactUpdates":129,"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23,"fbjs/lib/warning":32,"object-assign":35}],92:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015-present, Facebook, Inc.
@@ -28217,7 +21718,7 @@ module.exports = {
   traverseEnterLeave: traverseEnterLeave
 };
 }).call(this,require('_process'))
-},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],117:[function(require,module,exports){
+},{"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23}],93:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -28332,7 +21833,7 @@ var ReactDOMUnknownPropertyHook = {
 
 module.exports = ReactDOMUnknownPropertyHook;
 }).call(this,require('_process'))
-},{"./DOMProperty":71,"./EventPluginRegistry":79,"./ReactComponentTreeHook":96,"_process":60,"fbjs/lib/warning":56}],118:[function(require,module,exports){
+},{"./DOMProperty":47,"./EventPluginRegistry":55,"./ReactComponentTreeHook":72,"_process":36,"fbjs/lib/warning":32}],94:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2016-present, Facebook, Inc.
@@ -28636,7 +22137,7 @@ if (/[?&]react_perf\b/.test(url)) {
 
 module.exports = ReactDebugTool;
 }).call(this,require('_process'))
-},{"./ReactChildrenMutationWarningHook":91,"./ReactComponentTreeHook":96,"./ReactHostOperationHistoryHook":129,"./ReactInvalidSetStateWarningHook":134,"_process":60,"fbjs/lib/ExecutionEnvironment":33,"fbjs/lib/performanceNow":54,"fbjs/lib/warning":56}],119:[function(require,module,exports){
+},{"./ReactChildrenMutationWarningHook":67,"./ReactComponentTreeHook":72,"./ReactHostOperationHistoryHook":105,"./ReactInvalidSetStateWarningHook":110,"_process":36,"fbjs/lib/ExecutionEnvironment":9,"fbjs/lib/performanceNow":30,"fbjs/lib/warning":32}],95:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -28705,7 +22206,7 @@ var ReactDefaultBatchingStrategy = {
 };
 
 module.exports = ReactDefaultBatchingStrategy;
-},{"./ReactUpdates":153,"./Transaction":171,"fbjs/lib/emptyFunction":39,"object-assign":59}],120:[function(require,module,exports){
+},{"./ReactUpdates":129,"./Transaction":147,"fbjs/lib/emptyFunction":15,"object-assign":35}],96:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -28790,7 +22291,7 @@ function inject() {
 module.exports = {
   inject: inject
 };
-},{"./BeforeInputEventPlugin":63,"./ChangeEventPlugin":67,"./DefaultEventPluginOrder":74,"./EnterLeaveEventPlugin":76,"./HTMLDOMPropertyConfig":83,"./ReactComponentBrowserEnvironment":94,"./ReactDOMComponent":101,"./ReactDOMComponentTree":103,"./ReactDOMEmptyComponent":105,"./ReactDOMTextComponent":114,"./ReactDOMTreeTraversal":116,"./ReactDefaultBatchingStrategy":119,"./ReactEventListener":126,"./ReactInjection":130,"./ReactReconcileTransaction":147,"./SVGDOMPropertyConfig":155,"./SelectEventPlugin":156,"./SimpleEventPlugin":157}],121:[function(require,module,exports){
+},{"./BeforeInputEventPlugin":39,"./ChangeEventPlugin":43,"./DefaultEventPluginOrder":50,"./EnterLeaveEventPlugin":52,"./HTMLDOMPropertyConfig":59,"./ReactComponentBrowserEnvironment":70,"./ReactDOMComponent":77,"./ReactDOMComponentTree":79,"./ReactDOMEmptyComponent":81,"./ReactDOMTextComponent":90,"./ReactDOMTreeTraversal":92,"./ReactDefaultBatchingStrategy":95,"./ReactEventListener":102,"./ReactInjection":106,"./ReactReconcileTransaction":123,"./SVGDOMPropertyConfig":131,"./SelectEventPlugin":132,"./SimpleEventPlugin":133}],97:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-present, Facebook, Inc.
@@ -29141,7 +22642,7 @@ ReactElement.REACT_ELEMENT_TYPE = REACT_ELEMENT_TYPE;
 
 module.exports = ReactElement;
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":98,"./canDefineProperty":175,"_process":60,"fbjs/lib/warning":56,"object-assign":59}],122:[function(require,module,exports){
+},{"./ReactCurrentOwner":74,"./canDefineProperty":151,"_process":36,"fbjs/lib/warning":32,"object-assign":35}],98:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-present, Facebook, Inc.
@@ -29372,7 +22873,7 @@ var ReactElementValidator = {
 
 module.exports = ReactElementValidator;
 }).call(this,require('_process'))
-},{"./ReactComponentTreeHook":96,"./ReactCurrentOwner":98,"./ReactElement":121,"./ReactPropTypeLocations":143,"./canDefineProperty":175,"./checkReactTypeSpec":176,"./getIteratorFn":188,"_process":60,"fbjs/lib/warning":56}],123:[function(require,module,exports){
+},{"./ReactComponentTreeHook":72,"./ReactCurrentOwner":74,"./ReactElement":97,"./ReactPropTypeLocations":119,"./canDefineProperty":151,"./checkReactTypeSpec":152,"./getIteratorFn":164,"_process":36,"fbjs/lib/warning":32}],99:[function(require,module,exports){
 /**
  * Copyright 2014-present, Facebook, Inc.
  * All rights reserved.
@@ -29403,7 +22904,7 @@ var ReactEmptyComponent = {
 ReactEmptyComponent.injection = ReactEmptyComponentInjection;
 
 module.exports = ReactEmptyComponent;
-},{}],124:[function(require,module,exports){
+},{}],100:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -29482,7 +22983,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactErrorUtils;
 }).call(this,require('_process'))
-},{"_process":60}],125:[function(require,module,exports){
+},{"_process":36}],101:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -29516,7 +23017,7 @@ var ReactEventEmitterMixin = {
 };
 
 module.exports = ReactEventEmitterMixin;
-},{"./EventPluginHub":78}],126:[function(require,module,exports){
+},{"./EventPluginHub":54}],102:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -29674,7 +23175,7 @@ var ReactEventListener = {
 };
 
 module.exports = ReactEventListener;
-},{"./PooledClass":86,"./ReactDOMComponentTree":103,"./ReactUpdates":153,"./getEventTarget":186,"fbjs/lib/EventListener":32,"fbjs/lib/ExecutionEnvironment":33,"fbjs/lib/getUnboundedScrollPosition":44,"object-assign":59}],127:[function(require,module,exports){
+},{"./PooledClass":62,"./ReactDOMComponentTree":79,"./ReactUpdates":129,"./getEventTarget":162,"fbjs/lib/EventListener":8,"fbjs/lib/ExecutionEnvironment":9,"fbjs/lib/getUnboundedScrollPosition":20,"object-assign":35}],103:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -29697,7 +23198,7 @@ var ReactFeatureFlags = {
 };
 
 module.exports = ReactFeatureFlags;
-},{}],128:[function(require,module,exports){
+},{}],104:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-present, Facebook, Inc.
@@ -29776,7 +23277,7 @@ var ReactHostComponent = {
 
 module.exports = ReactHostComponent;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"object-assign":59}],129:[function(require,module,exports){
+},{"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23,"object-assign":35}],105:[function(require,module,exports){
 /**
  * Copyright 2016-present, Facebook, Inc.
  * All rights reserved.
@@ -29814,7 +23315,7 @@ var ReactHostOperationHistoryHook = {
 };
 
 module.exports = ReactHostOperationHistoryHook;
-},{}],130:[function(require,module,exports){
+},{}],106:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -29851,7 +23352,7 @@ var ReactInjection = {
 };
 
 module.exports = ReactInjection;
-},{"./DOMProperty":71,"./EventPluginHub":78,"./EventPluginUtils":80,"./ReactBrowserEventEmitter":88,"./ReactClass":92,"./ReactComponentEnvironment":95,"./ReactEmptyComponent":123,"./ReactHostComponent":128,"./ReactUpdates":153}],131:[function(require,module,exports){
+},{"./DOMProperty":47,"./EventPluginHub":54,"./EventPluginUtils":56,"./ReactBrowserEventEmitter":64,"./ReactClass":68,"./ReactComponentEnvironment":71,"./ReactEmptyComponent":99,"./ReactHostComponent":104,"./ReactUpdates":129}],107:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -29976,7 +23477,7 @@ var ReactInputSelection = {
 };
 
 module.exports = ReactInputSelection;
-},{"./ReactDOMSelection":113,"fbjs/lib/containsNode":36,"fbjs/lib/focusNode":41,"fbjs/lib/getActiveElement":42}],132:[function(require,module,exports){
+},{"./ReactDOMSelection":89,"fbjs/lib/containsNode":12,"fbjs/lib/focusNode":17,"fbjs/lib/getActiveElement":18}],108:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -30025,7 +23526,7 @@ var ReactInstanceMap = {
 };
 
 module.exports = ReactInstanceMap;
-},{}],133:[function(require,module,exports){
+},{}],109:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2016-present, Facebook, Inc.
@@ -30049,7 +23550,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = { debugTool: debugTool };
 }).call(this,require('_process'))
-},{"./ReactDebugTool":118,"_process":60}],134:[function(require,module,exports){
+},{"./ReactDebugTool":94,"_process":36}],110:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2016-present, Facebook, Inc.
@@ -30088,7 +23589,7 @@ var ReactInvalidSetStateWarningHook = {
 
 module.exports = ReactInvalidSetStateWarningHook;
 }).call(this,require('_process'))
-},{"_process":60,"fbjs/lib/warning":56}],135:[function(require,module,exports){
+},{"_process":36,"fbjs/lib/warning":32}],111:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -30139,7 +23640,7 @@ var ReactMarkupChecksum = {
 };
 
 module.exports = ReactMarkupChecksum;
-},{"./adler32":174}],136:[function(require,module,exports){
+},{"./adler32":150}],112:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -30676,7 +24177,7 @@ var ReactMount = {
 
 module.exports = ReactMount;
 }).call(this,require('_process'))
-},{"./DOMLazyTree":69,"./DOMProperty":71,"./ReactBrowserEventEmitter":88,"./ReactCurrentOwner":98,"./ReactDOMComponentTree":103,"./ReactDOMContainerInfo":104,"./ReactDOMFeatureFlags":107,"./ReactElement":121,"./ReactFeatureFlags":127,"./ReactInstanceMap":132,"./ReactInstrumentation":133,"./ReactMarkupChecksum":135,"./ReactReconciler":148,"./ReactUpdateQueue":152,"./ReactUpdates":153,"./instantiateReactComponent":192,"./reactProdInvariant":197,"./setInnerHTML":199,"./shouldUpdateReactComponent":201,"_process":60,"fbjs/lib/emptyObject":40,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],137:[function(require,module,exports){
+},{"./DOMLazyTree":45,"./DOMProperty":47,"./ReactBrowserEventEmitter":64,"./ReactCurrentOwner":74,"./ReactDOMComponentTree":79,"./ReactDOMContainerInfo":80,"./ReactDOMFeatureFlags":83,"./ReactElement":97,"./ReactFeatureFlags":103,"./ReactInstanceMap":108,"./ReactInstrumentation":109,"./ReactMarkupChecksum":111,"./ReactReconciler":124,"./ReactUpdateQueue":128,"./ReactUpdates":129,"./instantiateReactComponent":168,"./reactProdInvariant":173,"./setInnerHTML":175,"./shouldUpdateReactComponent":177,"_process":36,"fbjs/lib/emptyObject":16,"fbjs/lib/invariant":23,"fbjs/lib/warning":32}],113:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -31130,7 +24631,7 @@ var ReactMultiChild = {
 
 module.exports = ReactMultiChild;
 }).call(this,require('_process'))
-},{"./ReactChildReconciler":89,"./ReactComponentEnvironment":95,"./ReactCurrentOwner":98,"./ReactInstanceMap":132,"./ReactInstrumentation":133,"./ReactMultiChildUpdateTypes":138,"./ReactReconciler":148,"./flattenChildren":181,"./reactProdInvariant":197,"_process":60,"fbjs/lib/emptyFunction":39,"fbjs/lib/invariant":47}],138:[function(require,module,exports){
+},{"./ReactChildReconciler":65,"./ReactComponentEnvironment":71,"./ReactCurrentOwner":74,"./ReactInstanceMap":108,"./ReactInstrumentation":109,"./ReactMultiChildUpdateTypes":114,"./ReactReconciler":124,"./flattenChildren":157,"./reactProdInvariant":173,"_process":36,"fbjs/lib/emptyFunction":15,"fbjs/lib/invariant":23}],114:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -31163,7 +24664,7 @@ var ReactMultiChildUpdateTypes = keyMirror({
 });
 
 module.exports = ReactMultiChildUpdateTypes;
-},{"fbjs/lib/keyMirror":50}],139:[function(require,module,exports){
+},{"fbjs/lib/keyMirror":26}],115:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -31206,7 +24707,7 @@ var ReactNodeTypes = {
 
 module.exports = ReactNodeTypes;
 }).call(this,require('_process'))
-},{"./ReactElement":121,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],140:[function(require,module,exports){
+},{"./ReactElement":97,"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23}],116:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015-present, Facebook, Inc.
@@ -31305,7 +24806,7 @@ var ReactNoopUpdateQueue = {
 
 module.exports = ReactNoopUpdateQueue;
 }).call(this,require('_process'))
-},{"_process":60,"fbjs/lib/warning":56}],141:[function(require,module,exports){
+},{"_process":36,"fbjs/lib/warning":32}],117:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -31402,7 +24903,7 @@ var ReactOwner = {
 
 module.exports = ReactOwner;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],142:[function(require,module,exports){
+},{"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23}],118:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -31429,7 +24930,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactPropTypeLocationNames;
 }).call(this,require('_process'))
-},{"_process":60}],143:[function(require,module,exports){
+},{"_process":36}],119:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -31452,7 +24953,7 @@ var ReactPropTypeLocations = keyMirror({
 });
 
 module.exports = ReactPropTypeLocations;
-},{"fbjs/lib/keyMirror":50}],144:[function(require,module,exports){
+},{"fbjs/lib/keyMirror":26}],120:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -31886,7 +25387,7 @@ function getClassName(propValue) {
 
 module.exports = ReactPropTypes;
 }).call(this,require('_process'))
-},{"./ReactElement":121,"./ReactPropTypeLocationNames":142,"./ReactPropTypesSecret":145,"./getIteratorFn":188,"_process":60,"fbjs/lib/emptyFunction":39,"fbjs/lib/warning":56}],145:[function(require,module,exports){
+},{"./ReactElement":97,"./ReactPropTypeLocationNames":118,"./ReactPropTypesSecret":121,"./getIteratorFn":164,"_process":36,"fbjs/lib/emptyFunction":15,"fbjs/lib/warning":32}],121:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -31903,7 +25404,7 @@ module.exports = ReactPropTypes;
 var ReactPropTypesSecret = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
 
 module.exports = ReactPropTypesSecret;
-},{}],146:[function(require,module,exports){
+},{}],122:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -31946,7 +25447,7 @@ _assign(ReactPureComponent.prototype, ReactComponent.prototype);
 ReactPureComponent.prototype.isPureReactComponent = true;
 
 module.exports = ReactPureComponent;
-},{"./ReactComponent":93,"./ReactNoopUpdateQueue":140,"fbjs/lib/emptyObject":40,"object-assign":59}],147:[function(require,module,exports){
+},{"./ReactComponent":69,"./ReactNoopUpdateQueue":116,"fbjs/lib/emptyObject":16,"object-assign":35}],123:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -32127,7 +25628,7 @@ PooledClass.addPoolingTo(ReactReconcileTransaction);
 
 module.exports = ReactReconcileTransaction;
 }).call(this,require('_process'))
-},{"./CallbackQueue":66,"./PooledClass":86,"./ReactBrowserEventEmitter":88,"./ReactInputSelection":131,"./ReactInstrumentation":133,"./ReactUpdateQueue":152,"./Transaction":171,"_process":60,"object-assign":59}],148:[function(require,module,exports){
+},{"./CallbackQueue":42,"./PooledClass":62,"./ReactBrowserEventEmitter":64,"./ReactInputSelection":107,"./ReactInstrumentation":109,"./ReactUpdateQueue":128,"./Transaction":147,"_process":36,"object-assign":35}],124:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -32298,7 +25799,7 @@ var ReactReconciler = {
 
 module.exports = ReactReconciler;
 }).call(this,require('_process'))
-},{"./ReactInstrumentation":133,"./ReactRef":149,"_process":60,"fbjs/lib/warning":56}],149:[function(require,module,exports){
+},{"./ReactInstrumentation":109,"./ReactRef":125,"_process":36,"fbjs/lib/warning":32}],125:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -32379,7 +25880,7 @@ ReactRef.detachRefs = function (instance, element) {
 };
 
 module.exports = ReactRef;
-},{"./ReactOwner":141}],150:[function(require,module,exports){
+},{"./ReactOwner":117}],126:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-present, Facebook, Inc.
@@ -32472,7 +25973,7 @@ PooledClass.addPoolingTo(ReactServerRenderingTransaction);
 
 module.exports = ReactServerRenderingTransaction;
 }).call(this,require('_process'))
-},{"./PooledClass":86,"./ReactInstrumentation":133,"./ReactServerUpdateQueue":151,"./Transaction":171,"_process":60,"object-assign":59}],151:[function(require,module,exports){
+},{"./PooledClass":62,"./ReactInstrumentation":109,"./ReactServerUpdateQueue":127,"./Transaction":147,"_process":36,"object-assign":35}],127:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015-present, Facebook, Inc.
@@ -32616,7 +26117,7 @@ var ReactServerUpdateQueue = function () {
 
 module.exports = ReactServerUpdateQueue;
 }).call(this,require('_process'))
-},{"./ReactUpdateQueue":152,"./Transaction":171,"_process":60,"fbjs/lib/warning":56}],152:[function(require,module,exports){
+},{"./ReactUpdateQueue":128,"./Transaction":147,"_process":36,"fbjs/lib/warning":32}],128:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015-present, Facebook, Inc.
@@ -32845,7 +26346,7 @@ var ReactUpdateQueue = {
 
 module.exports = ReactUpdateQueue;
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":98,"./ReactInstanceMap":132,"./ReactInstrumentation":133,"./ReactUpdates":153,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],153:[function(require,module,exports){
+},{"./ReactCurrentOwner":74,"./ReactInstanceMap":108,"./ReactInstrumentation":109,"./ReactUpdates":129,"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23,"fbjs/lib/warning":32}],129:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -33099,7 +26600,7 @@ var ReactUpdates = {
 
 module.exports = ReactUpdates;
 }).call(this,require('_process'))
-},{"./CallbackQueue":66,"./PooledClass":86,"./ReactFeatureFlags":127,"./ReactReconciler":148,"./Transaction":171,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"object-assign":59}],154:[function(require,module,exports){
+},{"./CallbackQueue":42,"./PooledClass":62,"./ReactFeatureFlags":103,"./ReactReconciler":124,"./Transaction":147,"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23,"object-assign":35}],130:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -33114,7 +26615,7 @@ module.exports = ReactUpdates;
 'use strict';
 
 module.exports = '15.3.2';
-},{}],155:[function(require,module,exports){
+},{}],131:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -33417,7 +26918,7 @@ Object.keys(ATTRS).forEach(function (key) {
 });
 
 module.exports = SVGDOMPropertyConfig;
-},{}],156:[function(require,module,exports){
+},{}],132:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -33614,7 +27115,7 @@ var SelectEventPlugin = {
 };
 
 module.exports = SelectEventPlugin;
-},{"./EventConstants":77,"./EventPropagators":81,"./ReactDOMComponentTree":103,"./ReactInputSelection":131,"./SyntheticEvent":162,"./isTextInputElement":194,"fbjs/lib/ExecutionEnvironment":33,"fbjs/lib/getActiveElement":42,"fbjs/lib/keyOf":51,"fbjs/lib/shallowEqual":55}],157:[function(require,module,exports){
+},{"./EventConstants":53,"./EventPropagators":57,"./ReactDOMComponentTree":79,"./ReactInputSelection":107,"./SyntheticEvent":138,"./isTextInputElement":170,"fbjs/lib/ExecutionEnvironment":9,"fbjs/lib/getActiveElement":18,"fbjs/lib/keyOf":27,"fbjs/lib/shallowEqual":31}],133:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -34252,7 +27753,7 @@ var SimpleEventPlugin = {
 
 module.exports = SimpleEventPlugin;
 }).call(this,require('_process'))
-},{"./EventConstants":77,"./EventPropagators":81,"./ReactDOMComponentTree":103,"./SyntheticAnimationEvent":158,"./SyntheticClipboardEvent":159,"./SyntheticDragEvent":161,"./SyntheticEvent":162,"./SyntheticFocusEvent":163,"./SyntheticKeyboardEvent":165,"./SyntheticMouseEvent":166,"./SyntheticTouchEvent":167,"./SyntheticTransitionEvent":168,"./SyntheticUIEvent":169,"./SyntheticWheelEvent":170,"./getEventCharCode":183,"./reactProdInvariant":197,"_process":60,"fbjs/lib/EventListener":32,"fbjs/lib/emptyFunction":39,"fbjs/lib/invariant":47,"fbjs/lib/keyOf":51}],158:[function(require,module,exports){
+},{"./EventConstants":53,"./EventPropagators":57,"./ReactDOMComponentTree":79,"./SyntheticAnimationEvent":134,"./SyntheticClipboardEvent":135,"./SyntheticDragEvent":137,"./SyntheticEvent":138,"./SyntheticFocusEvent":139,"./SyntheticKeyboardEvent":141,"./SyntheticMouseEvent":142,"./SyntheticTouchEvent":143,"./SyntheticTransitionEvent":144,"./SyntheticUIEvent":145,"./SyntheticWheelEvent":146,"./getEventCharCode":159,"./reactProdInvariant":173,"_process":36,"fbjs/lib/EventListener":8,"fbjs/lib/emptyFunction":15,"fbjs/lib/invariant":23,"fbjs/lib/keyOf":27}],134:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34292,7 +27793,7 @@ function SyntheticAnimationEvent(dispatchConfig, dispatchMarker, nativeEvent, na
 SyntheticEvent.augmentClass(SyntheticAnimationEvent, AnimationEventInterface);
 
 module.exports = SyntheticAnimationEvent;
-},{"./SyntheticEvent":162}],159:[function(require,module,exports){
+},{"./SyntheticEvent":138}],135:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34331,7 +27832,7 @@ function SyntheticClipboardEvent(dispatchConfig, dispatchMarker, nativeEvent, na
 SyntheticEvent.augmentClass(SyntheticClipboardEvent, ClipboardEventInterface);
 
 module.exports = SyntheticClipboardEvent;
-},{"./SyntheticEvent":162}],160:[function(require,module,exports){
+},{"./SyntheticEvent":138}],136:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34368,7 +27869,7 @@ function SyntheticCompositionEvent(dispatchConfig, dispatchMarker, nativeEvent, 
 SyntheticEvent.augmentClass(SyntheticCompositionEvent, CompositionEventInterface);
 
 module.exports = SyntheticCompositionEvent;
-},{"./SyntheticEvent":162}],161:[function(require,module,exports){
+},{"./SyntheticEvent":138}],137:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34405,7 +27906,7 @@ function SyntheticDragEvent(dispatchConfig, dispatchMarker, nativeEvent, nativeE
 SyntheticMouseEvent.augmentClass(SyntheticDragEvent, DragEventInterface);
 
 module.exports = SyntheticDragEvent;
-},{"./SyntheticMouseEvent":166}],162:[function(require,module,exports){
+},{"./SyntheticMouseEvent":142}],138:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -34676,7 +28177,7 @@ function getPooledWarningPropertyDefinition(propName, getVal) {
   }
 }
 }).call(this,require('_process'))
-},{"./PooledClass":86,"_process":60,"fbjs/lib/emptyFunction":39,"fbjs/lib/warning":56,"object-assign":59}],163:[function(require,module,exports){
+},{"./PooledClass":62,"_process":36,"fbjs/lib/emptyFunction":15,"fbjs/lib/warning":32,"object-assign":35}],139:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34713,7 +28214,7 @@ function SyntheticFocusEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticFocusEvent, FocusEventInterface);
 
 module.exports = SyntheticFocusEvent;
-},{"./SyntheticUIEvent":169}],164:[function(require,module,exports){
+},{"./SyntheticUIEvent":145}],140:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34751,7 +28252,7 @@ function SyntheticInputEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticEvent.augmentClass(SyntheticInputEvent, InputEventInterface);
 
 module.exports = SyntheticInputEvent;
-},{"./SyntheticEvent":162}],165:[function(require,module,exports){
+},{"./SyntheticEvent":138}],141:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34836,7 +28337,7 @@ function SyntheticKeyboardEvent(dispatchConfig, dispatchMarker, nativeEvent, nat
 SyntheticUIEvent.augmentClass(SyntheticKeyboardEvent, KeyboardEventInterface);
 
 module.exports = SyntheticKeyboardEvent;
-},{"./SyntheticUIEvent":169,"./getEventCharCode":183,"./getEventKey":184,"./getEventModifierState":185}],166:[function(require,module,exports){
+},{"./SyntheticUIEvent":145,"./getEventCharCode":159,"./getEventKey":160,"./getEventModifierState":161}],142:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34909,7 +28410,7 @@ function SyntheticMouseEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticMouseEvent, MouseEventInterface);
 
 module.exports = SyntheticMouseEvent;
-},{"./SyntheticUIEvent":169,"./ViewportMetrics":172,"./getEventModifierState":185}],167:[function(require,module,exports){
+},{"./SyntheticUIEvent":145,"./ViewportMetrics":148,"./getEventModifierState":161}],143:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34955,7 +28456,7 @@ function SyntheticTouchEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticTouchEvent, TouchEventInterface);
 
 module.exports = SyntheticTouchEvent;
-},{"./SyntheticUIEvent":169,"./getEventModifierState":185}],168:[function(require,module,exports){
+},{"./SyntheticUIEvent":145,"./getEventModifierState":161}],144:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -34995,7 +28496,7 @@ function SyntheticTransitionEvent(dispatchConfig, dispatchMarker, nativeEvent, n
 SyntheticEvent.augmentClass(SyntheticTransitionEvent, TransitionEventInterface);
 
 module.exports = SyntheticTransitionEvent;
-},{"./SyntheticEvent":162}],169:[function(require,module,exports){
+},{"./SyntheticEvent":138}],145:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -35055,7 +28556,7 @@ function SyntheticUIEvent(dispatchConfig, dispatchMarker, nativeEvent, nativeEve
 SyntheticEvent.augmentClass(SyntheticUIEvent, UIEventInterface);
 
 module.exports = SyntheticUIEvent;
-},{"./SyntheticEvent":162,"./getEventTarget":186}],170:[function(require,module,exports){
+},{"./SyntheticEvent":138,"./getEventTarget":162}],146:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -35110,7 +28611,7 @@ function SyntheticWheelEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticMouseEvent.augmentClass(SyntheticWheelEvent, WheelEventInterface);
 
 module.exports = SyntheticWheelEvent;
-},{"./SyntheticMouseEvent":166}],171:[function(require,module,exports){
+},{"./SyntheticMouseEvent":142}],147:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -35346,7 +28847,7 @@ var Transaction = {
 
 module.exports = Transaction;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],172:[function(require,module,exports){
+},{"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23}],148:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -35374,7 +28875,7 @@ var ViewportMetrics = {
 };
 
 module.exports = ViewportMetrics;
-},{}],173:[function(require,module,exports){
+},{}],149:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2014-present, Facebook, Inc.
@@ -35435,7 +28936,7 @@ function accumulateInto(current, next) {
 
 module.exports = accumulateInto;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],174:[function(require,module,exports){
+},{"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23}],150:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -35480,7 +28981,7 @@ function adler32(data) {
 }
 
 module.exports = adler32;
-},{}],175:[function(require,module,exports){
+},{}],151:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -35507,7 +29008,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = canDefineProperty;
 }).call(this,require('_process'))
-},{"_process":60}],176:[function(require,module,exports){
+},{"_process":36}],152:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -35597,7 +29098,7 @@ function checkReactTypeSpec(typeSpecs, values, location, componentName, element,
 
 module.exports = checkReactTypeSpec;
 }).call(this,require('_process'))
-},{"./ReactComponentTreeHook":96,"./ReactPropTypeLocationNames":142,"./ReactPropTypesSecret":145,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],177:[function(require,module,exports){
+},{"./ReactComponentTreeHook":72,"./ReactPropTypeLocationNames":118,"./ReactPropTypesSecret":121,"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23,"fbjs/lib/warning":32}],153:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -35630,7 +29131,7 @@ var createMicrosoftUnsafeLocalFunction = function (func) {
 };
 
 module.exports = createMicrosoftUnsafeLocalFunction;
-},{}],178:[function(require,module,exports){
+},{}],154:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -35712,7 +29213,7 @@ function dangerousStyleValue(name, value, component) {
 
 module.exports = dangerousStyleValue;
 }).call(this,require('_process'))
-},{"./CSSProperty":64,"_process":60,"fbjs/lib/warning":56}],179:[function(require,module,exports){
+},{"./CSSProperty":40,"_process":36,"fbjs/lib/warning":32}],155:[function(require,module,exports){
 /**
  * Copyright 2016-present, Facebook, Inc.
  * All rights reserved.
@@ -35836,7 +29337,7 @@ function escapeTextContentForBrowser(text) {
 }
 
 module.exports = escapeTextContentForBrowser;
-},{}],180:[function(require,module,exports){
+},{}],156:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -35899,7 +29400,7 @@ function findDOMNode(componentOrElement) {
 
 module.exports = findDOMNode;
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":98,"./ReactDOMComponentTree":103,"./ReactInstanceMap":132,"./getHostComponentFromComposite":187,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],181:[function(require,module,exports){
+},{"./ReactCurrentOwner":74,"./ReactDOMComponentTree":79,"./ReactInstanceMap":108,"./getHostComponentFromComposite":163,"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23,"fbjs/lib/warning":32}],157:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -35978,7 +29479,7 @@ function flattenChildren(children, selfDebugID) {
 
 module.exports = flattenChildren;
 }).call(this,require('_process'))
-},{"./KeyEscapeUtils":84,"./ReactComponentTreeHook":96,"./traverseAllChildren":202,"_process":60,"fbjs/lib/warning":56}],182:[function(require,module,exports){
+},{"./KeyEscapeUtils":60,"./ReactComponentTreeHook":72,"./traverseAllChildren":178,"_process":36,"fbjs/lib/warning":32}],158:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36010,7 +29511,7 @@ function forEachAccumulated(arr, cb, scope) {
 }
 
 module.exports = forEachAccumulated;
-},{}],183:[function(require,module,exports){
+},{}],159:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36061,7 +29562,7 @@ function getEventCharCode(nativeEvent) {
 }
 
 module.exports = getEventCharCode;
-},{}],184:[function(require,module,exports){
+},{}],160:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36164,7 +29665,7 @@ function getEventKey(nativeEvent) {
 }
 
 module.exports = getEventKey;
-},{"./getEventCharCode":183}],185:[function(require,module,exports){
+},{"./getEventCharCode":159}],161:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36208,7 +29709,7 @@ function getEventModifierState(nativeEvent) {
 }
 
 module.exports = getEventModifierState;
-},{}],186:[function(require,module,exports){
+},{}],162:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36244,7 +29745,7 @@ function getEventTarget(nativeEvent) {
 }
 
 module.exports = getEventTarget;
-},{}],187:[function(require,module,exports){
+},{}],163:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36275,7 +29776,7 @@ function getHostComponentFromComposite(inst) {
 }
 
 module.exports = getHostComponentFromComposite;
-},{"./ReactNodeTypes":139}],188:[function(require,module,exports){
+},{"./ReactNodeTypes":115}],164:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36317,7 +29818,7 @@ function getIteratorFn(maybeIterable) {
 }
 
 module.exports = getIteratorFn;
-},{}],189:[function(require,module,exports){
+},{}],165:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36392,7 +29893,7 @@ function getNodeForCharacterOffset(root, offset) {
 }
 
 module.exports = getNodeForCharacterOffset;
-},{}],190:[function(require,module,exports){
+},{}],166:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36426,7 +29927,7 @@ function getTextContentAccessor() {
 }
 
 module.exports = getTextContentAccessor;
-},{"fbjs/lib/ExecutionEnvironment":33}],191:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":9}],167:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36528,7 +30029,7 @@ function getVendorPrefixedEventName(eventName) {
 }
 
 module.exports = getVendorPrefixedEventName;
-},{"fbjs/lib/ExecutionEnvironment":33}],192:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":9}],168:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -36650,7 +30151,7 @@ function instantiateReactComponent(node, shouldHaveDebugID) {
 
 module.exports = instantiateReactComponent;
 }).call(this,require('_process'))
-},{"./ReactCompositeComponent":97,"./ReactEmptyComponent":123,"./ReactHostComponent":128,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56,"object-assign":59}],193:[function(require,module,exports){
+},{"./ReactCompositeComponent":73,"./ReactEmptyComponent":99,"./ReactHostComponent":104,"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23,"fbjs/lib/warning":32,"object-assign":35}],169:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36711,7 +30212,7 @@ function isEventSupported(eventNameSuffix, capture) {
 }
 
 module.exports = isEventSupported;
-},{"fbjs/lib/ExecutionEnvironment":33}],194:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":9}],170:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36763,7 +30264,7 @@ function isTextInputElement(elem) {
 }
 
 module.exports = isTextInputElement;
-},{}],195:[function(require,module,exports){
+},{}],171:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -36804,7 +30305,7 @@ function onlyChild(children) {
 
 module.exports = onlyChild;
 }).call(this,require('_process'))
-},{"./ReactElement":121,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47}],196:[function(require,module,exports){
+},{"./ReactElement":97,"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23}],172:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36831,7 +30332,7 @@ function quoteAttributeValueForBrowser(value) {
 }
 
 module.exports = quoteAttributeValueForBrowser;
-},{"./escapeTextContentForBrowser":179}],197:[function(require,module,exports){
+},{"./escapeTextContentForBrowser":155}],173:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36871,7 +30372,7 @@ function reactProdInvariant(code) {
 }
 
 module.exports = reactProdInvariant;
-},{}],198:[function(require,module,exports){
+},{}],174:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36888,7 +30389,7 @@ module.exports = reactProdInvariant;
 var ReactMount = require('./ReactMount');
 
 module.exports = ReactMount.renderSubtreeIntoContainer;
-},{"./ReactMount":136}],199:[function(require,module,exports){
+},{"./ReactMount":112}],175:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -36987,7 +30488,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = setInnerHTML;
-},{"./DOMNamespaces":70,"./createMicrosoftUnsafeLocalFunction":177,"fbjs/lib/ExecutionEnvironment":33}],200:[function(require,module,exports){
+},{"./DOMNamespaces":46,"./createMicrosoftUnsafeLocalFunction":153,"fbjs/lib/ExecutionEnvironment":9}],176:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -37036,7 +30537,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = setTextContent;
-},{"./escapeTextContentForBrowser":179,"./setInnerHTML":199,"fbjs/lib/ExecutionEnvironment":33}],201:[function(require,module,exports){
+},{"./escapeTextContentForBrowser":155,"./setInnerHTML":175,"fbjs/lib/ExecutionEnvironment":9}],177:[function(require,module,exports){
 /**
  * Copyright 2013-present, Facebook, Inc.
  * All rights reserved.
@@ -37079,7 +30580,7 @@ function shouldUpdateReactComponent(prevElement, nextElement) {
 }
 
 module.exports = shouldUpdateReactComponent;
-},{}],202:[function(require,module,exports){
+},{}],178:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2013-present, Facebook, Inc.
@@ -37249,7 +30750,7 @@ function traverseAllChildren(children, callback, traverseContext) {
 
 module.exports = traverseAllChildren;
 }).call(this,require('_process'))
-},{"./KeyEscapeUtils":84,"./ReactCurrentOwner":98,"./ReactElement":121,"./getIteratorFn":188,"./reactProdInvariant":197,"_process":60,"fbjs/lib/invariant":47,"fbjs/lib/warning":56}],203:[function(require,module,exports){
+},{"./KeyEscapeUtils":60,"./ReactCurrentOwner":74,"./ReactElement":97,"./getIteratorFn":164,"./reactProdInvariant":173,"_process":36,"fbjs/lib/invariant":23,"fbjs/lib/warning":32}],179:[function(require,module,exports){
 (function (process){
 /**
  * Copyright 2015-present, Facebook, Inc.
@@ -37634,898 +31135,9 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = validateDOMNesting;
 }).call(this,require('_process'))
-},{"_process":60,"fbjs/lib/emptyFunction":39,"fbjs/lib/warning":56,"object-assign":59}],204:[function(require,module,exports){
+},{"_process":36,"fbjs/lib/emptyFunction":15,"fbjs/lib/warning":32,"object-assign":35}],180:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib/React');
 
-},{"./lib/React":87}],205:[function(require,module,exports){
-"use strict";
-var webgl_1 = require("./webgl/webgl");
-exports.WebGLPlatform = webgl_1.WebGLPlatform;
-
-},{"./webgl/webgl":209}],206:[function(require,module,exports){
-"use strict";
-var types_1 = require("./types");
-var intrinsics_1 = require("./intrinsics");
-(function (GenerateMode) {
-    GenerateMode[GenerateMode["NORMAL"] = 0] = "NORMAL";
-    GenerateMode[GenerateMode["PICK"] = 1] = "PICK";
-})(exports.GenerateMode || (exports.GenerateMode = {}));
-var GenerateMode = exports.GenerateMode;
-(function (ViewType) {
-    ViewType[ViewType["VIEW_2D"] = 0] = "VIEW_2D";
-    ViewType[ViewType["VIEW_3D"] = 1] = "VIEW_3D";
-})(exports.ViewType || (exports.ViewType = {}));
-var ViewType = exports.ViewType;
-var Generator = (function () {
-    function Generator(viewType, mode) {
-        if (mode === void 0) { mode = GenerateMode.NORMAL; }
-        this._mode = mode;
-        this._viewType = viewType;
-        this._lines = [];
-        this._additionalCodes = [];
-        this._currentIndent = "";
-        this._hasColor = false;
-    }
-    Generator.prototype.addLine = function (code) {
-        this._lines.push(this._currentIndent + code);
-    };
-    Generator.prototype.addAdditionalCode = function (code) {
-        if (this._additionalCodes.indexOf(code) < 0) {
-            this._additionalCodes.push(code);
-        }
-    };
-    Generator.prototype.indent = function () {
-        this._currentIndent += "    ";
-    };
-    Generator.prototype.unindent = function () {
-        this._currentIndent = this._currentIndent.slice(0, this._currentIndent.length - 4);
-    };
-    Generator.prototype.addDeclaration = function (name, type) {
-        this.addLine(types_1.convertTypeName(type) + " " + name + ";");
-    };
-    Generator.prototype.addUniform = function (name, type) {
-        this.addLine("uniform " + types_1.convertTypeName(type) + " " + name + ";");
-    };
-    Generator.prototype.addAttribute = function (name, type) {
-        this.addLine("attribute " + types_1.convertTypeName(type) + " " + name + ";");
-    };
-    Generator.prototype.addVarying = function (name, type) {
-        this.addLine("varying " + types_1.convertTypeName(type) + " " + name + ";");
-        if (name == "out_position") {
-            this._positionType = type;
-        }
-        if (name == "out_color") {
-            this._hasColor = true;
-        }
-    };
-    Generator.prototype.generateExpression = function (expr) {
-        var _this = this;
-        switch (expr.type) {
-            case "constant": {
-                var eConstant = expr;
-                return types_1.convertConstant(eConstant.valueType, eConstant.value);
-            }
-            case "variable": {
-                var eVariable = expr;
-                return eVariable.variableName;
-            }
-            case "function": {
-                var eFunction = expr;
-                var args = eFunction.arguments.map(function (arg) { return _this.generateExpression(arg); });
-                var _a = intrinsics_1.generateIntrinsicFunction(eFunction.functionName, args), code = _a.code, additionalCode = _a.additionalCode;
-                if (additionalCode != null) {
-                    this.addAdditionalCode(additionalCode);
-                }
-                return code;
-            }
-            case "field": {
-                var eField = expr;
-                return this.generateExpression(eField.value) + "." + eField.fieldName;
-            }
-        }
-    };
-    Generator.prototype.addStatement = function (stat) {
-        switch (stat.type) {
-            case "assign":
-                {
-                    var sAssign = stat;
-                    var expr = this.generateExpression(sAssign.expression);
-                    this.addLine(sAssign.variableName + " = " + expr + ";");
-                }
-                break;
-            case "condition":
-                {
-                    var sCondition = stat;
-                    if (sCondition.trueStatements.length > 0 && sCondition.falseStatements.length > 0) {
-                        this.addLine("if(" + this.generateExpression(sCondition.condition) + ") {");
-                        this.indent();
-                        this.addStatements(sCondition.trueStatements);
-                        this.unindent();
-                        this.addLine("} else {");
-                        this.indent();
-                        this.addStatements(sCondition.falseStatements);
-                        this.unindent();
-                        this.addLine("}");
-                    }
-                    else if (sCondition.trueStatements.length > 0) {
-                        this.addLine("if(" + this.generateExpression(sCondition.condition) + ") {");
-                        this.indent();
-                        this.addStatements(sCondition.trueStatements);
-                        this.unindent();
-                        this.addLine("}");
-                    }
-                    else if (sCondition.falseStatements.length > 0) {
-                        this.addLine("if(!" + this.generateExpression(sCondition.condition) + ") {");
-                        this.indent();
-                        this.addStatements(sCondition.trueStatements);
-                        this.unindent();
-                        this.addLine("}");
-                    }
-                }
-                break;
-            case "for":
-                {
-                    var sForLoop = stat;
-                    this.addLine("for(int " + sForLoop.variableName + " = " + sForLoop.rangeMin + "; " + sForLoop.variableName + " <= " + sForLoop.rangeMax + "; " + sForLoop.variableName + "++) {");
-                    this.indent();
-                    this.addStatements(sForLoop.statements);
-                    this.unindent();
-                    this.addLine("}");
-                }
-                break;
-            case "emit":
-                {
-                    var sEmit = stat;
-                    for (var name_1 in sEmit.attributes) {
-                        this.addLine("out_" + name_1 + " = " + this.generateExpression(sEmit.attributes[name_1]) + ";");
-                    }
-                    if (this._mode == GenerateMode.PICK) {
-                        this.addLine("out_pick_index = vec4(s3_pick_index.rgb, s3_pick_index_alpha);");
-                    }
-                    switch (this._positionType) {
-                        case "Vector2":
-                            {
-                                this.addLine("gl_Position = s3_render_vertex(vec3(out_position, 0.0));");
-                            }
-                            break;
-                        case "Vector3":
-                            {
-                                this.addLine("gl_Position = s3_render_vertex(out_position);");
-                            }
-                            break;
-                        case "Vector4":
-                            {
-                                this.addLine("gl_Position = s3_render_vertex(out_position.xyz);");
-                            }
-                            break;
-                    }
-                }
-                break;
-        }
-    };
-    Generator.prototype.compileSpecification = function (spec, asUniform) {
-        this.addLine("precision highp float;");
-        // Global attributes.
-        for (var name_2 in spec.input) {
-            if (spec.input.hasOwnProperty(name_2)) {
-                if (asUniform(name_2)) {
-                    this.addUniform(name_2, spec.input[name_2].type);
-                }
-                else {
-                    this.addAttribute(name_2, spec.input[name_2].type);
-                }
-            }
-        }
-        if (this._mode == GenerateMode.PICK) {
-            this.addAttribute("s3_pick_index", "Vector4");
-            this.addUniform("s3_pick_index_alpha", "float");
-        }
-        switch (this._viewType) {
-            case ViewType.VIEW_2D:
-                {
-                    this.addUniform("s3_view_params", "Vector4");
-                    this.addAdditionalCode("\n                    vec4 s3_render_vertex(vec3 p) {\n                        return vec4(p.xy * s3_view_params.xy + s3_view_params.zw, 0.0, 1.0);\n                    }\n                ");
-                }
-                break;
-            case ViewType.VIEW_3D:
-                {
-                    this.addUniform("s3_view_params", "Vector4");
-                    this.addUniform("s3_view_position", "Vector3");
-                    this.addUniform("s3_view_rotation", "Vector4");
-                    this.addAdditionalCode("\n                    vec4 s3_render_vertex(vec3 p) {\n                        // Get position in view coordinates:\n                        //   v = quaternion_inverse_rotate(rotation, p - position)\n                        vec3 v = p - s3_view_position;\n                        float d = dot(s3_view_rotation.xyz, v);\n                        vec3 c = cross(s3_view_rotation.xyz, v);\n                        v = s3_view_rotation.w * s3_view_rotation.w * v - (s3_view_rotation.w + s3_view_rotation.w) * c + d * s3_view_rotation.xyz - cross(c, s3_view_rotation.xyz);\n                        // Compute projection.\n                        vec4 r;\n                        r.xy = v.xy * s3_view_params.xy;\n                        r.z = v.z * s3_view_params.z + s3_view_params.w;\n                        r.w = -v.z;\n                        return r;\n                    }\n                ");
-                }
-                break;
-        }
-        this.addLine("@additionalCode");
-        // Output attributes.
-        for (var name_3 in spec.output) {
-            if (spec.output.hasOwnProperty(name_3)) {
-                this.addVarying("out_" + name_3, spec.output[name_3].type);
-            }
-        }
-        if (this._mode == GenerateMode.PICK) {
-            this.addVarying("out_pick_index", "Vector4");
-        }
-        // The main function.
-        this.addLine("void main() {");
-        this.indent();
-        // Define arguments.
-        for (var name_4 in spec.variables) {
-            if (spec.variables.hasOwnProperty(name_4)) {
-                var type = spec.variables[name_4];
-                this.addDeclaration(name_4, type);
-            }
-        }
-        this.addStatements(spec.statements);
-        this.unindent();
-        this.addLine("}");
-    };
-    Generator.prototype.addStatements = function (stat) {
-        var _this = this;
-        stat.forEach(function (s) { return _this.addStatement(s); });
-    };
-    Generator.prototype.getCode = function () {
-        var _this = this;
-        return this._lines.map(function (line) {
-            if (line.trim() == "@additionalCode")
-                return _this._additionalCodes.join("\n");
-            return line;
-        }).join("\n");
-    };
-    Generator.prototype.getFragmentCode = function () {
-        switch (this._mode) {
-            case GenerateMode.NORMAL: {
-                if (this._hasColor) {
-                    return "\n                        precision highp float;\n                        varying vec4 out_color;\n                        void main() {\n                            gl_FragColor = out_color;\n                        }\n                    ";
-                }
-                else {
-                    return "\n                        precision highp float;\n                        void main() {\n                            gl_FragColor = vec4(0, 0, 0, 1);\n                        }\n                    ";
-                }
-            }
-            case GenerateMode.PICK: {
-                return "\n                    precision highp float;\n                    varying vec4 out_pick_index;\n                    void main() {\n                        gl_FragColor = out_pick_index;\n                    }\n                ";
-            }
-        }
-    };
-    return Generator;
-}());
-exports.Generator = Generator;
-
-},{"./intrinsics":207,"./types":208}],207:[function(require,module,exports){
-"use strict";
-var stardust_core_1 = require("stardust-core");
-var stardust_core_2 = require("stardust-core");
-var intrinsicImplementations = new stardust_core_2.Dictionary();
-var intrinsicsCodeBase = new stardust_core_2.Dictionary();
-function ImplementFunction(name, argTypes, returnType, code) {
-    var internalName = stardust_core_1.getInternalName({ name: name, argTypes: argTypes, returnType: returnType });
-    intrinsicImplementations.set(internalName, code);
-}
-function ImplementSimpleFunction(name, argTypes, returnType, funcName, funcCode) {
-    ImplementFunction(name, argTypes, returnType, function () {
-        var args = [];
-        for (var _i = 0; _i < arguments.length; _i++) {
-            args[_i - 0] = arguments[_i];
-        }
-        return funcName + "(" + args.join(", ") + ")";
-    });
-    if (funcCode) {
-        var internalName = stardust_core_1.getInternalName({ name: name, argTypes: argTypes, returnType: returnType });
-        intrinsicsCodeBase.set(internalName, funcCode);
-    }
-}
-function ImplementOperator(name, argTypes, returnType, code) {
-    ImplementFunction("@" + name, argTypes, returnType, code);
-}
-function ImplementTypeConversion(srcType, destType, code) {
-    ImplementFunction("cast:" + srcType + ":" + destType, [srcType], destType, code);
-}
-for (var _i = 0, _a = ["float", "int", "Vector2", "Vector3", "Vector4", "Color"]; _i < _a.length; _i++) {
-    var type = _a[_i];
-    ImplementOperator("+", [type, type], type, function (a, b) { return ("(" + a + ") + (" + b + ")"); });
-    ImplementOperator("-", [type, type], type, function (a, b) { return ("(" + a + ") - (" + b + ")"); });
-    ImplementOperator("*", [type, type], type, function (a, b) { return ("(" + a + ") * (" + b + ")"); });
-    ImplementOperator("/", [type, type], type, function (a, b) { return ("(" + a + ") / (" + b + ")"); });
-    if (type != "Color") {
-        ImplementOperator("+", [type], type, function (a, b) { return ("" + a); });
-        ImplementOperator("-", [type], type, function (a, b) { return ("-(" + a + ")"); });
-    }
-}
-ImplementOperator("*", ["float", "Vector2"], "Vector2", function (a, b) { return ("(" + a + ") * (" + b + ")"); });
-ImplementOperator("*", ["float", "Vector3"], "Vector3", function (a, b) { return ("(" + a + ") * (" + b + ")"); });
-ImplementOperator("*", ["float", "Vector4"], "Vector4", function (a, b) { return ("(" + a + ") * (" + b + ")"); });
-ImplementOperator("*", ["Vector2", "float"], "Vector2", function (a, b) { return ("(" + a + ") * (" + b + ")"); });
-ImplementOperator("*", ["Vector3", "float"], "Vector3", function (a, b) { return ("(" + a + ") * (" + b + ")"); });
-ImplementOperator("*", ["Vector4", "float"], "Vector4", function (a, b) { return ("(" + a + ") * (" + b + ")"); });
-ImplementOperator("/", ["Vector2", "float"], "Vector2", function (a, b) { return ("(" + a + ") / (" + b + ")"); });
-ImplementOperator("/", ["Vector3", "float"], "Vector3", function (a, b) { return ("(" + a + ") / (" + b + ")"); });
-ImplementOperator("/", ["Vector4", "float"], "Vector4", function (a, b) { return ("(" + a + ") / (" + b + ")"); });
-// ImplementOperator("%", [ "int", "int" ], "int", (a, b) => `(${a}) % (${b})`);
-ImplementOperator("%", ["float", "float"], "float", function (a, b) { return ("mod(" + a + ", " + b + ")"); });
-for (var _b = 0, _c = ["float", "int", "bool"]; _b < _c.length; _b++) {
-    var type = _c[_b];
-    ImplementOperator("==", [type, type], "bool", function (a, b) { return ("(" + a + ") == (" + b + ")"); });
-}
-for (var _d = 0, _e = ["float", "int"]; _d < _e.length; _d++) {
-    var type = _e[_d];
-    ImplementOperator(">", [type, type], "bool", function (a, b) { return ("(" + a + ") > (" + b + ")"); });
-    ImplementOperator("<", [type, type], "bool", function (a, b) { return ("(" + a + ") < (" + b + ")"); });
-    ImplementOperator(">=", [type, type], "bool", function (a, b) { return ("(" + a + ") >= (" + b + ")"); });
-    ImplementOperator("<=", [type, type], "bool", function (a, b) { return ("(" + a + ") <= (" + b + ")"); });
-}
-ImplementOperator("!", ["bool"], "bool", function (a) { return ("!(" + a + ")"); });
-ImplementOperator("&&", ["bool", "bool"], "bool", function (a, b) { return ("(" + a + ") && (" + b + ")"); });
-ImplementOperator("||", ["bool", "bool"], "bool", function (a, b) { return ("(" + a + ") || (" + b + ")"); });
-ImplementSimpleFunction("Vector2", ["float", "float"], "Vector2", "vec2");
-ImplementSimpleFunction("Vector3", ["float", "float", "float"], "Vector3", "vec3");
-ImplementSimpleFunction("Vector4", ["float", "float", "float", "float"], "Vector4", "vec4");
-ImplementSimpleFunction("Color", ["float", "float", "float", "float"], "Color", "vec4");
-ImplementSimpleFunction("Quaternion", ["float", "float", "float", "float"], "Quaternion", "vec4");
-ImplementSimpleFunction("normalize", ["Vector2"], "Vector2", "normalize");
-ImplementSimpleFunction("normalize", ["Vector3"], "Vector3", "normalize");
-ImplementSimpleFunction("normalize", ["Vector4"], "Vector4", "normalize");
-ImplementSimpleFunction("normalize", ["Quaternion"], "Vector4", "normalize");
-ImplementSimpleFunction("dot", ["Vector2", "Vector2"], "float", "dot");
-ImplementSimpleFunction("dot", ["Vector3", "Vector3"], "float", "dot");
-ImplementSimpleFunction("dot", ["Vector4", "Vector4"], "float", "dot");
-ImplementSimpleFunction("length", ["Vector2"], "float", "length");
-ImplementSimpleFunction("length", ["Vector3"], "float", "length");
-ImplementSimpleFunction("length", ["Vector4"], "float", "length");
-ImplementSimpleFunction("length", ["Quaternion"], "float", "length");
-ImplementSimpleFunction("cross", ["Vector3", "Vector3"], "Vector3", "cross");
-ImplementSimpleFunction("quat_mul", ["Quaternion", "Quaternion"], "Quaternion", "s3_quat_mul", "\n    vec4 s3_quat_mul(vec4 q1, vec4 q2) {\n        return vec4(\n            q1.w * q2.xyz + q2.w * q1.xyz + cross(q1.xyz, q2.xyz),\n            q1.w * q2.w - dot(q1.xyz, q2.xyz)\n        );\n    }\n");
-ImplementSimpleFunction("quat_rotate", ["Quaternion", "Vector3"], "Vector3", "s3_quat_rotate", "\n    vec3 s3_quat_rotate(vec4 q, vec3 v) {\n        float d = dot(q.xyz, v);\n        vec3 c = cross(q.xyz, v);\n        return q.w * q.w * v + (q.w + q.w) * c + d * q.xyz - cross(c, q.xyz);\n    }\n");
-var colorCode = "\n    float s3_lab2rgb_curve(float v) {\n        float p = pow(v, 3.0);\n        if(p > 0.008856) {\n            return p;\n        } else {\n            return (v - 16.0 / 116.0) / 7.787;\n        }\n    }\n    float s3_lab2rgb_curve2(float v) {\n        if(v > 0.0031308) {\n            return 1.055 * pow(v , (1.0 / 2.4)) - 0.055;\n        } else {\n            return 12.92 * v;\n        }\n    }\n    vec4 s3_lab2rgb(vec4 lab) {\n        float var_Y = (lab.x + 0.160) / 1.160;\n        float var_X = lab.y / 5.0 + var_Y;\n        float var_Z = var_Y - lab.z / 2.0;\n\n        var_X = s3_lab2rgb_curve(var_X) * 0.95047;\n        var_Y = s3_lab2rgb_curve(var_Y);\n        var_Z = s3_lab2rgb_curve(var_Z) * 1.08883;\n\n        float var_R = var_X *  3.2406 + var_Y * -1.5372 + var_Z * -0.4986;\n        float var_G = var_X * -0.9689 + var_Y *  1.8758 + var_Z *  0.0415;\n        float var_B = var_X *  0.0557 + var_Y * -0.2040 + var_Z *  1.0570;\n\n        var_R = s3_lab2rgb_curve2(var_R);\n        var_G = s3_lab2rgb_curve2(var_G);\n        var_B = s3_lab2rgb_curve2(var_B);\n\n        return vec4(var_R, var_G, var_B, lab.a);\n    }\n    vec4 s3_hcl2rgb(vec4 hcl) {\n        vec4 lab = vec4(hcl.z, hcl.y * cos(hcl.x), hcl.y * sin(hcl.x), hcl.a);\n        return s3_lab2rgb(lab);\n    }\n";
-ImplementSimpleFunction("lab2rgb", ["Color"], "Color", "s3_lab2rgb", colorCode);
-ImplementSimpleFunction("hcl2rgb", ["Color"], "Color", "s3_hcl2rgb", colorCode);
-ImplementSimpleFunction("sqrt", ["float"], "float", "sqrt");
-ImplementSimpleFunction("exp", ["float"], "float", "exp");
-ImplementSimpleFunction("log", ["float"], "float", "log");
-ImplementSimpleFunction("sin", ["float"], "float", "sin");
-ImplementSimpleFunction("cos", ["float"], "float", "cos");
-ImplementSimpleFunction("tan", ["float"], "float", "tan");
-ImplementSimpleFunction("asin", ["float"], "float", "asin");
-ImplementSimpleFunction("acos", ["float"], "float", "acos");
-ImplementSimpleFunction("atan", ["float"], "float", "atan");
-ImplementSimpleFunction("atan2", ["float", "float"], "float", "atan2");
-ImplementSimpleFunction("min", ["float", "float"], "float", "min");
-ImplementSimpleFunction("max", ["float", "float"], "float", "max");
-ImplementSimpleFunction("ceil", ["float"], "float", "ceil");
-ImplementSimpleFunction("floor", ["float"], "float", "floor");
-ImplementSimpleFunction("mix", ["float", "float", "float"], "float", "mix");
-ImplementTypeConversion("float", "int", function (a) { return ("int(" + a + ")"); });
-ImplementTypeConversion("int", "float", function (a) { return ("float(" + a + ")"); });
-function generateIntrinsicFunction(name, args) {
-    if (intrinsicImplementations.has(name)) {
-        if (intrinsicsCodeBase.has(name)) {
-            return { code: intrinsicImplementations.get(name).apply(void 0, args), additionalCode: intrinsicsCodeBase.get(name) };
-        }
-        else {
-            return { code: intrinsicImplementations.get(name).apply(void 0, args), additionalCode: null };
-        }
-    }
-    else {
-        throw new Error("intrinsic function " + name + " is not defined.");
-    }
-}
-exports.generateIntrinsicFunction = generateIntrinsicFunction;
-
-},{"stardust-core":23}],208:[function(require,module,exports){
-"use strict";
-var typeName2WebGLTypeName = {
-    "float": "float",
-    "int": "int",
-    "bool": "bool",
-    "Vector2": "vec2",
-    "Vector3": "vec3",
-    "Vector4": "vec4",
-    "Quaternion": "vec4",
-    "Color": "vec4"
-};
-function convertTypeName(name) {
-    return typeName2WebGLTypeName[name];
-}
-exports.convertTypeName = convertTypeName;
-function convertConstant(type, value) {
-    if (type == "float") {
-        return value.toFixed(5);
-    }
-    if (type == "int") {
-        return value.toString();
-    }
-    if (type == "bool") {
-        return value != 0 ? "true" : "false";
-    }
-    if (type == "Vector2") {
-        return "vec2(" + value.join(", ") + ")";
-    }
-    if (type == "Vector3") {
-        return "vec3(" + value.join(", ") + ")";
-    }
-    if (type == "Vector4") {
-        return "vec4(" + value.join(", ") + ")";
-    }
-    if (type == "Color") {
-        return "vec4(" + value.join(", ") + ")";
-    }
-}
-exports.convertConstant = convertConstant;
-
-},{}],209:[function(require,module,exports){
-"use strict";
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
-var stardust_core_1 = require("stardust-core");
-var stardust_core_2 = require("stardust-core");
-var stardust_core_3 = require("stardust-core");
-var generator_1 = require("./generator");
-var stardust_core_4 = require("stardust-core");
-var stardust_core_5 = require("stardust-core");
-var WebGLUtils = require("./webglutils");
-var WebGLPlatformShapeProgram = (function () {
-    function WebGLPlatformShapeProgram(GL, spec, asUniform, viewType, mode) {
-        this._GL = GL;
-        var generator = new generator_1.Generator(viewType, mode);
-        generator.compileSpecification(spec, asUniform);
-        this._program = WebGLUtils.compileProgram(this._GL, generator.getCode(), generator.getFragmentCode());
-        this._uniformLocations = new stardust_core_3.Dictionary();
-        this._attribLocations = new stardust_core_3.Dictionary();
-    }
-    WebGLPlatformShapeProgram.prototype.use = function () {
-        this._GL.useProgram(this._program);
-    };
-    WebGLPlatformShapeProgram.prototype.setUniform = function (name, type, value) {
-        var location = this.getUniformLocation(name);
-        if (location == null)
-            return;
-        var GL = this._GL;
-        if (type.primitive == "float") {
-            var va = value;
-            switch (type.primitiveCount) {
-                case 1:
-                    GL.uniform1f(location, value);
-                    break;
-                case 2:
-                    GL.uniform2f(location, va[0], va[1]);
-                    break;
-                case 3:
-                    GL.uniform3f(location, va[0], va[1], va[2]);
-                    break;
-                case 4:
-                    GL.uniform4f(location, va[0], va[1], va[2], va[3]);
-                    break;
-            }
-        }
-        if (type.primitive == "int") {
-            var va = value;
-            switch (type.primitiveCount) {
-                case 1:
-                    GL.uniform1i(location, value);
-                    break;
-                case 2:
-                    GL.uniform2i(location, va[0], va[1]);
-                    break;
-                case 3:
-                    GL.uniform3i(location, va[0], va[1], va[2]);
-                    break;
-                case 4:
-                    GL.uniform4i(location, va[0], va[1], va[2], va[3]);
-                    break;
-            }
-        }
-    };
-    WebGLPlatformShapeProgram.prototype.getUniformLocation = function (name) {
-        if (this._uniformLocations.has(name)) {
-            return this._uniformLocations.get(name);
-        }
-        else {
-            var location_1 = this._GL.getUniformLocation(this._program, name);
-            this._uniformLocations.set(name, location_1);
-            return location_1;
-        }
-    };
-    WebGLPlatformShapeProgram.prototype.getAttribLocation = function (name) {
-        if (this._attribLocations.has(name)) {
-            return this._attribLocations.get(name);
-        }
-        else {
-            var location_2 = this._GL.getAttribLocation(this._program, name);
-            if (location_2 < 0)
-                location_2 = null;
-            this._attribLocations.set(name, location_2);
-            return location_2;
-        }
-    };
-    return WebGLPlatformShapeProgram;
-}());
-var WebGLPlatformShapeData = (function (_super) {
-    __extends(WebGLPlatformShapeData, _super);
-    function WebGLPlatformShapeData() {
-        _super.apply(this, arguments);
-    }
-    return WebGLPlatformShapeData;
-}(stardust_core_1.PlatformShapeData));
-exports.WebGLPlatformShapeData = WebGLPlatformShapeData;
-var WebGLPlatformShape = (function (_super) {
-    __extends(WebGLPlatformShape, _super);
-    function WebGLPlatformShape(platform, GL, shape, spec, bindings, shiftBindings) {
-        var _this = this;
-        _super.call(this);
-        this._platform = platform;
-        this._GL = GL;
-        this._shape = shape;
-        this._bindings = bindings;
-        this._shiftBindings = shiftBindings;
-        this._spec = spec;
-        var flattenedInfo = stardust_core_2.FlattenEmits(spec);
-        this._specFlattened = flattenedInfo.specification;
-        this._flattenedVertexIndexVariable = flattenedInfo.indexVariable;
-        this._flattenedVertexCount = flattenedInfo.count;
-        this._program = new WebGLPlatformShapeProgram(GL, this._specFlattened, function (name) { return _this.isUniform(name); }, this._platform.viewInfo.type, generator_1.GenerateMode.NORMAL);
-        this._programPick = new WebGLPlatformShapeProgram(GL, this._specFlattened, function (name) { return _this.isUniform(name); }, this._platform.viewInfo.type, generator_1.GenerateMode.PICK);
-        this.initializeUniforms();
-    }
-    WebGLPlatformShape.prototype.initializeUniforms = function () {
-        for (var name_1 in this._specFlattened.input) {
-            if (this.isUniform(name_1)) {
-                this.updateUniform(name_1, this._bindings.get(name_1).specValue);
-            }
-        }
-    };
-    WebGLPlatformShape.prototype.initializeBuffers = function () {
-        var _this = this;
-        var GL = this._GL;
-        var data = new WebGLPlatformShapeData();
-        data.buffers = new stardust_core_3.Dictionary();
-        ;
-        this._bindings.forEach(function (binding, name) {
-            if (!_this.isUniform(name)) {
-                var location_3 = _this._program.getAttribLocation(name);
-                if (location_3 != null) {
-                    data.buffers.set(name, GL.createBuffer());
-                }
-            }
-        });
-        data.buffers.set(this._flattenedVertexIndexVariable, GL.createBuffer());
-        if (this._programPick) {
-            data.buffers.set("s3_pick_index", GL.createBuffer());
-        }
-        data.vertexCount = 0;
-        return data;
-    };
-    // Is the input attribute compiled as uniform?
-    WebGLPlatformShape.prototype.isUniform = function (name) {
-        // Extra variables we add are always not uniforms.
-        if (name == this._flattenedVertexIndexVariable)
-            return false;
-        if (this._bindings.get(name) == null) {
-            console.log(this._shiftBindings, name);
-            if (this._shiftBindings.get(name) == null) {
-                throw new stardust_core_4.RuntimeError("attribute " + name + " is not specified.");
-            }
-            else {
-                return false;
-            }
-        }
-        else {
-            // Look at the binding to determine.
-            return !this._bindings.get(name).isFunction;
-        }
-    };
-    WebGLPlatformShape.prototype.updateUniform = function (name, value) {
-        var binding = this._bindings.get(name);
-        var type = binding.type;
-        this._program.use();
-        this._program.setUniform(name, type, value);
-        if (this._programPick) {
-            this._programPick.use();
-            this._programPick.setUniform(name, type, value);
-        }
-    };
-    WebGLPlatformShape.prototype.uploadData = function (data) {
-        var buffers = this.initializeBuffers();
-        var n = data.length;
-        var GL = this._GL;
-        var bindings = this._bindings;
-        var rep = this._flattenedVertexCount;
-        this._bindings.forEach(function (binding, name) {
-            var buffer = buffers.buffers.get(name);
-            if (buffer == null)
-                return;
-            var type = binding.type;
-            var array = new Float32Array(type.primitiveCount * n * rep);
-            binding.fillBinary(data, rep, array);
-            GL.bindBuffer(GL.ARRAY_BUFFER, buffer);
-            GL.bufferData(GL.ARRAY_BUFFER, array, GL.STATIC_DRAW);
-        });
-        // The vertex index attribute.
-        var array = new Float32Array(n * rep);
-        for (var i = 0; i < n * rep; i++) {
-            array[i] = i % rep;
-        }
-        GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get(this._flattenedVertexIndexVariable));
-        GL.bufferData(GL.ARRAY_BUFFER, array, GL.STATIC_DRAW);
-        // The pick index attribute.
-        if (this._programPick) {
-            var array_1 = new Float32Array(n * rep * 4);
-            for (var i = 0; i < n * rep; i++) {
-                var index = Math.floor(i / rep);
-                array_1[i * 4 + 0] = (index & 0xff) / 255.0;
-                array_1[i * 4 + 1] = ((index & 0xff00) >> 8) / 255.0;
-                array_1[i * 4 + 2] = ((index & 0xff0000) >> 16) / 255.0;
-                array_1[i * 4 + 3] = ((index & 0xff000000) >> 24) / 255.0;
-            }
-            GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get("s3_pick_index"));
-            GL.bufferData(GL.ARRAY_BUFFER, array_1, GL.STATIC_DRAW);
-        }
-        buffers.vertexCount = n * rep;
-        return buffers;
-    };
-    // Render the graphics.
-    WebGLPlatformShape.prototype.renderBase = function (buffers, mode) {
-        if (buffers.vertexCount > 0) {
-            var GL = this._GL;
-            var spec = this._specFlattened;
-            var bindings = this._bindings;
-            // Decide which program to use
-            var program = this._program;
-            if (mode == generator_1.GenerateMode.PICK) {
-                program = this._programPick;
-            }
-            program.use();
-            var minOffset_1 = 0;
-            var maxOffset_1 = 0;
-            this._shiftBindings.forEach(function (shift, name) {
-                if (shift.offset > maxOffset_1)
-                    maxOffset_1 = shift.offset;
-                if (shift.offset < minOffset_1)
-                    minOffset_1 = shift.offset;
-            });
-            // Assign attributes to buffers
-            for (var name_2 in spec.input) {
-                var attributeLocation = program.getAttribLocation(name_2);
-                if (attributeLocation == null)
-                    continue;
-                if (this._shiftBindings.has(name_2)) {
-                    var shift = this._shiftBindings.get(name_2);
-                    GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get(shift.name));
-                    GL.enableVertexAttribArray(attributeLocation);
-                    var type = bindings.get(shift.name).type;
-                    GL.vertexAttribPointer(attributeLocation, type.primitiveCount, type.primitive == "float" ? GL.FLOAT : GL.INT, false, 0, type.size * (shift.offset - minOffset_1) * this._flattenedVertexCount);
-                }
-                else {
-                    GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get(name_2));
-                    GL.enableVertexAttribArray(attributeLocation);
-                    if (name_2 == this._flattenedVertexIndexVariable) {
-                        GL.vertexAttribPointer(attributeLocation, 1, GL.FLOAT, false, 0, 4 * (-minOffset_1) * this._flattenedVertexCount);
-                    }
-                    else {
-                        var type = bindings.get(name_2).type;
-                        GL.vertexAttribPointer(attributeLocation, type.primitiveCount, type.primitive == "float" ? GL.FLOAT : GL.INT, false, 0, type.size * (-minOffset_1) * this._flattenedVertexCount);
-                    }
-                }
-            }
-            // For pick mode, assign the pick index buffer
-            if (mode == generator_1.GenerateMode.PICK) {
-                var attributeLocation = program.getAttribLocation("s3_pick_index");
-                GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get("s3_pick_index"));
-                GL.enableVertexAttribArray(attributeLocation);
-                GL.vertexAttribPointer(attributeLocation, 4, GL.FLOAT, false, 0, 0);
-            }
-            // Set view uniforms
-            var viewInfo = this._platform.viewInfo;
-            var pose = this._platform.pose;
-            switch (viewInfo.type) {
-                case generator_1.ViewType.VIEW_2D:
-                    {
-                        GL.uniform4f(program.getUniformLocation("s3_view_params"), 2.0 / viewInfo.width, -2.0 / viewInfo.height, -1, +1);
-                    }
-                    break;
-                case generator_1.ViewType.VIEW_3D:
-                    {
-                        GL.uniform4f(program.getUniformLocation("s3_view_params"), 1.0 / Math.tan(viewInfo.fovY / 2.0) / viewInfo.aspectRatio, 1.0 / Math.tan(viewInfo.fovY / 2.0), (viewInfo.near + viewInfo.far) / (viewInfo.near - viewInfo.far), (2.0 * viewInfo.near * viewInfo.far) / (viewInfo.near - viewInfo.far));
-                        if (pose) {
-                            // Rotation and position.
-                            GL.uniform4f(program.getUniformLocation("s3_view_rotation"), pose.rotation.x, pose.rotation.y, pose.rotation.z, pose.rotation.w);
-                            GL.uniform3f(program.getUniformLocation("s3_view_position"), pose.position.x, pose.position.y, pose.position.z);
-                        }
-                        else {
-                            GL.uniform4f(program.getUniformLocation("s3_view_rotation"), 0, 0, 0, 1);
-                            GL.uniform3f(program.getUniformLocation("s3_view_position"), 0, 0, 0);
-                        }
-                    }
-                    break;
-            }
-            // For pick, set the shape index
-            if (mode == generator_1.GenerateMode.PICK) {
-                GL.uniform1f(program.getUniformLocation("s3_pick_index_alpha"), this._pickIndex / 255.0);
-            }
-            // Draw arrays
-            GL.drawArrays(GL.TRIANGLES, 0, buffers.vertexCount - (maxOffset_1 - minOffset_1) * this._flattenedVertexCount);
-            // Unbind attributes
-            for (var name_3 in spec.input) {
-                var attributeLocation = program.getAttribLocation(name_3);
-                if (attributeLocation != null) {
-                    GL.disableVertexAttribArray(attributeLocation);
-                }
-            }
-            // Unbind the pick index buffer
-            if (mode == generator_1.GenerateMode.PICK) {
-                var attributeLocation = program.getAttribLocation("s3_pick_index");
-                GL.disableVertexAttribArray(attributeLocation);
-            }
-        }
-    };
-    WebGLPlatformShape.prototype.setPickIndex = function (index) {
-        this._pickIndex = index;
-    };
-    WebGLPlatformShape.prototype.render = function (buffers) {
-        if (this._platform.renderMode == generator_1.GenerateMode.PICK) {
-            this.setPickIndex(this._platform.assignPickIndex(this._shape));
-        }
-        this.renderBase(buffers, this._platform.renderMode);
-    };
-    return WebGLPlatformShape;
-}(stardust_core_1.PlatformShape));
-exports.WebGLPlatformShape = WebGLPlatformShape;
-var WebGLPlatform = (function (_super) {
-    __extends(WebGLPlatform, _super);
-    function WebGLPlatform(GL) {
-        _super.call(this);
-        this._GL = GL;
-        this.set2DView(500, 500);
-        this.setPose(new stardust_core_5.Pose());
-        this._renderMode = generator_1.GenerateMode.NORMAL;
-        this._pickFramebuffer = null;
-    }
-    Object.defineProperty(WebGLPlatform.prototype, "viewInfo", {
-        get: function () { return this._viewInfo; },
-        enumerable: true,
-        configurable: true
-    });
-    ;
-    Object.defineProperty(WebGLPlatform.prototype, "pose", {
-        get: function () { return this._pose; },
-        enumerable: true,
-        configurable: true
-    });
-    ;
-    Object.defineProperty(WebGLPlatform.prototype, "renderMode", {
-        get: function () { return this._renderMode; },
-        enumerable: true,
-        configurable: true
-    });
-    WebGLPlatform.prototype.getPickFramebuffer = function (width, height) {
-        if (this._pickFramebuffer == null || width != this._pickFramebufferWidth || height != this._pickFramebufferHeight) {
-            var GL = this._GL;
-            this._pickFramebuffer = GL.createFramebuffer();
-            this._pickFramebufferWidth = width;
-            this._pickFramebufferHeight = height;
-            GL.bindFramebuffer(GL.FRAMEBUFFER, this._pickFramebuffer);
-            this._pickFramebufferTexture = GL.createTexture();
-            GL.bindTexture(GL.TEXTURE_2D, this._pickFramebufferTexture);
-            GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
-            GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR);
-            GL.texImage2D(GL.TEXTURE_2D, 0, GL.RGBA, width, height, 0, GL.RGBA, GL.UNSIGNED_BYTE, null);
-            GL.framebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, this._pickFramebufferTexture, 0);
-            GL.bindTexture(GL.TEXTURE_2D, null);
-            GL.bindFramebuffer(GL.FRAMEBUFFER, null);
-        }
-        return this._pickFramebuffer;
-    };
-    WebGLPlatform.prototype.beginPicking = function (width, height) {
-        this._renderMode = generator_1.GenerateMode.PICK;
-        var GL = this._GL;
-        var fb = this.getPickFramebuffer(width, height);
-        GL.bindFramebuffer(GL.FRAMEBUFFER, fb);
-        GL.clearColor(1, 1, 1, 1);
-        GL.clear(GL.COLOR_BUFFER_BIT);
-        GL.disable(GL.BLEND);
-        this._pickShapes = [];
-    };
-    WebGLPlatform.prototype.assignPickIndex = function (shape) {
-        var idx = this._pickShapes.indexOf(shape);
-        if (idx >= 0) {
-            return idx;
-        }
-        else {
-            var num = this._pickShapes.length;
-            this._pickShapes.push(shape);
-            return num;
-        }
-    };
-    WebGLPlatform.prototype.endPicking = function () {
-        var GL = this._GL;
-        GL.bindFramebuffer(GL.FRAMEBUFFER, null);
-        GL.enable(GL.BLEND);
-        this._renderMode = generator_1.GenerateMode.NORMAL;
-    };
-    WebGLPlatform.prototype.getPickingPixel = function (x, y) {
-        if (x < 0 || y < 0 || x >= this._pickFramebufferWidth || y >= this._pickFramebufferHeight) {
-            return null;
-        }
-        var GL = this._GL;
-        var fb = this._pickFramebuffer;
-        GL.bindFramebuffer(GL.FRAMEBUFFER, fb);
-        var data = new Uint8Array(4);
-        GL.readPixels(x, this._pickFramebufferHeight - 1 - y, 1, 1, GL.RGBA, GL.UNSIGNED_BYTE, data);
-        GL.bindFramebuffer(GL.FRAMEBUFFER, null);
-        var offset = (data[0]) + (data[1] << 8) + (data[2] << 16);
-        if (offset >= 16777215)
-            return null;
-        return [this._pickShapes[data[3]], offset];
-    };
-    WebGLPlatform.prototype.set2DView = function (width, height) {
-        this._viewInfo = {
-            type: generator_1.ViewType.VIEW_2D,
-            width: width,
-            height: height
-        };
-    };
-    WebGLPlatform.prototype.set3DView = function (fovY, aspectRatio, near, far) {
-        if (near === void 0) { near = 0.1; }
-        if (far === void 0) { far = 1000; }
-        this._viewInfo = {
-            type: generator_1.ViewType.VIEW_3D,
-            fovY: fovY,
-            aspectRatio: aspectRatio,
-            near: near,
-            far: far
-        };
-    };
-    WebGLPlatform.prototype.setPose = function (pose) {
-        this._pose = pose;
-    };
-    WebGLPlatform.prototype.compile = function (shape, spec, bindings, shiftBindings) {
-        return new WebGLPlatformShape(this, this._GL, shape, spec, bindings, shiftBindings);
-    };
-    return WebGLPlatform;
-}(stardust_core_1.Platform));
-exports.WebGLPlatform = WebGLPlatform;
-
-},{"./generator":206,"./webglutils":210,"stardust-core":23}],210:[function(require,module,exports){
-"use strict";
-var stardust_core_1 = require("stardust-core");
-function compileProgram(GL, vsCode, fsCode) {
-    // Vertex shader
-    var vsShader = GL.createShader(GL.VERTEX_SHADER);
-    GL.shaderSource(vsShader, vsCode);
-    GL.compileShader(vsShader);
-    var success = GL.getShaderParameter(vsShader, GL.COMPILE_STATUS);
-    if (!success) {
-        console.log("Vertex shader code is:", vsCode);
-        throw new stardust_core_1.RuntimeError("could not compile vertex shader: " + GL.getShaderInfoLog(vsShader));
-    }
-    // Fragment shader
-    var fsShader = GL.createShader(GL.FRAGMENT_SHADER);
-    GL.shaderSource(fsShader, fsCode);
-    GL.compileShader(fsShader);
-    success = GL.getShaderParameter(fsShader, GL.COMPILE_STATUS);
-    if (!success) {
-        console.log("Fragment shader code is:", fsCode);
-        throw new stardust_core_1.RuntimeError("could not compile fragment shader: " + GL.getShaderInfoLog(fsShader));
-    }
-    // Link the program
-    var program = GL.createProgram();
-    GL.attachShader(program, vsShader);
-    GL.attachShader(program, fsShader);
-    GL.linkProgram(program);
-    if (!GL.getProgramParameter(program, GL.LINK_STATUS)) {
-        throw new stardust_core_1.RuntimeError("could not link shader: " + GL.getProgramInfoLog(program));
-    }
-    return program;
-}
-exports.compileProgram = compileProgram;
-
-},{"stardust-core":23}],211:[function(require,module,exports){
-"use strict";
-exports.version = "0.0.1";
-var platforms_1 = require("./platforms/platforms");
-exports.WebGLPlatform = platforms_1.WebGLPlatform;
-
-},{"./platforms/platforms":205}]},{},[29]);
+},{"./lib/React":63}]},{},[6]);
