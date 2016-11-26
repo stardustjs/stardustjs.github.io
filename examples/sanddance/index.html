@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Stardust Example: SandDance</title>
+    <link rel="stylesheet" type="text/css" href="../../css/main.css" />
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/styles/color-brewer.min.css" />
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/highlight.min.js"></script>
+    <style type="text/css">
+        iframe {
+            border: none;
+            border: 1px solid #CCC;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="../../">Home</a>
+    </header>
+    <section>
+        <h1>Stardust Example: SandDance</h1>
+        <iframe src="content.html" width="960px" height="500px" scrolling="no" sandbox="allow-popups allow-scripts allow-forms allow-same-origin"></iframe>
+        <p>Producing a <a href="https://www.sanddance.ms/">SandDance</a> visualization with Stardust. Instance-based visualization with animation between 3 layouts: scatterplot of longitude and latitude, group by state, and group by longitude and latitude in 3D.</p>
+<p>Data: DemoVote from <a href="http://www.census.gov">census.gov</a> and <a href="http://www.theguardian.com/news/datablog/2012/nov/07/us-2012-election-county-results-download">Guardian</a></p>
+            <h2>index.html</h2>
+            <pre><code class="highlight">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;Stardust Example: Scatterplot&lt;/title&gt;
+    &lt;style type=&quot;text/css&quot;&gt;
+        body {
+            font-size: 13px;
+            font-family: &quot;Helvetica&quot;, &quot;Arial&quot;, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #000;
+        }
+        .chart {
+            margin: 0;
+            padding: 0;
+            width: 960px;
+            height: 470px;
+        }
+        p {
+            margin: 0; padding: 0 10px;
+            line-height: 30px;
+            height: 30px;
+            background-color: black;
+        }
+        .switch-mode {
+            display: inline-block;
+            margin: 0; padding: 0; border: none;
+            padding: 2px 5px;
+            cursro: pointer;
+            background: none;
+            border: 1px solid white;
+            color: #CCC;
+        }
+        .switch-mode.active {
+            background: #444;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+    &lt;div class=&quot;chart&quot;&gt;
+        &lt;canvas id=&quot;main-canvas&quot;&gt;&lt;/canvas&gt;
+    &lt;/div&gt;
+    &lt;p&gt;
+        &lt;button class=&quot;switch-mode active&quot; id=&quot;switch-mode1&quot;&gt;Map&lt;/button&gt;
+        &lt;button class=&quot;switch-mode&quot; id=&quot;switch-mode3&quot;&gt;Map Bins&lt;/button&gt;
+        &lt;button class=&quot;switch-mode&quot; id=&quot;switch-mode2&quot;&gt;State&lt;/button&gt;
+    &lt;/p&gt;
+
+    &lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+    &lt;!--&lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;--&gt;
+    &lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+    &lt;script type=&quot;text/javascript&quot;&gt;
+        let width = 960;
+        let height = 470;
+        let canvas = document.getElementById(&quot;main-canvas&quot;);
+        let platform = Stardust.platform(&quot;webgl-2d&quot;, canvas, width, height);
+        platform.set3DView(Math.PI / 2, width / height);
+        platform.setPose(new Stardust.Pose(
+            new Stardust.Vector3(0, 0, 200),
+            new Stardust.Quaternion(0, 0, 0, 1)
+        ));
+        platform.clear([ 0, 0, 0, 1 ]);
+        d3.tsv(&quot;demovoteclean.tsv&quot;, (err, data) =&gt; {
+            let demovote = data;
+            let shape = Stardust.shape.compile(`
+                import Cube from P3D;
+
+                let longitude: float;
+                let latitude: float;
+                let state: float;
+                let stateBinIndex: float;
+                let xBin: float;
+                let yBin: float;
+                let xyBinIndex: float;
+                let index: float;
+
+                function getPositionScatterplot(): Vector3 {
+                    let scaleX = 0.2;
+                    let scaleY = 0.3;
+                    return Vector3(
+                        scaleX * (longitude - (-95.9386152570054)),
+                        scaleY * (latitude - (37.139536624928695)),
+                        0
+                    );
+                }
+
+                function getPositionStateBins(): Vector3 {
+                    return Vector3(
+                        (state - 48 / 2) * 0.3 + (stateBinIndex % 10 - 4.5) * 0.02,
+                        floor(stateBinIndex / 10) * 0.02 - 2.0, 0
+                    );
+                }
+
+                function getPositionXYBinning(): Vector3 {
+                    let n = 5;
+                    let txy = xyBinIndex % (n * n);
+                    let tx = txy % n;
+                    let ty = floor(txy / n);
+                    let tz = floor(xyBinIndex / (n * n));
+                    return Vector3(
+                        (xBin - 9 / 2) * 0.6 + (tx - n / 2 + 0.5) * 0.02,
+                        tz * 0.02 - 2.0,
+                        (yBin - 6 / 2) * 0.6 + (ty - n / 2 + 0.5) * 0.02
+                    );
+                }
+
+                function clamp01(t: float): float {
+                    if(t &lt; 0) t = 0;
+                    if(t &gt; 1) t = 1;
+                    return t;
+                }
+
+                shape Shape(color: Color, t1: float, t2: float, t3: float, ki1: float, ki2: float, ki3: float) {
+                    let p1 = getPositionScatterplot();
+                    let p2 = getPositionStateBins();
+                    let p3 = getPositionXYBinning();
+                    let p = p1 * clamp01(t1 + ki1 * index) +
+                        p2 * clamp01(t2 + ki2 * index) +
+                        p3 * clamp01(t3 + ki3 * index);
+                    Cube(
+                        p * 50,
+                        0.25,
+                        color
+                    );
+                }
+            `)[&quot;Shape&quot;];
+            let shapes = Stardust.shape.create(shape, platform);
+
+            demovote.forEach(d =&gt; {
+                d.Longitude = +d.Longitude;
+                d.Latitude = +d.Latitude;
+            });
+
+            let longitudeExtent = d3.extent(demovote, d =&gt; d.Longitude);
+            let latitudeExtent = d3.extent(demovote, d =&gt; d.Latitude);
+
+            let longitudeScale = d3.scale.linear().domain(longitudeExtent).range([ 0, 1 ])
+            let latitudeScale = d3.scale.linear().domain(latitudeExtent).range([ 0, 1 ])
+
+            // Map states to integer.
+            let states = new Set();
+            let state2number = {};
+            let state2count = {};
+            demovote.forEach(d =&gt; states.add(d.StateAbb));
+            states = Array.from(states);
+            states.sort();
+            states.forEach((d, i) =&gt; {
+                state2number[d] = i;
+                state2count[d] = 0;
+            });
+
+            let xyBinCounter = {};
+
+            let xBinCount = 10;
+            let yBinCount = 7;
+
+            demovote.sort((a, b) =&gt; a.Obama - b.Obama);
+            demovote.forEach((d, i) =&gt; {
+                d.index = i;
+                if(state2count[d.StateAbb] == null) state2count[d.StateAbb] = 0;
+                d.stateBinIndex = state2count[d.StateAbb]++;
+
+                let xBin = Math.floor(longitudeScale(d.Longitude) * xBinCount);
+                let yBin = Math.floor(latitudeScale(d.Latitude) * yBinCount);
+                let bin = yBin * (xBinCount + 1) + xBin;
+                d.xBin = xBin;
+                d.yBin = yBin;
+                if(xyBinCounter[bin] == null) xyBinCounter[bin] = 0;
+                d.xyBinIndex = xyBinCounter[bin]++;
+            });
+
+
+            let s1 = d3.interpolateLab(&quot;#f7f7f7&quot;, &quot;#0571b0&quot;);
+            let s2 = d3.interpolateLab(&quot;#f7f7f7&quot;, &quot;#ca0020&quot;);
+
+            let strToRGBA = (str) =&gt; {
+                let rgb = d3.rgb(str);
+                return [ rgb.r / 255, rgb.g / 255, rgb.b / 255, 1 ];
+            }
+
+            let scaleColor = (value) =&gt; {
+                if(value &gt; 0.5) {
+                    return strToRGBA(s1((value - 0.5) * 2));
+                } else {
+                    return strToRGBA(s2((0.5 - value) * 2));
+                }
+            }
+
+            shapes
+                .attr(&quot;index&quot;, d =&gt; d.index / (demovote.length - 1))
+                .attr(&quot;longitude&quot;, d =&gt; d.Longitude)
+                .attr(&quot;latitude&quot;, d =&gt; d.Latitude)
+                .attr(&quot;state&quot;, (d) =&gt; state2number[d.StateAbb])
+                .attr(&quot;stateBinIndex&quot;, (d) =&gt; d.stateBinIndex)
+                .attr(&quot;xBin&quot;, (d) =&gt; d.xBin)
+                .attr(&quot;yBin&quot;, (d) =&gt; d.yBin)
+                .attr(&quot;xyBinIndex&quot;, (d) =&gt; d.xyBinIndex)
+                .attr(&quot;color&quot;, (d) =&gt; scaleColor(d.Obama));
+
+            function transition12(t) {
+                let tt = t * 1.3 - 0.3;
+                shapes.attr(&quot;t1&quot;, 1 - tt).attr(&quot;t2&quot;, tt).attr(&quot;t3&quot;, 0).attr(&quot;ki1&quot;, -0.3).attr(&quot;ki2&quot;, +0.3).attr(&quot;ki3&quot;, 0);
+            }
+            function transition23(t) {
+                let tt = t * 1.3 - 0.3;
+                shapes.attr(&quot;t1&quot;, 0).attr(&quot;t2&quot;, 1 - tt).attr(&quot;t3&quot;, tt).attr(&quot;ki1&quot;, 0).attr(&quot;ki2&quot;, -0.3).attr(&quot;ki3&quot;, +0.3);
+            }
+            function transition31(t) {
+                let tt = t * 1.3 - 0.3;
+                shapes.attr(&quot;t1&quot;, tt).attr(&quot;t2&quot;, 0).attr(&quot;t3&quot;, 1 - tt).attr(&quot;ki1&quot;, +0.3).attr(&quot;ki2&quot;, 0).attr(&quot;ki3&quot;, -0.3);
+            }
+
+            shapes.data(demovote);
+
+            function render() {
+                platform.clear([ 0, 0, 0, 1 ]);
+                shapes.render();
+            }
+
+            function beginTransition(func) {
+                let t0 = new Date().getTime();
+                let req = null;
+                let rerender = () =&gt; {
+                    req = null;
+                    let t1 = new Date().getTime();
+                    let t = (t1 - t0) / 1000;
+                    let shouldStop = false;
+                    if(t &gt; 1) {
+                        t = 1;
+                        shouldStop = true;
+                    }
+                    func(t);
+                    render();
+                    if(!shouldStop) {
+                        req = requestAnimationFrame(rerender);
+                    }
+                }
+                req = requestAnimationFrame(rerender);
+                return {
+                    stop: () =&gt; {
+                        if(req != null) cancelAnimationFrame(rerender);
+                    }
+                }
+            }
+
+            let previousMode = &quot;mode1&quot;;
+            transition12(0);
+            render();
+
+            d3.select(&quot;#switch-mode1&quot;).on(&quot;click&quot;, () =&gt; {
+                d3.selectAll(&quot;.switch-mode&quot;).classed(&quot;active&quot;, false);
+                d3.select(&quot;#switch-mode1&quot;).classed(&quot;active&quot;, true);
+                let pm = previousMode;
+                previousMode = &quot;mode1&quot;;
+                beginTransition((t) =&gt; {
+                    if(pm == &quot;mode2&quot;) {
+                        transition12(1 - t);
+                    } else if(pm == &quot;mode3&quot;) {
+                        transition31(t);
+                    }
+                });
+            });
+            d3.select(&quot;#switch-mode2&quot;).on(&quot;click&quot;, () =&gt; {
+                d3.selectAll(&quot;.switch-mode&quot;).classed(&quot;active&quot;, false);
+                d3.select(&quot;#switch-mode2&quot;).classed(&quot;active&quot;, true);
+                let pm = previousMode;
+                previousMode = &quot;mode2&quot;;
+                beginTransition((t) =&gt; {
+                    if(pm == &quot;mode1&quot;) {
+                        transition12(t);
+                    } else if(pm == &quot;mode3&quot;) {
+                        transition23(1 - t);
+                    }
+                });
+            });
+            d3.select(&quot;#switch-mode3&quot;).on(&quot;click&quot;, () =&gt; {
+                d3.selectAll(&quot;.switch-mode&quot;).classed(&quot;active&quot;, false);
+                d3.select(&quot;#switch-mode3&quot;).classed(&quot;active&quot;, true);
+                let pm = previousMode;
+                previousMode = &quot;mode3&quot;;
+                beginTransition((t) =&gt; {
+                    if(pm == &quot;mode1&quot;) {
+                        transition31(1 - t);
+                    } else if(pm == &quot;mode2&quot;) {
+                        transition23(t);
+                    }
+                });
+            });
+        });
+    &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+    </section>
+    <script type="text/javascript">
+        hljs.initHighlightingOnLoad();
+    </script>
+</body>

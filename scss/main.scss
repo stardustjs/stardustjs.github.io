@@ -2,6 +2,14 @@
 
 @import "reset.scss";
 
+.group:after {
+    visibility: hidden;
+    display: block;
+    content: "";
+    clear: both;
+    height: 0;
+}
+
 body {
     font-family: $main-font;
     font-size: $main-font-size;
@@ -62,10 +70,22 @@ h1, h2, h3, h4 {
     font-weight: bold;
     color: $gray-200;
 }
+
+h2 {
+    &:before {
+        display: inline-block;
+        color: $gray-600;
+        content: "\00b6";
+        text-align: right;
+        width: 20px;
+        padding-right: 8px;
+        margin-left: -28px;
+    }
+}
 h1 { font-size: 1.8em; }
 h2 { font-size: 1.4em; }
-h3 { font-size: 1.2em; color: $gray-400; }
-h4 { font-size: 1.0em; color: $gray-400; }
+h3 { font-size: 1.2em; }
+h4 { font-size: 1.0em; }
 
 p {
     margin: 1em 0;
@@ -103,4 +123,40 @@ hr {
     border: none;
     border-top: 2px solid $border-color;
     margin: 1em 0;
+}
+
+.examples {
+    list-style-type: none;
+    margin: 0; padding: 0;
+    li {
+        width: calc(100% / 3);
+        margin: 0; padding: 0;
+        display: block;
+        float: left;
+        text-align: center;
+        cursor: pointer;
+        position: relative;
+        border: 2px solid white;
+        box-sizing: border-box;
+
+        img {
+            width: 100%;
+            display: block;
+        }
+
+        span {
+            position: absolute;
+            left: 0; right: 0; top: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.4);
+            color: white;
+            display: none;
+        }
+
+        &:hover {
+            span {
+                display: block;
+            }
+            border: 2px solid $border-color;
+        }
+    }
 }

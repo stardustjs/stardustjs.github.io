@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+    body { margin: 0; padding: 0; }
+    p { margin: 0; padding: 0; }
+</style>
+<p>
+    <canvas id="main-canvas" />
+</p>
+<script src="//d3js.org/d3.v3.min.js" type="text/javascript"></script>
+<script type="text/javascript" src="//stardust-vis.github.io/stardust/stardust.bundle.min.js"></script>
+<script type="text/javascript">
+    let canvas = document.getElementById("main-canvas");
+    let width = 960;
+    let height = 500;
+    let platform = Stardust.platform("webgl-2d", canvas, width, height);
+
+    // SVG file created from Adobe Illustrator:
+    let svgFile = `
+        <svg version="1.1" xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="10px" height="20px">
+            <polygon points="
+                7.5234375,11.2519531 7.5234375,4.3295898 5.9628906,4.3295898 5.9628906,2.3691406 5.3920898,1.7827148
+                4.6079102,1.7827148 4.0356445,2.3691406 4.0356445,4.3295898 2.4765625,4.3295898 2.4765625,11.2519531 3.3203125,11.7666016
+                3.3779297,17.2871094 2.4765625,17.9169922 7.5234375,17.9179688 6.6230469,17.2871094 6.6796875,11.7675781
+            "/>
+        </svg>
+    `;
+
+    // Convert the SVG file to Stardust shape spec.
+    let isotype = new Stardust.shape.isotype(svgFile);
+
+    // Create the shape object.
+    let isotypes = Stardust.shape.create(isotype, platform);
+
+    let isotypeHeight = 18;
+
+    let xScale = Stardust.scale.linear()
+        .domain([ 0, 1 ])
+        .range([ 20, 28 ]);
+    let yScale = Stardust.scale.linear()
+        .domain([ 0, 1 ])
+        .range([ 480, 460 ]);
+
+    let colors = [[31,119,180],[255,127,14],[44,160,44]];
+    colors = colors.map((x) => [ x[0] / 255, x[1] / 255, x[2] / 255, 1 ]);
+
+    isotypes.instance((d, index) => {
+        let data = [];
+        for(let i = 0; i < d; i++) data.push(i);
+        return {
+            data: data,
+            attrs: {
+                color: colors[index % colors.length]
+            },
+            onRender: () => {
+                let offset = 20 + 160 * Math.floor(index / colors.length) + (index % colors.length) * 45;
+                xScale.range([ offset, 8 + offset ]);
+            }
+        };
+    });
+
+
+    isotypes.attr("position", Stardust.scale.Vector2(
+        xScale(d => d % 5),
+        yScale(d => Math.floor(d / 5))
+    ));
+    isotypes.attr("size", 1.0);
+    isotypes.data([
+        27, 53, 91, 52, 112, 42, 107, 91, 68, 56, 115, 86, 26, 102, 28, 23, 119, 110
+    ]);
+    isotypes.render();
+</script>

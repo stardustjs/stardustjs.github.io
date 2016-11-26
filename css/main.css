@@ -45,6 +45,13 @@ table {
   border-collapse: collapse;
   border-spacing: 0; }
 
+.group:after {
+  visibility: hidden;
+  display: block;
+  content: "";
+  clear: both;
+  height: 0; }
+
 body {
   font-family: "Helvetica Neue", "Helvetica", "Arial", sans-serif;
   font-size: 16px;
@@ -98,6 +105,15 @@ h1, h2, h3, h4 {
   font-weight: bold;
   color: #4a4a4a; }
 
+h2:before {
+  display: inline-block;
+  color: #b4b4b4;
+  content: "\00b6";
+  text-align: right;
+  width: 20px;
+  padding-right: 8px;
+  margin-left: -28px; }
+
 h1 {
   font-size: 1.8em; }
 
@@ -105,12 +121,10 @@ h2 {
   font-size: 1.4em; }
 
 h3 {
-  font-size: 1.2em;
-  color: #7d7d7d; }
+  font-size: 1.2em; }
 
 h4 {
-  font-size: 1.0em;
-  color: #7d7d7d; }
+  font-size: 1.0em; }
 
 p {
   margin: 1em 0;
@@ -145,5 +159,37 @@ hr {
   border: none;
   border-top: 2px solid #d1d1d1;
   margin: 1em 0; }
+
+.examples {
+  list-style-type: none;
+  margin: 0;
+  padding: 0; }
+  .examples li {
+    width: calc(100% / 3);
+    margin: 0;
+    padding: 0;
+    display: block;
+    float: left;
+    text-align: center;
+    cursor: pointer;
+    position: relative;
+    border: 2px solid white;
+    box-sizing: border-box; }
+    .examples li img {
+      width: 100%;
+      display: block; }
+    .examples li span {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.4);
+      color: white;
+      display: none; }
+    .examples li:hover {
+      border: 2px solid #d1d1d1; }
+      .examples li:hover span {
+        display: block; }
 
 /*# sourceMappingURL=main.css.map */

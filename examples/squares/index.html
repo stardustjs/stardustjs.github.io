@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Stardust Example: Squares</title>
+    <link rel="stylesheet" type="text/css" href="../../css/main.css" />
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/styles/color-brewer.min.css" />
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/highlight.min.js"></script>
+    <style type="text/css">
+        iframe {
+            border: none;
+            border: 1px solid #CCC;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="../../">Home</a>
+    </header>
+    <section>
+        <h1>Stardust Example: Squares</h1>
+        <iframe src="content.html" width="960px" height="500px" scrolling="no" sandbox="allow-popups allow-scripts allow-forms allow-same-origin"></iframe>
+        <p>The Squares performance visualization for multiclass classifiers, implemented using <a href="https://stardust-vis.github.io/">Stardust</a>.</p>
+<p>Data shown here is a 10-class classifier trained on the MNIST dataset.</p>
+            <h2>index.html</h2>
+            <pre><code class="highlight">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;style&gt;
+        body {
+            margin: 0;
+            padding: 0;
+        }
+        .squares-container {
+            position: relative;
+        }
+        .squares-container canvas, .squares-container svg {
+            position: absolute;
+            left: 0; top: 0;
+        }
+        .squares-container svg {
+            pointer-events: none;
+        }
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: black;
+            shape-rendering: crispEdges;
+        }
+
+        .axis text {
+            font-family: sans-serif;
+            font-size: 11px;
+        }
+        &lt;/style&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;div class=&quot;squares-container&quot;&gt;
+            &lt;canvas id=&quot;main-canvas&quot;&gt;&lt;/canvas&gt;
+            &lt;svg id=&quot;main-svg&quot;&gt;&lt;/svg&gt;
+        &lt;/div&gt;
+
+        &lt;script src=&quot;squares.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+        &lt;script type=&quot;text/javascript&quot;&gt;
+            var container = d3.select(&quot;.squares-container&quot;);
+            var vis = new SquaresVisualization(container.node());
+            d3.csv(&quot;mnist.csv&quot;, (DATA) =&gt; {
+                vis.layout();
+                vis.setInstances(DATA.slice(0, 4000));
+                vis.setLayoutParameter({
+                    y0: 10,
+                    numberBins: 10,
+                    squaresPerBin: 11,
+                    squareSize: 3,
+                    squareSpacing: 4,
+                    xSpacing: 88
+                });
+            });
+        &lt;/script&gt;
+    &lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+            <h2>squares.js</h2>
+            <pre><code class="highlight">class SquaresVisualization {
+
+    makeSquaresShape(side, mode) {
+        let squares = Stardust.shape.custom()
+            .input(&quot;size&quot;, &quot;float&quot;)
+            .input(&quot;spacing&quot;, &quot;float&quot;)
+            .input(&quot;x0&quot;, &quot;float&quot;)
+            .input(&quot;xSpacing&quot;, &quot;float&quot;)
+            .input(&quot;y1&quot;, &quot;float&quot;)
+            .input(&quot;binSpacing&quot;, &quot;float&quot;)
+            .input(&quot;binIndex&quot;, &quot;float&quot;)
+            .input(&quot;binSquares&quot;, &quot;float&quot;)
+            .input(&quot;bin&quot;, &quot;float&quot;)
+            .input(&quot;color&quot;, &quot;Color&quot;);
+        if(side == &quot;right&quot;) {
+            squares
+                .input(&quot;assigned&quot;, &quot;float&quot;)
+                .variable(&quot;x&quot;, &quot;x0 + xSpacing * assigned&quot;)
+        } else {
+            squares
+                .input(&quot;label&quot;, &quot;float&quot;)
+                .variable(&quot;x&quot;, &quot;x0 + xSpacing * label&quot;)
+        }
+        squares
+            .variable(&quot;y&quot;, &quot;y1 - bin * binSpacing&quot;)
+            .variable(&quot;binIx&quot;, &quot;floor(binIndex / binSquares)&quot;)
+            .variable(&quot;binIy&quot;, &quot;(binIndex % binSquares)&quot;)
+            .variable(&quot;bx&quot;, &quot;binIx * spacing&quot;)
+            .variable(&quot;by&quot;, &quot;binIy * spacing&quot;)
+        if(side == &quot;right&quot;) {
+            squares
+                .variable(&quot;px&quot;, &quot;x + bx&quot;)
+                .variable(&quot;py&quot;, &quot;y + by&quot;);
+        } else {
+            squares
+                .variable(&quot;px&quot;, &quot;x - bx - spacing&quot;)
+                .variable(&quot;py&quot;, &quot;y + by&quot;);
+        }
+        if(mode == &quot;solid&quot;) {
+            squares
+                .add(&quot;P2D.Rectangle&quot;)
+                    .attr(&quot;p1&quot;, &quot;Vector2(px, py)&quot;)
+                    .attr(&quot;p2&quot;, &quot;Vector2(px + spacing, py + spacing)&quot;)
+                    .attr(&quot;color&quot;, &quot;Color(1, 1, 1, 1)&quot;);
+            squares
+                .add(&quot;P2D.Rectangle&quot;)
+                    .attr(&quot;p1&quot;, &quot;Vector2(px, py)&quot;)
+                    .attr(&quot;p2&quot;, &quot;Vector2(px + size, py + size)&quot;)
+                    .attr(&quot;color&quot;, &quot;color&quot;);
+        }
+        if(mode == &quot;outlined&quot;) {
+            squares
+                .add(&quot;P2D.Rectangle&quot;)
+                    .attr(&quot;p1&quot;, &quot;Vector2(px, py)&quot;)
+                    .attr(&quot;p2&quot;, &quot;Vector2(px + spacing, py + spacing)&quot;)
+                    .attr(&quot;color&quot;, &quot;Color(1, 1, 1, 1)&quot;);
+            squares
+                .add(&quot;P2D.Rectangle&quot;)
+                    .attr(&quot;p1&quot;, &quot;Vector2(px, py)&quot;)
+                    .attr(&quot;p2&quot;, &quot;Vector2(px + size, py + size)&quot;)
+                    .attr(&quot;color&quot;, &quot;color&quot;);
+            squares
+                .add(&quot;P2D.Rectangle&quot;)
+                    .attr(&quot;p1&quot;, &quot;Vector2(px + 0.5, py + 0.5)&quot;)
+                    .attr(&quot;p2&quot;, &quot;Vector2(px + size - 0.5, py + size - 0.5)&quot;)
+                    .attr(&quot;color&quot;, &quot;Color(1, 1, 1, 1)&quot;);
+        }
+        if(mode == &quot;selection&quot;) {
+            squares
+                .add(&quot;P2D.Rectangle&quot;)
+                    .attr(&quot;p1&quot;, &quot;Vector2(px, py)&quot;)
+                    .attr(&quot;p2&quot;, &quot;Vector2(px + size, py + size)&quot;)
+                    .attr(&quot;color&quot;, &quot;Color(0, 0, 0, 0)&quot;);
+            squares
+                .add(&quot;P2D.OutlinedRectangle&quot;)
+                    .attr(&quot;p1&quot;, &quot;Vector2(px - 0.5, py - 0.5)&quot;)
+                    .attr(&quot;p2&quot;, &quot;Vector2(px + size + 0.5, py + size + 0.5)&quot;)
+                    .attr(&quot;color&quot;, &quot;Color(0, 0, 0, 1)&quot;);
+        }
+        return squares;
+    }
+
+    constructor(container) {
+        let squares = this.makeSquaresShape(&quot;right&quot;, &quot;solid&quot;);
+        let squaresOutlined = this.makeSquaresShape(&quot;left&quot;, &quot;outlined&quot;);
+        let squaresSelection = this.makeSquaresShape(&quot;right&quot;, &quot;selection&quot;);
+        let squaresOutlinedSelection = this.makeSquaresShape(&quot;left&quot;, &quot;selection&quot;);
+
+        let parallelCoordinates = Stardust.shape.custom()
+            .input(&quot;color&quot;, &quot;Color&quot;)
+            .input(&quot;x0&quot;, &quot;float&quot;)
+            .input(&quot;xSpacing&quot;, &quot;float&quot;);
+        for(let i = 0; i &lt; 10; i++) {
+            parallelCoordinates.input(`y${i}`, &quot;float&quot;);
+            parallelCoordinates.variable(`x${i}`, `x0 + xSpacing * ${i}`);
+            if(i &lt; 9) {
+                parallelCoordinates.add(&quot;P2D.Line&quot;)
+                    .attr(&quot;p1&quot;, `Vector2(x${i}, y${i})`)
+                    .attr(&quot;p2&quot;, `Vector2(x${i + 1}, y${i + 1})`)
+                    .attr(&quot;width&quot;, 2)
+                    .attr(&quot;color&quot;, `Color(color.r, color.g, color.b, 0.3)`);
+            }
+        }
+
+        this._container = container;
+        this._canvas = d3.select(container).append(&quot;canvas&quot;);
+        this._canvasNode = this._canvas.node();
+        this._svg = d3.select(container).append(&quot;svg&quot;);
+        this._svgAxis = this._svg.append(&quot;g&quot;).classed(&quot;axis&quot;, true);
+
+        let platform = Stardust.platform(&quot;webgl-2d&quot;, this._canvasNode);
+
+        this._platform = platform;
+
+        this._layout = {
+            numberBins: 10,
+            squaresPerBin: 10,
+            squareSize: 2,
+            squareSpacing: 3,
+            x0: 80,
+            xSpacing: 100,
+            y0: 10,
+            numberClasses: 10
+        };
+
+        let colors = [[31,119,180],[255,127,14],[44,160,44],[214,39,40],[148,103,189],[140,86,75],[227,119,194],[127,127,127],[188,189,34],[23,190,207]];
+        colors = colors.map((x) =&gt; [ x[0] / 255, x[1] / 255, x[2] / 255, 1 ]);
+
+        let shape = Stardust.shape.create(squares, platform);
+        shape
+            .attr(&quot;color&quot;, d =&gt; colors[d.label])
+            .attr(&quot;assigned&quot;, d =&gt; d.assigned)
+            .attr(&quot;binIndex&quot;, d =&gt; d.binIndex)
+            .attr(&quot;bin&quot;, d =&gt; d.scoreBin);
+
+        let shape2 = Stardust.shape.create(squaresOutlined, platform);
+        shape2
+            .attr(&quot;color&quot;, d =&gt; colors[d.assigned])
+            .attr(&quot;label&quot;, d =&gt; d.label)
+            .attr(&quot;binIndex&quot;, d =&gt; d.binIndex2)
+            .attr(&quot;bin&quot;, d =&gt; d.scoreBin);
+
+        let shapeOverlay = Stardust.shape.create(squaresSelection, platform);
+        shapeOverlay
+            .attr(&quot;color&quot;, [ 0, 0, 0, 1 ])
+            .attr(&quot;assigned&quot;, d =&gt; d.assigned)
+            .attr(&quot;binIndex&quot;, d =&gt; d.binIndex)
+            .attr(&quot;bin&quot;, d =&gt; d.scoreBin);
+
+        let shapeOverlayOutlined = Stardust.shape.create(squaresOutlinedSelection, platform);
+        shapeOverlayOutlined
+            .attr(&quot;color&quot;, [ 0, 0, 0, 1 ])
+            .attr(&quot;label&quot;, d =&gt; d.label)
+            .attr(&quot;binIndex&quot;, d =&gt; d.binIndex2)
+            .attr(&quot;bin&quot;, d =&gt; d.scoreBin);
+
+        let shapePC = Stardust.shape.create(parallelCoordinates, platform);
+        let yScale = Stardust.scale.linear()
+            .domain([ 0, 1 ]).range([ 500, 100 ]);
+        shapePC.attr(&quot;color&quot;, d =&gt; colors[d.label]);
+        for(let i = 0; i &lt; 10; i++) {
+            ((i) =&gt; {
+                shapePC.attr(`y${i}`, yScale(d =&gt; d.scores[i]));
+            })(i);
+        }
+
+        this._shapes = {
+            squares: shape,
+            squaresOutlined: shape2,
+            squaresOverlay: shapeOverlay,
+            squaresOverlayOutlined: shapeOverlayOutlined,
+            parallelCoordinates: shapePC,
+            yScale: yScale
+        }
+
+
+
+        this._canvasNode.onmousemove = e =&gt; {
+            let bounds = this._canvasNode.getBoundingClientRect();
+            var x = e.clientX - bounds.left;
+            var y = e.clientY - bounds.top;
+            var p = this._platform.getPickingPixel(x * 2, y * 2);
+            if(p) {
+                this.setSelection([ p[0].data()[p[1]] ]);
+            } else {
+                this.setSelection([]);
+            }
+        };
+        this._canvasNode.onmousedown = e =&gt; {
+            let bounds = this._canvasNode.getBoundingClientRect();
+            var x = e.clientX - bounds.left;
+            var y = e.clientY - bounds.top;
+            var p = this._platform.getPickingPixel(x * 2, y * 2);
+            if(p) {
+                let inst = p[0].data()[p[1]];
+                let selection = this._instances.filter((d) =&gt; d.label == inst.label &amp;&amp; d.assigned == inst.assigned &amp;&amp; d.scoreBin == inst.scoreBin);
+                this.setSelection(selection);
+            } else {
+                this.setSelection([]);
+            }
+        };
+        this._canvasNode.ondblclick = e =&gt; {
+            let bounds = this._canvasNode.getBoundingClientRect();
+            var x = e.clientX - bounds.left;
+            var y = e.clientY - bounds.top;
+            var p = this._platform.getPickingPixel(x * 2, y * 2);
+            if(p) {
+                let inst = p[0].data()[p[1]];
+                let selection = this._instances.filter((d) =&gt; d.label == inst.label &amp;&amp; d.assigned == inst.assigned);
+                this.setSelection(selection);
+            } else {
+                this.setSelection([]);
+            }
+        };
+    }
+
+    setSelection(instances) {
+        this._shapes.squaresOverlay.data(instances);
+        this._shapes.squaresOverlayOutlined.data(instances.filter(d =&gt; d.label != d.assigned));
+        this._shapes.parallelCoordinates.data(instances);
+        this.renderSelection();
+    }
+
+    setInstances(DATA) {
+        this._DATA = DATA;
+        this._layout.numberClasses = 10;
+        let instances = DATA.map((d) =&gt; {
+            return {
+                label: parseInt(d.Label.substr(1)),
+                assigned: parseInt(d.Assigned.substr(1)),
+                score: d[d.Assigned],
+                scoreBin: Math.min(this._layout.numberBins - 1, Math.max(0, Math.floor(parseFloat(d[d.Assigned]) * this._layout.numberBins))),
+                scores: [ +d.C0, +d.C1, +d.C2, +d.C3, +d.C4, +d.C5, +d.C6, +d.C7, +d.C8, +d.C9 ]
+            };
+        });
+
+        let CM = [];
+        let CMBin = [];
+
+        for(let i = 0; i &lt; this._layout.numberClasses; i++) {
+            CM[i] = [];
+            CMBin[i] = [];
+            for(let j = 0; j &lt; this._layout.numberClasses; j++) {
+                CM[i][j] = 0;
+                CMBin[i][j] = [];
+                for(let k = 0; k &lt; this._layout.numberBins; k++) {
+                    CMBin[i][j][k] = 0;
+                }
+            }
+        }
+
+        instances.sort(function(a, b) {
+            if(a.label == a.assigned) return b.label == b.assigned ? 0 : +1;
+            if(b.label == b.assigned) return a.label == a.assigned ? 0 : -1;
+            if(a.assigned != b.assigned)
+                return a.assigned - b.assigned;
+            if(a.label != b.label)
+                return a.label - b.label;
+            return a.score - b.score;
+        })
+
+        instances.forEach(function(d) {
+            d.CMIndex = CM[d.label][d.assigned];
+            CM[d.label][d.assigned] += 1;
+            d.binIndex = CMBin[0][d.assigned][d.scoreBin];
+            CMBin[0][d.assigned][d.scoreBin] += 1;
+        });
+
+        instances.sort(function(a, b) {
+            if(a.label == a.assigned) return b.label == b.assigned ? 0 : +1;
+            if(b.label == b.assigned) return a.label == a.assigned ? 0 : -1;
+            if(a.assigned != b.assigned)
+                return -(a.assigned - b.assigned);
+            if(a.label != b.label)
+                return a.label - b.label;
+            return a.score - b.score;
+        })
+
+        instances.forEach(function(d) {
+            d.binIndex2 = CMBin[1][d.label][d.scoreBin];
+            CMBin[1][d.label][d.scoreBin] += 1;
+        });
+
+        instances.forEach(function(d) {
+            d.CMCount = CM[d.label][d.assigned];
+        });
+
+        instances.sort(function(a, b) {
+            return a.assigned - b.assigned;
+        });
+
+        this._instances = instances;
+
+        this._shapes.squares.data(this._instances);
+        this._shapes.squaresOutlined.data(this._instances.filter(d =&gt; d.label != d.assigned));
+
+        this.layout();
+        this.render();
+    }
+
+    layoutConfigSquares() {
+        let binSpacing = this._layout.squareSpacing * this._layout.squaresPerBin + this._layout.squareSpacing;
+        this._shapes.yScale.range([ this._layout.y0 + binSpacing * this._layout.numberBins, this._layout.y0 ]);
+
+        [
+            this._shapes.squares,
+            this._shapes.squaresOutlined,
+            this._shapes.squaresOverlay,
+            this._shapes.squaresOverlayOutlined
+        ].forEach(s =&gt; s
+            .attr(&quot;size&quot;, this._layout.squareSize)
+            .attr(&quot;spacing&quot;, this._layout.squareSpacing)
+            .attr(&quot;x0&quot;, this._layout.x0)
+            .attr(&quot;xSpacing&quot;, this._layout.xSpacing)
+            .attr(&quot;y1&quot;, this._layout.y0 + binSpacing * this._layout.numberBins - binSpacing + this._layout.squareSpacing / 2)
+            .attr(&quot;binSpacing&quot;, binSpacing)
+            .attr(&quot;binSquares&quot;, this._layout.squaresPerBin)
+        );
+        this._shapes.parallelCoordinates
+            .attr(&quot;x0&quot;, this._layout.x0)
+            .attr(&quot;xSpacing&quot;, this._layout.xSpacing);
+    }
+    layout() {
+        this.layoutConfigSquares();
+
+        var d3yscale = d3.scale.linear().domain(this._shapes.yScale.domain()).range(this._shapes.yScale.range());
+        var axis = d3.svg.axis().scale(d3yscale).orient(&quot;left&quot;);
+        this._svgAxis.attr(&quot;transform&quot;, &quot;translate(30, 0)&quot;);
+        this._svgAxis.call(axis);
+
+        let width = 960;
+        let height = 500;
+        this._svg.attr(&quot;width&quot;, width).attr(&quot;height&quot;, height);
+        this._platform.resize(width, height);
+    }
+    render() {
+        this._platform.beginPicking(this._canvasNode.width, this._canvasNode.height);
+        this._shapes.squares.render();
+        this._shapes.squaresOutlined.render();
+        this._platform.endPicking();
+
+        this._platform.clear();
+        this._shapes.squares.render();
+        this._shapes.squaresOutlined.render();
+    }
+    renderSelection() {
+        this._shapes.squares.render();
+        this._shapes.squaresOutlined.render();
+        this._shapes.squaresOverlay.render();
+        this._shapes.squaresOverlayOutlined.render();
+        this._shapes.parallelCoordinates.render();
+    }
+
+    setLayoutParameter(layout) {
+        let shouldRecompute = false;
+        for(let p in layout) {
+            if(layout.hasOwnProperty(p)) {
+                this._layout[p] = layout[p];
+                if(p == &quot;numberBins&quot; || p == &quot;numberClasses&quot;) {
+                    shouldRecompute = true;
+                }
+            }
+        }
+        if(shouldRecompute) {
+            this.setInstances(this._DATA);
+        }
+        this.layout();
+        this.render();
+    }
+}
+</code></pre>
+    </section>
+    <script type="text/javascript">
+        hljs.initHighlightingOnLoad();
+    </script>
+</body>

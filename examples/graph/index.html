@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Stardust Example: Force-directed Graph</title>
+    <link rel="stylesheet" type="text/css" href="../../css/main.css" />
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/styles/color-brewer.min.css" />
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/highlight.min.js"></script>
+    <style type="text/css">
+        iframe {
+            border: none;
+            border: 1px solid #CCC;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="../../">Home</a>
+    </header>
+    <section>
+        <h1>Stardust Example: Force-directed Graph</h1>
+        <iframe src="content.html" width="960px" height="500px" scrolling="no" sandbox="allow-popups allow-scripts allow-forms allow-same-origin"></iframe>
+        <p>Force-directed graph visualization using <a href="https://d3js.org/">D3</a> for layout and <a href="https://stardust-vis.github.io/">Stardust</a> for rendering.</p>
+            <h2>index.html</h2>
+            <pre><code class="highlight">&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;style type=&quot;text/css&quot;&gt;
+        body {
+            margin: 0; padding: 0;
+        }
+        #main-canvas {
+            margin: 0; padding: 0;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+    &lt;canvas id=&quot;main-canvas&quot;&gt;&lt;/canvas&gt;
+
+    &lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+    &lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+    &lt;script type=&quot;text/javascript&quot;&gt;
+        var canvas = document.getElementById(&quot;main-canvas&quot;);
+        var width = 960;
+        var height = 500;
+        var platform = Stardust.platform(&quot;webgl-2d&quot;, canvas, width, height);
+
+        var snodes = Stardust.shape.create(Stardust.shape.circle(8), platform);
+        var snodesSelected = Stardust.shape.create(Stardust.shape.circle(8), platform);
+        var sedges = Stardust.shape.create(Stardust.shape.line(), platform);
+
+        d3.json(&quot;facebook_1912.json&quot;, (err, data) =&gt; {
+            var nodes = data.nodes;
+            var edges = data.edges;
+            var N = nodes.length;
+
+            for(var i = 0; i &lt; N; i++) {
+                nodes[i].x = Math.random() * width;
+                nodes[i].y = Math.random() * height;
+            }
+
+            snodes
+                .attr(&quot;center&quot;, (d) =&gt; [ d.x, d.y ])
+                .attr(&quot;radius&quot;, 3)
+                .attr(&quot;color&quot;, [ 55/255, 126/255, 184/255, 1 ]);
+
+            snodesSelected
+                .attr(&quot;center&quot;, (d) =&gt; [ d.x, d.y ])
+                .attr(&quot;radius&quot;, 4)
+                .attr(&quot;color&quot;, [ 228/255, 26/255, 28/255, 1 ]);
+
+            sedges
+                .attr(&quot;p1&quot;, (d) =&gt; [ d.source.x, d.source.y ])
+                .attr(&quot;p2&quot;, (d) =&gt; [ d.target.x, d.target.y ])
+                .attr(&quot;color&quot;, [ 93/255, 157/255, 218/255, 0.06 ]);
+
+            var force = d3.layout.force()
+                .size([ width, height ])
+                .nodes(nodes)
+                .links(edges);
+
+            force.linkStrength(0.05);
+            force.gravity(0.2);
+            force.linkDistance(100);
+            force.start();
+
+            force.on(&quot;tick&quot;, () =&gt; {
+                snodes.data(nodes);
+                sedges.data(edges);
+                requestRender();
+            });
+
+            let selectedNode = null;
+
+            function requestRender() {
+                requestAnimationFrame(render);
+            }
+
+            function render() {
+                snodesSelected.data(selectedNode ? [ selectedNode ] : []);
+
+                // Cleanup and re-render.
+                platform.clear([ 1, 1, 1, 1 ]);
+                sedges.render();
+                snodes
+                    .attr(&quot;radius&quot;, 3)
+                    .attr(&quot;color&quot;, [ 1, 1, 1, 0.5 ]);
+                snodes.render();
+                snodes
+                    .attr(&quot;radius&quot;, 2)
+                    .attr(&quot;color&quot;, [ 55/255, 126/255, 184/255, 1 ]);
+                snodes.render();
+
+                snodesSelected.render();
+
+                // Render the picking buffer.
+                platform.beginPicking(canvas.width, canvas.height);
+                snodes.attr(&quot;radius&quot;, 6); // make radius larger so it's easier to select.
+                snodes.render();
+                platform.endPicking();
+            }
+
+            // Handle dragging.
+            canvas.onmousedown = function(e) {
+                var x = e.clientX - canvas.getBoundingClientRect().left;
+                var y = e.clientY - canvas.getBoundingClientRect().top;
+                var p = platform.getPickingPixel(x * 2, y * 2);
+                if(p) {
+                    selectedNode = nodes[p[1]];
+                    requestRender();
+                    var onMove = function(e) {
+                        var nx = e.clientX - canvas.getBoundingClientRect().left;
+                        var ny = e.clientY - canvas.getBoundingClientRect().top;
+                        nodes[p[1]].x = nx;
+                        nodes[p[1]].y = ny;
+                        if(force.alpha() == 0) force.resume();
+                        requestRender();
+                    };
+                    var onUp = function() {
+                        window.removeEventListener(&quot;mousemove&quot;, onMove);
+                        window.removeEventListener(&quot;mouseup&quot;, onUp);
+                        selectedNode = null;
+                    };
+                    window.addEventListener(&quot;mousemove&quot;, onMove);
+                    window.addEventListener(&quot;mouseup&quot;, onUp);
+                }
+            };
+
+            canvas.onmousemove = function(e) {
+                var x = e.clientX - canvas.getBoundingClientRect().left;
+                var y = e.clientY - canvas.getBoundingClientRect().top;
+                var p = platform.getPickingPixel(x * 2, y * 2);
+                if(p) {
+                    if(selectedNode != nodes[p[1]]) {
+                        selectedNode = nodes[p[1]];
+                        requestRender();
+                    }
+                } else {
+                    if(selectedNode != null) {
+                        selectedNode = null;
+                        requestRender();
+                    }
+                }
+            }
+        });
+    &lt;/script&gt;
+&lt;/body&gt;
+
+&lt;/html&gt;</code></pre>
+    </section>
+    <script type="text/javascript">
+        hljs.initHighlightingOnLoad();
+    </script>
+</body>
