@@ -127,9 +127,10 @@ b, strong {
 }
 
 hr {
+    margin: 1em 0; padding: 0;
+    height: 0;
     border: none;
-    border-top: 2px solid $border-color;
-    margin: 1em 0;
+    border-top: 1px solid $border-color;
 }
 
 .examples {

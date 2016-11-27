@@ -7,12 +7,12 @@ Stardust: GPU-based Visualization Library
 ====
 
 <ul class="examples group">
-    <li><a href="examples/scatterplot"><img src="examples/scatterplot/preview.png" /><div class="overlay"><span>Scatterplot</span></div></a></li>
-    <li><a href="examples/sanddance"><img src="examples/sanddance/preview.png" /><div class="overlay"><span>SandDance</span></div></a></li>
-    <li><a href="examples/index-chart"><img src="examples/index-chart/preview.png" /><div class="overlay"><span>Index Chart</span></div></a></li>
-    <li><a href="examples/squares"><img src="examples/squares/preview.png" /><div class="overlay"><span>Squares</span></div></a></li>
-    <li><a href="examples/isotype"><img src="examples/isotype/preview.png" /><div class="overlay"><span>Isotype</span></div></a></li>
-    <li><a href="examples/graph"><img src="examples/graph/preview.png" /><div class="overlay"><span>Force-directed Graph</span></div></a></li>
+    <li><a href="examples/scatterplot"><img src="examples/scatterplot/preview_small.png" /><div class="overlay"><span>Scatterplot</span></div></a></li>
+    <li><a href="examples/sanddance"><img src="examples/sanddance/preview_small.png" /><div class="overlay"><span>SandDance</span></div></a></li>
+    <li><a href="examples/index-chart"><img src="examples/index-chart/preview_small.png" /><div class="overlay"><span>Index Chart</span></div></a></li>
+    <li><a href="examples/squares"><img src="examples/squares/preview_small.png" /><div class="overlay"><span>Squares</span></div></a></li>
+    <li><a href="examples/isotype"><img src="examples/isotype/preview_small.png" /><div class="overlay"><span>Isotype</span></div></a></li>
+    <li><a href="examples/graph"><img src="examples/graph/preview_small.png" /><div class="overlay"><span>Force-directed Graph</span></div></a></li>
 </ul>
 
 
@@ -109,5 +109,3 @@ Direct binding:
     });
     shape.data(DATA);
     shape.render();
-
-## About
