@@ -1,30 +1,13 @@
-<!DOCTYPE html>
-<html>
-
-<head>
-    <meta charset="utf-8" />
-    <title>Stardust Example: Squares</title>
-    <link rel="stylesheet" type="text/css" href="../../css/main.css" />
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/styles/color-brewer.min.css" />
-    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/highlight.min.js"></script>
-    <style type="text/css">
-        iframe {
-            border: none;
-            border: 1px solid #CCC;
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <a href="../../">Home</a>
-    </header>
-    <section>
-        <h1>Stardust Example: Squares</h1>
-        <iframe src="content.html" width="960px" height="500px" scrolling="no" sandbox="allow-popups allow-scripts allow-forms allow-same-origin"></iframe>
-        <p>The Squares performance visualization for multiclass classifiers, implemented using <a href="https://stardust-vis.github.io/">Stardust</a>.</p>
+---
+layout: default
+title: "Stardust Example: Squares"
+---
+<h1>Stardust Example: Squares</h1>
+<iframe class="example-container" src="content.html" width="960px" height="500px" scrolling="no" sandbox="allow-popups allow-scripts allow-forms allow-same-origin"></iframe>
+<p>The Squares performance visualization for multiclass classifiers, implemented using <a href="https://stardust-vis.github.io/">Stardust</a>.</p>
 <p>Data shown here is a 10-class classifier trained on the MNIST dataset.</p>
-            <h2>index.html</h2>
-            <pre><code class="highlight">&lt;!DOCTYPE html&gt;
+    <h2>index.html</h2>
+    <pre><code class="highlight html">&lt;!DOCTYPE html&gt;
 &lt;html&gt;
     &lt;head&gt;
         &lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
@@ -83,8 +66,8 @@
     &lt;/body&gt;
 &lt;/html&gt;
 </code></pre>
-            <h2>squares.js</h2>
-            <pre><code class="highlight">class SquaresVisualization {
+    <h2>squares.js</h2>
+    <pre><code class="highlight javascript">class SquaresVisualization {
 
     makeSquaresShape(side, mode) {
         let squares = Stardust.shape.custom()
@@ -455,8 +438,3 @@
     }
 }
 </code></pre>
-    </section>
-    <script type="text/javascript">
-        hljs.initHighlightingOnLoad();
-    </script>
-</body>

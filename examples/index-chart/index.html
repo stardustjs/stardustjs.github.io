@@ -1,30 +1,13 @@
-<!DOCTYPE html>
-<html>
-
-<head>
-    <meta charset="utf-8" />
-    <title>Stardust Example: Index Chart</title>
-    <link rel="stylesheet" type="text/css" href="../../css/main.css" />
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/styles/color-brewer.min.css" />
-    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/highlight.min.js"></script>
-    <style type="text/css">
-        iframe {
-            border: none;
-            border: 1px solid #CCC;
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <a href="../../">Home</a>
-    </header>
-    <section>
-        <h1>Stardust Example: Index Chart</h1>
-        <iframe src="content.html" width="960px" height="500px" scrolling="no" sandbox="allow-popups allow-scripts allow-forms allow-same-origin"></iframe>
-        <p>A index chart of five stocks. The axes, legend and rules are rendered with <a href="https://d3js.org/">D3</a>; the lines are rendered with <a href="https://stardust-vis.github.io/">Stardust</a>.</p>
+---
+layout: default
+title: "Stardust Example: Index Chart"
+---
+<h1>Stardust Example: Index Chart</h1>
+<iframe class="example-container" src="content.html" width="960px" height="500px" scrolling="no" sandbox="allow-popups allow-scripts allow-forms allow-same-origin"></iframe>
+<p>A index chart of five stocks. The axes, legend and rules are rendered with <a href="https://d3js.org/">D3</a>; the lines are rendered with <a href="https://stardust-vis.github.io/">Stardust</a>.</p>
 <p>Data from <a href="http://www.nasdaq.com/symbol/csv/historical">nasdaq.com</a>.</p>
-            <h2>index.html</h2>
-            <pre><code class="highlight">&lt;!DOCTYPE html&gt;
+    <h2>index.html</h2>
+    <pre><code class="highlight html">&lt;!DOCTYPE html&gt;
 &lt;html&gt;
 &lt;head&gt;
     &lt;title&gt;Stardust Example: Scatterplot&lt;/title&gt;
@@ -219,8 +202,3 @@
 &lt;/body&gt;
 
 &lt;/html&gt;</code></pre>
-    </section>
-    <script type="text/javascript">
-        hljs.initHighlightingOnLoad();
-    </script>
-</body>

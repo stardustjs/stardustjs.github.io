@@ -1,6 +1,9 @@
-@import "variables.scss";
+---
+---
 
-@import "reset.scss";
+@import "variables";
+
+@import "reset";
 
 .group:after {
     visibility: hidden;
@@ -20,20 +23,23 @@ body {
 pre {
     font-family: $mono-font;
     font-size: 0.9em;
-    border-left: 3px solid $border-color;
-    padding-left: 1em;
     line-height: 1.2em;
 }
 
 code {
     font-family: $mono-font;
+    font-size: 0.9em;
+    color: $code-color;
     padding: 0.2em 0.3em;
     border-radius: 2px;
     background: #EEE;
 }
 
 pre code {
-    padding: 0;
+    font-size: 1em;
+    &.hljs {
+        padding: 8px;
+    }
     border-radius: 0;
     background: none;
 }
@@ -74,13 +80,14 @@ h1, h2, h3, h4 {
 h2 {
     &:before {
         display: inline-block;
-        color: $gray-600;
+        color: $border-color;
         content: "\00b6";
         text-align: right;
         width: 20px;
         padding-right: 8px;
         margin-left: -28px;
     }
+    border-bottom: 1px solid $border-color; padding-bottom: 4px;
 }
 h1 { font-size: 1.8em; }
 h2 { font-size: 1.4em; }
@@ -144,19 +151,31 @@ hr {
             display: block;
         }
 
-        span {
+        div.overlay {
             position: absolute;
             left: 0; right: 0; top: 0; bottom: 0;
             background-color: rgba(0, 0, 0, 0.4);
-            color: white;
+            color: rgba(255, 255, 255, 0.8);
             display: none;
+
+            span {
+                position: absolute;
+                display: block;
+                bottom: 0; left: 0; right: 0;
+                height: 1.5em;
+                line-height: 1.5em;
+                background-color: rgba(0, 0, 0, 0.4);
+            }
         }
 
         &:hover {
-            span {
+            div.overlay {
                 display: block;
             }
-            border: 2px solid $border-color;
         }
     }
+}
+
+iframe.example-container {
+    outline: 1px solid $border-color;
 }

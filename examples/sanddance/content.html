@@ -8,7 +8,6 @@
             font-family: "Helvetica", "Arial", sans-serif;
             margin: 0;
             padding: 0;
-            background: #000;
         }
         .chart {
             margin: 0;
@@ -20,7 +19,6 @@
             margin: 0; padding: 0 10px;
             line-height: 30px;
             height: 30px;
-            background-color: black;
         }
         .switch-mode {
             display: inline-block;
@@ -28,11 +26,11 @@
             padding: 2px 5px;
             cursro: pointer;
             background: none;
-            border: 1px solid white;
-            color: #CCC;
+            border: 1px solid black;
+            color: black;
         }
         .switch-mode.active {
-            background: #444;
+            background: #CCC;
         }
     </style>
 </head>
@@ -60,7 +58,7 @@
             new Stardust.Vector3(0, 0, 200),
             new Stardust.Quaternion(0, 0, 0, 1)
         ));
-        platform.clear([ 0, 0, 0, 1 ]);
+        platform.clear([ 1, 1, 1, 1 ]);
         d3.tsv("demovoteclean.tsv", (err, data) => {
             let demovote = data;
             let shape = Stardust.shape.compile(`
@@ -93,15 +91,15 @@
                 }
 
                 function getPositionXYBinning(): Vector3 {
-                    let n = 5;
+                    let n = 6;
                     let txy = xyBinIndex % (n * n);
                     let tx = txy % n;
                     let ty = floor(txy / n);
                     let tz = floor(xyBinIndex / (n * n));
                     return Vector3(
-                        (xBin - 9 / 2) * 0.6 + (tx - n / 2 + 0.5) * 0.02,
-                        tz * 0.02 - 2.0,
-                        (yBin - 6 / 2) * 0.6 + (ty - n / 2 + 0.5) * 0.02
+                        (xBin - 9 / 2) * 0.6 + (tx - n / 2 + 0.5) * 0.04,
+                        tz * 0.04 - 2.0,
+                        (yBin - 6 / 2) * 0.6 + (ty - n / 2 + 0.5) * 0.04
                     );
                 }
 
@@ -120,7 +118,7 @@
                         p3 * clamp01(t3 + ki3 * index);
                     Cube(
                         p * 50,
-                        0.25,
+                        0.7,
                         color
                     );
                 }
@@ -214,7 +212,7 @@
             shapes.data(demovote);
 
             function render() {
-                platform.clear([ 0, 0, 0, 1 ]);
+                platform.clear([ 1, 1, 1, 1 ]);
                 shapes.render();
             }
 

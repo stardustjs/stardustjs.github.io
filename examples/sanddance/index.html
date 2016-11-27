@@ -1,30 +1,13 @@
-<!DOCTYPE html>
-<html>
-
-<head>
-    <meta charset="utf-8" />
-    <title>Stardust Example: SandDance</title>
-    <link rel="stylesheet" type="text/css" href="../../css/main.css" />
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/styles/color-brewer.min.css" />
-    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/highlight.min.js"></script>
-    <style type="text/css">
-        iframe {
-            border: none;
-            border: 1px solid #CCC;
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <a href="../../">Home</a>
-    </header>
-    <section>
-        <h1>Stardust Example: SandDance</h1>
-        <iframe src="content.html" width="960px" height="500px" scrolling="no" sandbox="allow-popups allow-scripts allow-forms allow-same-origin"></iframe>
-        <p>Producing a <a href="https://www.sanddance.ms/">SandDance</a> visualization with Stardust. Instance-based visualization with animation between 3 layouts: scatterplot of longitude and latitude, group by state, and group by longitude and latitude in 3D.</p>
+---
+layout: default
+title: "Stardust Example: SandDance"
+---
+<h1>Stardust Example: SandDance</h1>
+<iframe class="example-container" src="content.html" width="960px" height="500px" scrolling="no" sandbox="allow-popups allow-scripts allow-forms allow-same-origin"></iframe>
+<p>Producing a <a href="https://www.sanddance.ms/">SandDance</a> visualization with Stardust. Instance-based visualization with animation between 3 layouts: scatterplot of longitude and latitude, group by state, and group by longitude and latitude in 3D.</p>
 <p>Data: DemoVote from <a href="http://www.census.gov">census.gov</a> and <a href="http://www.theguardian.com/news/datablog/2012/nov/07/us-2012-election-county-results-download">Guardian</a></p>
-            <h2>index.html</h2>
-            <pre><code class="highlight">&lt;!DOCTYPE html&gt;
+    <h2>index.html</h2>
+    <pre><code class="highlight html">&lt;!DOCTYPE html&gt;
 &lt;html&gt;
 &lt;head&gt;
     &lt;title&gt;Stardust Example: Scatterplot&lt;/title&gt;
@@ -34,7 +17,6 @@
             font-family: &quot;Helvetica&quot;, &quot;Arial&quot;, sans-serif;
             margin: 0;
             padding: 0;
-            background: #000;
         }
         .chart {
             margin: 0;
@@ -46,7 +28,6 @@
             margin: 0; padding: 0 10px;
             line-height: 30px;
             height: 30px;
-            background-color: black;
         }
         .switch-mode {
             display: inline-block;
@@ -54,11 +35,11 @@
             padding: 2px 5px;
             cursro: pointer;
             background: none;
-            border: 1px solid white;
-            color: #CCC;
+            border: 1px solid black;
+            color: black;
         }
         .switch-mode.active {
-            background: #444;
+            background: #CCC;
         }
     &lt;/style&gt;
 &lt;/head&gt;
@@ -86,7 +67,7 @@
             new Stardust.Vector3(0, 0, 200),
             new Stardust.Quaternion(0, 0, 0, 1)
         ));
-        platform.clear([ 0, 0, 0, 1 ]);
+        platform.clear([ 1, 1, 1, 1 ]);
         d3.tsv(&quot;demovoteclean.tsv&quot;, (err, data) =&gt; {
             let demovote = data;
             let shape = Stardust.shape.compile(`
@@ -119,15 +100,15 @@
                 }
 
                 function getPositionXYBinning(): Vector3 {
-                    let n = 5;
+                    let n = 6;
                     let txy = xyBinIndex % (n * n);
                     let tx = txy % n;
                     let ty = floor(txy / n);
                     let tz = floor(xyBinIndex / (n * n));
                     return Vector3(
-                        (xBin - 9 / 2) * 0.6 + (tx - n / 2 + 0.5) * 0.02,
-                        tz * 0.02 - 2.0,
-                        (yBin - 6 / 2) * 0.6 + (ty - n / 2 + 0.5) * 0.02
+                        (xBin - 9 / 2) * 0.6 + (tx - n / 2 + 0.5) * 0.04,
+                        tz * 0.04 - 2.0,
+                        (yBin - 6 / 2) * 0.6 + (ty - n / 2 + 0.5) * 0.04
                     );
                 }
 
@@ -146,7 +127,7 @@
                         p3 * clamp01(t3 + ki3 * index);
                     Cube(
                         p * 50,
-                        0.25,
+                        0.7,
                         color
                     );
                 }
@@ -240,7 +221,7 @@
             shapes.data(demovote);
 
             function render() {
-                platform.clear([ 0, 0, 0, 1 ]);
+                platform.clear([ 1, 1, 1, 1 ]);
                 shapes.render();
             }
 
@@ -317,8 +298,3 @@
     &lt;/script&gt;
 &lt;/body&gt;
 &lt;/html&gt;</code></pre>
-    </section>
-    <script type="text/javascript">
-        hljs.initHighlightingOnLoad();
-    </script>
-</body>
