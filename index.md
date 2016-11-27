@@ -20,7 +20,9 @@ Stardust: GPU-based Visualization Library
 and familiar API for defining shapes and binding data to them. With Stardust, you can render tenth of thousands
 of markers and animate them in real time without the hassle of managing WebGL shaders and buffers.
 
-[Online Playground](https://stardust-vis.github.io/playground/)
+Play with the library in the online playground:
+
+- [Online Playground](https://stardust-vis.github.io/playground/)
 
 Install with npm:
 
