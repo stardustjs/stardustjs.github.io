@@ -24,88 +24,101 @@ of markers and animate them in real time without the hassle of managing WebGL sh
 
 Install with npm:
 
-    npm install stardust-core
-    npm install stardust-webgl
+```bash
+npm install stardust-core
+npm install stardust-webgl
+```
 
 Link to the latest release:
 
-    <script type="text/javascript" src="//stardust-vis.github.io/stardust/stardust.bundle.min.js"></script>
+```html
+<script type="text/javascript" src="//stardust-vis.github.io/stardust/stardust.bundle.min.js"></script>
+```
 
 Checkout the source code here:
 
 - <https://github.com/stardust-vis/>
 
-Stardust API
+Getting Started
 ----
 
-### Declaring Shape
+First, let's create an HTML file with a script tag to the Stardust library:
 
-To render with Stardust, you need to create a `Shape` object.
+```html
+<!DOCTYPE html>
+<meta charset="utf-8">
+<script type="text/javascript" src="//stardust-vis.github.io/stardust/stardust.bundle.min.js"></script>
+```
 
-Use predefined shapes:
+Add a `canvas` element for our visualization:
 
-    let shape = Stardust.shape.circle();
+```html
+<canvas id="main-canvas"></canvas>
+```
 
-Declare a new shape with CustomShape class:
+Initialize the WebGL platform:
 
-    // Create custom shape and declare input and variables
-    let shape = Stardust.shape.custom()
-        .input("x", "float")
-        .input("y", "float", "default_value")
-        // ...
-        .variable("position", "Vector2(x, y)");
+```html
+<script type="text/javascript">
+    // Get our canvas element
+    var canvas = document.getElementById("main-canvas");
+    var width = 960;
+    var height = 500;
 
-    // Add elements to the shape
-    shape.add("P2D.Circle")
-        .attr("center", "position")
-        .attr("radius", 3);
+    // Create a WebGL 2D platform on the canvas:
+    var platform = Stardust.platform("webgl-2d", canvas, width, height);
 
-Compile directly from the specification language:
+    // ... Load data and render your visualization
+</script>
+```
 
-    let shape = Stardust.shape.compile(`
-        import Circle from P2D;
-        shape Shape(float x, float y) {
-            Circle(Vector2(x, y), 3);
-        }
-    `).shape("Shape");
+For the tutorial, let's make some data. You can load data from JSON or CSV files using other libraries such as D3.
 
-### Bind Data to Shape and Render
+```javascript
+var data = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
+```
 
-Direct binding:
+Create a Stardust shape specification:
 
-    let shape = platform.create(shape);
+```javascript
+var circleSpec = Stardust.shape.circle();
+```
 
-    // Specify attributes
-    shape.attr("name1", 1);
-    shape.attr("name2", (d) => d.x);
+Create a shape object using the spec on our WebGL platform:
 
-    // Use scales
-    let xScale = Stardust.scale.linear()
-        .domain([ 0, 1 ])
-        .range([ 0, width ]);
-    shape.attr("name1", xScale((d) => d.x));
+```javascript
+var circles = Stardust.shape.create(circleSpec, platform);
+```
 
-    // Bind data
-    shape.data(data);
+Bind data attributes to the circles:
 
-    // Custom scales
-    let cScale = Stardust.scale.custom("x * 15 + 142")
+```javascript
+circles.attr("center", (d) => [ d * 80, 250 ]);
+circles.attr("radius", (d) => d * 3);
+circles.attr("color", [ 0, 0, 0, 1 ]);
+```
 
-    // Render
-    shape.render();
+Bind our data items to the circles:
 
-2-level mapping:
+```javascript
+circles.data(data);
+```
 
-    shape.attr("name1", 1);
-    shape.attr("name2", (d) => d.x);
+Render the circles:
 
-    shape.instance((d) => {
-        return {
-            data: d.items,
-            attrs: {
-                "name1": d.length / 13
-            }
-        }
-    });
-    shape.data(DATA);
-    shape.render();
+```javascript
+circles.render();
+```
+
+You may change data bindings and call render again:
+
+```javascript
+// Update binding attributes
+circles.attr("color", [ 1, 0, 0, 1 ]);
+
+// Clear the previously rendered stuff
+platform.clear();
+
+// Re-render the circles
+circles.render();
+```

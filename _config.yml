@@ -21,11 +21,17 @@ description: > # this means to ignore newlines until "baseurl:"
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
 
+highlighter: null
+
+kramdown:
+  input: GFM
+  hard_wrap: false
+  syntax_highlighter_opts:
+    disable: true
+
 # Build settings
 markdown: kramdown
-theme: minima
-gems:
-  - jekyll-feed
+
 exclude:
   - Gemfile
   - Gemfile.lock

@@ -15,18 +15,14 @@
 </head>
 <body>
     <header>
-        <a href="{{base}}/">Home</a>
-        <a href="{{base}}/tutorial">Tutorial</a>
-        <a href="{{base}}/examples">Examples</a>
-        <a href="{{base}}/playground">Playground</a>
-        <a href="https://github.com/stardust-vis/">Source</a>
+        {% include navigation.html %}
     </header>
     <section>
         {{ content }}
     </section>
     <footer>
         <hr />
-        <p>Copyright Anonymized Author(s), 2016. License: BSD-3-Clause.</p>
+        {% include copyright.html %}
     </footer>
     <script type="text/javascript">
         hljs.initHighlightingOnLoad();
