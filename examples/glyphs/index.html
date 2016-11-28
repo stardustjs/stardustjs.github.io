@@ -1,0 +1,110 @@
+---
+layout: default
+title: "Stardust Example: Glyph-based Visualization"
+---
+<h1>Stardust Example: Glyph-based Visualization</h1>
+<iframe class="example-container" src="content.html" width="960px" height="500px" scrolling="no" sandbox="allow-popups allow-scripts allow-forms allow-same-origin"></iframe>
+<p>Glyph-based visualization on the Auto MPG dataset.</p>
+    <h2>index.html</h2>
+    <pre><code class="highlight html">&lt;!DOCTYPE html&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;style type=&quot;text/css&quot;&gt;
+    body { margin: 0; padding: 0; font-size: 12px; }
+    #main-canvas { margin: 0; padding: 0; position: absolute; left: 0; top: 0 }
+    #main-svg { margin: 0; padding: 0; position: absolute; left: 0; top: 0 }
+    .axis path,
+    .axis line {
+        fill: none;
+        stroke: black;
+        shape-rendering: crispEdges;
+    }
+&lt;/style&gt;
+&lt;canvas id=&quot;main-canvas&quot;&gt;&lt;/canvas&gt;
+&lt;svg id=&quot;main-svg&quot;&gt;&lt;/svg&gt;
+&lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script type=&quot;text/javascript&quot;&gt;
+    var canvas = document.getElementById(&quot;main-canvas&quot;);
+    var width = 960;
+    var height = 500;
+    var margin = 10;
+    var marginLeft = 35;
+    var marginBottom = 20;
+    var platform = Stardust.platform(&quot;webgl-2d&quot;, canvas, width, height);
+
+    var glyphSpec = Stardust.shape.custom()
+        .input(&quot;x&quot;, &quot;float&quot;)
+        .input(&quot;y&quot;, &quot;float&quot;)
+        .input(&quot;v1&quot;, &quot;float&quot;)
+        .input(&quot;v2&quot;, &quot;float&quot;)
+        .input(&quot;v3&quot;, &quot;float&quot;)
+        .input(&quot;v4&quot;, &quot;float&quot;)
+        .input(&quot;color&quot;, &quot;Color&quot;, &quot;[ 0, 0, 0, 0.8 ]&quot;)
+        .variable(&quot;c&quot;, &quot;Vector2(x, y)&quot;)
+        .variable(&quot;p1&quot;, &quot;Vector2(x + v1, y)&quot;)
+        .variable(&quot;p2&quot;, &quot;Vector2(x, y + v2)&quot;)
+        .variable(&quot;p3&quot;, &quot;Vector2(x - v3, y)&quot;)
+        .variable(&quot;p4&quot;, &quot;Vector2(x, y - v4)&quot;);
+    glyphSpec.add(&quot;P2D.Triangle&quot;)
+        .attr(&quot;p1&quot;, &quot;c&quot;).attr(&quot;p2&quot;, &quot;p1&quot;).attr(&quot;p3&quot;, &quot;p2&quot;).attr(&quot;color&quot;, &quot;color&quot;);
+    glyphSpec.add(&quot;P2D.Triangle&quot;)
+        .attr(&quot;p1&quot;, &quot;c&quot;).attr(&quot;p2&quot;, &quot;p2&quot;).attr(&quot;p3&quot;, &quot;p3&quot;).attr(&quot;color&quot;, &quot;color&quot;);
+    glyphSpec.add(&quot;P2D.Triangle&quot;)
+        .attr(&quot;p1&quot;, &quot;c&quot;).attr(&quot;p2&quot;, &quot;p3&quot;).attr(&quot;p3&quot;, &quot;p4&quot;).attr(&quot;color&quot;, &quot;color&quot;);
+    glyphSpec.add(&quot;P2D.Triangle&quot;)
+        .attr(&quot;p1&quot;, &quot;c&quot;).attr(&quot;p2&quot;, &quot;p4&quot;).attr(&quot;p3&quot;, &quot;p1&quot;).attr(&quot;color&quot;, &quot;color&quot;);
+
+    var glyphs = Stardust.shape.create(glyphSpec, platform);
+
+    var glyphSize = 20;
+
+    var colors = [ [228,26,28], [55,126,184], [77,175,74] ].map((d) =&gt; [ d[0] / 255, d[1] / 255, d[2] / 255, 0.8 ]);
+    var cylinders2Color = [
+        0, 0, 0, 0, 0, 1, 1, 2, 2
+    ]
+
+    d3.csv(&quot;car.csv&quot;, (err, data) =&gt; {
+        var scale1 = Stardust.scale.linear()
+            .domain(d3.extent(data, d =&gt; d.Horsepower)).range([ 0, glyphSize ]);
+
+        var scale2 = Stardust.scale.linear()
+            .domain(d3.extent(data, d =&gt; d.Weight)).range([ 0, glyphSize ]);
+
+        var scale3 = Stardust.scale.linear()
+            .domain(d3.extent(data, d =&gt; d.Acceleration)).range([ 0, glyphSize ]);
+
+        var scale4 = Stardust.scale.linear()
+            .domain(d3.extent(data, d =&gt; d.ModelYear)).range([ 0, glyphSize ]);
+
+        var scaleX = Stardust.scale.linear()
+            .domain(d3.extent(data, d =&gt; d.MPG)).range([ marginLeft, width - margin ]);
+
+        var scaleY = Stardust.scale.linear()
+            .domain(d3.extent(data, d =&gt; d.Displacement)).range([ margin, height - marginBottom ]);
+
+        glyphs
+            .attr(&quot;x&quot;, scaleX(d =&gt; d.MPG))
+            .attr(&quot;y&quot;, scaleY(d =&gt; d.Displacement))
+            .attr(&quot;v1&quot;, scale1(d =&gt; d.Horsepower))
+            .attr(&quot;v2&quot;, scale2(d =&gt; d.Weight))
+            .attr(&quot;v3&quot;, scale3(d =&gt; d.Acceleration))
+            .attr(&quot;v4&quot;, scale4(d =&gt; d.ModelYear))
+            .attr(&quot;color&quot;, d =&gt; colors[cylinders2Color[d.Cylinders]]);
+
+        glyphs.data(data);
+
+        glyphs.render();
+
+        // Draw axes with d3.
+        var svg = d3.select(&quot;#main-svg&quot;)
+            .attr(&quot;width&quot;, width)
+            .attr(&quot;height&quot;, height)
+
+        svg.append(&quot;g&quot;).classed(&quot;axis&quot;, true)
+            .attr(&quot;transform&quot;, `translate(0, ${height - marginBottom})`)
+            .call(d3.svg.axis().scale(d3.scale.linear().domain(scaleX.domain()).range(scaleX.range())).orient(&quot;bottom&quot;));
+        svg.append(&quot;g&quot;).classed(&quot;axis&quot;, true)
+            .attr(&quot;transform&quot;, `translate(${marginLeft}, 0)`)
+            .call(d3.svg.axis().scale(d3.scale.linear().domain(scaleY.domain()).range(scaleY.range())).orient(&quot;left&quot;));
+    });
+&lt;/script&gt;</code></pre>

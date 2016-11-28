@@ -7,7 +7,7 @@ Stardust Examples
 ====
 
 <ul class="examples group">
-    <li><a href="{{base}}/examples/scatterplot"><img src="{{base}}/examples/scatterplot/preview_small.png" /><div class="overlay"><span>Scatterplot</span></div></a></li>
+    <li><a href="{{base}}/examples/glyphs"><img src="{{base}}/examples/glyphs/preview_small.png" /><div class="overlay"><span>Glyphs</span></div></a></li>
     <li><a href="{{base}}/examples/sanddance"><img src="{{base}}/examples/sanddance/preview_small.png" /><div class="overlay"><span>SandDance</span></div></a></li>
     <li><a href="{{base}}/examples/index-chart"><img src="{{base}}/examples/index-chart/preview_small.png" /><div class="overlay"><span>Index Chart</span></div></a></li>
     <li><a href="{{base}}/examples/squares"><img src="{{base}}/examples/squares/preview_small.png" /><div class="overlay"><span>Squares</span></div></a></li>

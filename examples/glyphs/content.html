@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style type="text/css">
+    body { margin: 0; padding: 0; font-size: 12px; }
+    #main-canvas { margin: 0; padding: 0; position: absolute; left: 0; top: 0 }
+    #main-svg { margin: 0; padding: 0; position: absolute; left: 0; top: 0 }
+    .axis path,
+    .axis line {
+        fill: none;
+        stroke: black;
+        shape-rendering: crispEdges;
+    }
+</style>
+<canvas id="main-canvas"></canvas>
+<svg id="main-svg"></svg>
+<script src="//d3js.org/d3.v3.min.js" type="text/javascript"></script>
+<script src="//stardust-vis.github.io/stardust/stardust.bundle.min.js" type="text/javascript"></script>
+<script type="text/javascript">
+    var canvas = document.getElementById("main-canvas");
+    var width = 960;
+    var height = 500;
+    var margin = 10;
+    var marginLeft = 35;
+    var marginBottom = 20;
+    var platform = Stardust.platform("webgl-2d", canvas, width, height);
+
+    var glyphSpec = Stardust.shape.custom()
+        .input("x", "float")
+        .input("y", "float")
+        .input("v1", "float")
+        .input("v2", "float")
+        .input("v3", "float")
+        .input("v4", "float")
+        .input("color", "Color", "[ 0, 0, 0, 0.8 ]")
+        .variable("c", "Vector2(x, y)")
+        .variable("p1", "Vector2(x + v1, y)")
+        .variable("p2", "Vector2(x, y + v2)")
+        .variable("p3", "Vector2(x - v3, y)")
+        .variable("p4", "Vector2(x, y - v4)");
+    glyphSpec.add("P2D.Triangle")
+        .attr("p1", "c").attr("p2", "p1").attr("p3", "p2").attr("color", "color");
+    glyphSpec.add("P2D.Triangle")
+        .attr("p1", "c").attr("p2", "p2").attr("p3", "p3").attr("color", "color");
+    glyphSpec.add("P2D.Triangle")
+        .attr("p1", "c").attr("p2", "p3").attr("p3", "p4").attr("color", "color");
+    glyphSpec.add("P2D.Triangle")
+        .attr("p1", "c").attr("p2", "p4").attr("p3", "p1").attr("color", "color");
+
+    var glyphs = Stardust.shape.create(glyphSpec, platform);
+
+    var glyphSize = 20;
+
+    var colors = [ [228,26,28], [55,126,184], [77,175,74] ].map((d) => [ d[0] / 255, d[1] / 255, d[2] / 255, 0.8 ]);
+    var cylinders2Color = [
+        0, 0, 0, 0, 0, 1, 1, 2, 2
+    ]
+
+    d3.csv("car.csv", (err, data) => {
+        var scale1 = Stardust.scale.linear()
+            .domain(d3.extent(data, d => d.Horsepower)).range([ 0, glyphSize ]);
+
+        var scale2 = Stardust.scale.linear()
+            .domain(d3.extent(data, d => d.Weight)).range([ 0, glyphSize ]);
+
+        var scale3 = Stardust.scale.linear()
+            .domain(d3.extent(data, d => d.Acceleration)).range([ 0, glyphSize ]);
+
+        var scale4 = Stardust.scale.linear()
+            .domain(d3.extent(data, d => d.ModelYear)).range([ 0, glyphSize ]);
+
+        var scaleX = Stardust.scale.linear()
+            .domain(d3.extent(data, d => d.MPG)).range([ marginLeft, width - margin ]);
+
+        var scaleY = Stardust.scale.linear()
+            .domain(d3.extent(data, d => d.Displacement)).range([ margin, height - marginBottom ]);
+
+        glyphs
+            .attr("x", scaleX(d => d.MPG))
+            .attr("y", scaleY(d => d.Displacement))
+            .attr("v1", scale1(d => d.Horsepower))
+            .attr("v2", scale2(d => d.Weight))
+            .attr("v3", scale3(d => d.Acceleration))
+            .attr("v4", scale4(d => d.ModelYear))
+            .attr("color", d => colors[cylinders2Color[d.Cylinders]]);
+
+        glyphs.data(data);
+
+        glyphs.render();
+
+        // Draw axes with d3.
+        var svg = d3.select("#main-svg")
+            .attr("width", width)
+            .attr("height", height)
+
+        svg.append("g").classed("axis", true)
+            .attr("transform", `translate(0, ${height - marginBottom})`)
+            .call(d3.svg.axis().scale(d3.scale.linear().domain(scaleX.domain()).range(scaleX.range())).orient("bottom"));
+        svg.append("g").classed("axis", true)
+            .attr("transform", `translate(${marginLeft}, 0)`)
+            .call(d3.svg.axis().scale(d3.scale.linear().domain(scaleY.domain()).range(scaleY.range())).orient("left"));
+    });
+</script>

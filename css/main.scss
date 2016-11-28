@@ -23,7 +23,7 @@ body {
 pre {
     font-family: $mono-font;
     font-size: 0.9em;
-    line-height: 1.2em;
+    line-height: 1.5em;
 }
 
 code {
@@ -40,6 +40,7 @@ pre code {
     padding: 0px;
     &.hljs {
         padding: 8px;
+        line-height: 1.5em;
     }
     border-radius: 0;
     background: none;
@@ -145,7 +146,7 @@ hr {
         text-align: center;
         cursor: pointer;
         position: relative;
-        border: 2px solid white;
+        border: 2px solid transparent;
         box-sizing: border-box;
 
         img {
