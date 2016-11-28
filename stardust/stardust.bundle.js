@@ -10,10 +10,7 @@ exports.WebGLCanvasPlatform2D = stardust_webgl_1.WebGLCanvasPlatform2D;
 var stardust_isotype_1 = require("stardust-isotype");
 var shape;
 (function (shape) {
-    function isotype(svg) {
-        return stardust_isotype_1.isotype(svg);
-    }
-    shape.isotype = isotype;
+    shape.isotype = stardust_isotype_1.isotype;
 })(shape = exports.shape || (exports.shape = {}));
 require("stardust-webgl");
 
@@ -590,8 +587,7 @@ var Compiler = (function () {
         this._statements = currentStatements;
         return result;
     };
-    Compiler.prototype.compileExpression = function (expression, keepResult) {
-        if (keepResult === void 0) { keepResult = false; }
+    Compiler.prototype.compileExpression = function (expression) {
         switch (expression.type) {
             case "value": {
                 var expr = expression;
@@ -621,7 +617,7 @@ var Compiler = (function () {
             }
             case "field": {
                 var expr = expression;
-                var valueExpr = this.compileExpression(expr.value, true);
+                var valueExpr = this.compileExpression(expr.value);
                 return {
                     type: "field",
                     fieldName: expr.fieldName,
@@ -635,11 +631,11 @@ var Compiler = (function () {
                 var kwargs = {};
                 for (var _i = 0, _a = expr.args.args; _i < _a.length; _i++) {
                     var arg = _a[_i];
-                    args.push(this.compileExpression(arg, true));
+                    args.push(this.compileExpression(arg));
                 }
                 for (var key in expr.args.kwargs) {
                     var e = expr.args.kwargs[key];
-                    kwargs[key] = this.compileExpression(expr.args.kwargs[key], true);
+                    kwargs[key] = this.compileExpression(expr.args.kwargs[key]);
                 }
                 var _b = this.resolveFunction(expr.name, args, kwargs), func = _b[0], argExpressions = _b[1];
                 var returnValueExpression = null;
@@ -682,6 +678,68 @@ var Compiler = (function () {
         }
         return null;
     };
+    Compiler.prototype.compileStandaloneExpression = function (expression, variables) {
+        switch (expression.type) {
+            case "value": {
+                var expr = expression;
+                return {
+                    type: "constant",
+                    value: expr.value,
+                    valueType: expr.valueType
+                };
+            }
+            case "variable": {
+                var expr = expression;
+                if (variables.has(expr.name)) {
+                    return variables.get(expr.name);
+                }
+                else {
+                    if (this._constants.has(expr.name)) {
+                        var cinfo = this._constants.get(expr.name);
+                        return {
+                            type: "constant",
+                            value: cinfo.value,
+                            valueType: cinfo.type
+                        };
+                    }
+                    else {
+                        throw new exceptions_1.CompileError("variable " + expr.name + " is undefined");
+                    }
+                }
+            }
+            case "field": {
+                var expr = expression;
+                var valueExpr = this.compileStandaloneExpression(expr.value, variables);
+                return {
+                    type: "field",
+                    fieldName: expr.fieldName,
+                    value: valueExpr,
+                    valueType: this._fieldTypeRegistry[valueExpr.valueType + "." + expr.fieldName]
+                };
+            }
+            case "function": {
+                var expr = expression;
+                var args = [];
+                var kwargs = {};
+                for (var _i = 0, _a = expr.args.args; _i < _a.length; _i++) {
+                    var arg = _a[_i];
+                    args.push(this.compileStandaloneExpression(arg, variables));
+                }
+                for (var key in expr.args.kwargs) {
+                    var e = expr.args.kwargs[key];
+                    kwargs[key] = this.compileStandaloneExpression(expr.args.kwargs[key], variables);
+                }
+                var _b = this.resolveFunction(expr.name, args, kwargs), func = _b[0], argExpressions = _b[1];
+                return {
+                    type: "function",
+                    functionName: func.name,
+                    arguments: argExpressions,
+                    valueType: func.returnType
+                };
+            }
+        }
+        return null;
+    };
     Compiler.prototype.compileStatements = function (statements) {
         this._scope.pushScope();
         for (var _i = 0, _a = statements.statements; _i < _a.length; _i++) {
@@ -697,7 +755,7 @@ var Compiler = (function () {
                 {
                     var s = statement;
                     if (s.initial) {
-                        var ve = this.compileExpression(s.initial, true);
+                        var ve = this.compileExpression(s.initial);
                         var variableType = s.variableType;
                         if (variableType == "auto")
                             variableType = ve.valueType;
@@ -723,13 +781,13 @@ var Compiler = (function () {
             case "expression":
                 {
                     var s = statement;
-                    this.compileExpression(s.expression, false);
+                    this.compileExpression(s.expression);
                 }
                 break;
             case "assign":
                 {
                     var s = statement;
-                    var ve = this.compileExpression(s.expression, true);
+                    var ve = this.compileExpression(s.expression);
                     var targetType = this._scope.getVariable(s.variableName).type;
                     if (ve.valueType != targetType) {
                         var veType = ve.valueType;
@@ -752,7 +810,7 @@ var Compiler = (function () {
                         var attrs = {};
                         for (var argName in v) {
                             var expr = v[argName];
-                            attrs[argName] = _this.compileExpression(expr, true);
+                            attrs[argName] = _this.compileExpression(expr);
                         }
                         _this.addStatement({
                             type: "emit",
@@ -794,7 +852,7 @@ var Compiler = (function () {
                         if (i < s_2.conditions.length) {
                             var statements = [];
                             _this._scope.pushScope();
-                            var ve = _this.compileExpression(s_2.conditions[i].condition, true);
+                            var ve = _this.compileExpression(s_2.conditions[i].condition);
                             var cond = {
                                 type: "condition",
                                 condition: ve,
@@ -839,6 +897,11 @@ function compileTree(file) {
     return spec;
 }
 exports.compileTree = compileTree;
+var standaloneCompiler = new Compiler();
+function compileExpression(expr, variables) {
+    return standaloneCompiler.compileStandaloneExpression(expr, variables);
+}
+exports.compileExpression = compileExpression;
 function compileString(content) {
     var file = parser_1.parseString(content);
     return compileTree(file);
@@ -964,7 +1027,7 @@ function parseString(content) {
     content = stripComments(content);
     var result = null;
     try {
-        result = parser_pegjs.parse(content);
+        result = parser_pegjs.parse(content, { startRule: "Start" });
     }
     catch (e) {
         if (e.location) {
@@ -977,6 +1040,22 @@ function parseString(content) {
     return result;
 }
 exports.parseString = parseString;
+function parseExpression(content) {
+    var result = null;
+    try {
+        result = parser_pegjs.parse(content, { startRule: "Expression" });
+    }
+    catch (e) {
+        if (e.location) {
+            throw new exceptions_1.ParseError(e.message, e.location.start, e.location.end);
+        }
+        else {
+            throw new exceptions_1.ParseError(e.message);
+        }
+    }
+    return result;
+}
+exports.parseExpression = parseExpression;
 
 },{"../exceptions":8,"./parser_pegjs":6}],6:[function(require,module,exports){
 module.exports = (function() {
@@ -1014,7 +1093,7 @@ module.exports = (function() {
 
         peg$FAILED = {},
 
-        peg$startRuleFunctions = { Start: peg$parseStart },
+        peg$startRuleFunctions = { Start: peg$parseStart, Expression: peg$parseExpression },
         peg$startRuleFunction  = peg$parseStart,
 
         peg$c0 = function(blocks) { return { blocks: blocks.map(function(d) { return d[0]; }) }; },
@@ -3469,6 +3548,14 @@ module.exports = (function() {
       return s0;
     }
 
+    function peg$parseExpression() {
+      var s0;
+
+      s0 = peg$parseExpressionLevel1();
+
+      return s0;
+    }
+
     function peg$parseExpressionOp1() {
       var s0;
 
@@ -5859,6 +5946,10 @@ exports.ScaleBinding = ScaleBinding;
 
 },{}],16:[function(require,module,exports){
 "use strict";
+// Prebuilt scales.
+var utils_1 = require("../utils");
+var compiler_1 = require("../compiler/compiler");
+var parser_1 = require("../compiler/parser");
 var scale_1 = require("./scale");
 var SC = require("../specConstruct");
 var scale;
@@ -6028,9 +6119,56 @@ var scale;
         return vector2Scale()(value1, value2);
     }
     scale_2.Vector2 = Vector2;
+    function custom(expr) {
+        var parsed = parser_1.parseExpression(expr);
+        var scale = (function () {
+            var args = [];
+            for (var _i = 0; _i < arguments.length; _i++) {
+                args[_i - 0] = arguments[_i];
+            }
+            // Inference the return type
+            var vars = new utils_1.Dictionary();
+            attributes.forEach(function (attr, name) {
+                vars.set(name, { type: "constant", valueType: attr.type, value: null });
+            });
+            vars.set("value", { type: "constant", valueType: "float", value: null });
+            var e = compiler_1.compileExpression(parsed, vars);
+            return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, e.valueType, ["float"]], args)))();
+        });
+        var attributes = new utils_1.Dictionary();
+        scale.attr = function (name, value) {
+            if (value == null) {
+                return attributes.get(name).value;
+            }
+            else {
+                attributes.set(name, { type: "float", value: value });
+                return scale;
+            }
+        };
+        scale.getAttributes = function () {
+            var r = [];
+            ;
+            attributes.forEach(function (attr, name) {
+                r.push({ name: name, type: attr.type, binding: attr.value });
+            });
+            return r;
+        };
+        scale.getExpression = function (attrs, value) {
+            var vars = new utils_1.Dictionary();
+            for (var name_1 in attrs) {
+                if (attrs.hasOwnProperty(name_1)) {
+                    vars.set(name_1, attrs[name_1]);
+                }
+            }
+            vars.set("value", value);
+            return compiler_1.compileExpression(parsed, vars);
+        };
+        return scale;
+    }
+    scale_2.custom = custom;
 })(scale = exports.scale || (exports.scale = {}));
 
-},{"../specConstruct":19,"./scale":15}],17:[function(require,module,exports){
+},{"../compiler/compiler":3,"../compiler/parser":5,"../specConstruct":19,"../utils":23,"./scale":15}],17:[function(require,module,exports){
 "use strict";
 var binding_1 = require("./binding");
 var exceptions_1 = require("./exceptions");
@@ -6267,6 +6405,7 @@ var Shape = (function () {
         var _this = this;
         this.prepare();
         if (this._instanceFunction == null) {
+            this.uploadScaleUniforms();
             this._platformShape.render(this._platformShapeData);
         }
         else {
