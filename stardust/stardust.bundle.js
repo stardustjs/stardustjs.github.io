@@ -6287,7 +6287,9 @@ var Shape = (function () {
             input: utils_1.shallowClone(this._spec.input),
             output: this._spec.output,
             statements: this._spec.statements.slice(),
-            variables: utils_1.shallowClone(this._spec.variables)
+            variables: utils_1.shallowClone(this._spec.variables),
+            repeatBegin: this._spec.repeatBegin,
+            repeatEnd: this._spec.repeatEnd
         };
         var newBindings = this._bindings.clone();
         var shiftBindings = this._shiftBindings.clone();
@@ -6389,13 +6391,15 @@ var Shape = (function () {
         }
         if (this._shouldUploadData) {
             if (this._instanceFunction == null) {
-                this._platformShapeData = this._platformShape.uploadData(this._data);
+                this._platformShapeData = this._platformShape.uploadData([this._data]);
             }
             else {
-                this._platformShapeData = this._data.map(function (datum, index) {
+                var allData_1 = [];
+                this._data.forEach(function (datum, index) {
                     var info = _this._instanceFunction(datum, index, _this._data);
-                    return _this._platformShape.uploadData(info.data);
+                    allData_1.push(info.data);
                 });
+                this._platformShapeData = this._platformShape.uploadData(allData_1);
             }
             this._shouldUploadData = false;
         }
@@ -6405,12 +6409,13 @@ var Shape = (function () {
         var _this = this;
         this.prepare();
         if (this._instanceFunction == null) {
-            this.uploadScaleUniforms();
-            this._platformShape.render(this._platformShapeData);
+            this._platformShape.render(this._platformShapeData, function () {
+                _this.uploadScaleUniforms();
+            });
         }
         else {
-            var datas_1 = this._platformShapeData;
-            this._data.forEach(function (datum, index) {
+            this._platformShape.render(this._platformShapeData, function (index) {
+                var datum = _this._data[index];
                 var info = _this._instanceFunction(datum, index, _this._data);
                 if (info.attrs != null) {
                     for (var attr in info.attrs) {
@@ -6423,7 +6428,6 @@ var Shape = (function () {
                     info.onRender(datum, index, _this._data);
                 }
                 _this.uploadScaleUniforms();
-                _this._platformShape.render(datas_1[index]);
             });
         }
         return this;
@@ -6466,7 +6470,10 @@ var shape;
     }
     shape.line = line;
     function polyline() {
-        return shape.compile("\n            import Triangle from P2D;\n\n            shape Sector2(\n                c: Vector2,\n                p1: Vector2,\n                p2: Vector2,\n                color: Color\n            ) {\n                let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Triangle(c, p1, pc, color);\n                Triangle(c, pc, p2, color);\n            }\n\n            shape Sector4(\n                c: Vector2,\n                p1: Vector2,\n                p2: Vector2,\n                color: Color\n            ) {\n                let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Sector2(c, p1, pc, color);\n                Sector2(c, pc, p2, color);\n            }\n\n            shape PolylineRound(\n                p: Vector2, p_p: Vector2, p_n: Vector2, p_nn: Vector2,\n                width: float,\n                color: Color = [ 0, 0, 0, 1 ]\n            ) {\n                let EPS = 1e-5;\n                let w = width / 2;\n                let d = normalize(p - p_n);\n                let n = Vector2(d.y, -d.x);\n                let m1: Vector2;\n                if(length(p - p_p) < EPS) {\n                    m1 = n * w;\n                } else {\n                    m1 = normalize(d + normalize(p - p_p)) * w;\n                }\n                let m2: Vector2;\n                if(length(p_n - p_nn) < EPS) {\n                    m2 = -n * w;\n                } else {\n                    m2 = normalize(normalize(p_n - p_nn) - d) * w;\n                }\n                let c1a: Vector2;\n                let c1b: Vector2;\n                let a1: Vector2;\n                let a2: Vector2;\n                if(dot(m1, n) > 0) {\n                    c1a = p + m1;\n                    c1b = p + n * w;\n                    a2 = c1b;\n                    a1 = p - m1 * (w / dot(m1, n));\n                } else {\n                    c1a = p + m1;\n                    c1b = p - n * w;\n                    a2 = p + m1 * (w / dot(m1, n));\n                    a1 = c1b;\n                }\n                let c2a: Vector2;\n                let c2b: Vector2;\n                let b1: Vector2;\n                let b2: Vector2;\n                if(dot(m2, n) < 0) {\n                    c2a = p_n + m2;\n                    c2b = p_n - n * w;\n                    b1 = c2b;\n                    b2 = p_n + m2 * (w / dot(m2, n));\n                } else {\n                    c2a = p_n + m2;\n                    c2b = p_n + n * w;\n                    b2 = c2b;\n                    b1 = p_n - m2 * (w / dot(m2, n));\n                }\n                Sector4(p, c1a, c1b, color);\n                Sector4(p_n, c2a, c2b, color);\n                Triangle(p, a1, b1, color);\n                Triangle(p, b1, p_n, color);\n                Triangle(p, a2, b2, color);\n                Triangle(p, b2, p_n, color);\n            }\n        ")["PolylineRound"];
+        var spec = shape.compile("\n            import Triangle from P2D;\n\n            shape Sector2(\n                c: Vector2,\n                p1: Vector2,\n                p2: Vector2,\n                color: Color\n            ) {\n                let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Triangle(c, p1, pc, color);\n                Triangle(c, pc, p2, color);\n            }\n\n            shape Sector4(\n                c: Vector2,\n                p1: Vector2,\n                p2: Vector2,\n                color: Color\n            ) {\n                let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Sector2(c, p1, pc, color);\n                Sector2(c, pc, p2, color);\n            }\n\n            shape PolylineRound(\n                p: Vector2, p_p: Vector2, p_n: Vector2, p_nn: Vector2,\n                width: float,\n                color: Color = [ 0, 0, 0, 1 ]\n            ) {\n                let EPS = 1e-5;\n                let w = width / 2;\n                let d = normalize(p - p_n);\n                let n = Vector2(d.y, -d.x);\n                let m1: Vector2;\n                if(length(p - p_p) < EPS) {\n                    m1 = n * w;\n                } else {\n                    m1 = normalize(d + normalize(p - p_p)) * w;\n                }\n                let m2: Vector2;\n                if(length(p_n - p_nn) < EPS) {\n                    m2 = -n * w;\n                } else {\n                    m2 = normalize(normalize(p_n - p_nn) - d) * w;\n                }\n                let c1a: Vector2;\n                let c1b: Vector2;\n                let a1: Vector2;\n                let a2: Vector2;\n                if(dot(m1, n) > 0) {\n                    c1a = p + m1;\n                    c1b = p + n * w;\n                    a2 = c1b;\n                    a1 = p - m1 * (w / dot(m1, n));\n                } else {\n                    c1a = p + m1;\n                    c1b = p - n * w;\n                    a2 = p + m1 * (w / dot(m1, n));\n                    a1 = c1b;\n                }\n                let c2a: Vector2;\n                let c2b: Vector2;\n                let b1: Vector2;\n                let b2: Vector2;\n                if(dot(m2, n) < 0) {\n                    c2a = p_n + m2;\n                    c2b = p_n - n * w;\n                    b1 = c2b;\n                    b2 = p_n + m2 * (w / dot(m2, n));\n                } else {\n                    c2a = p_n + m2;\n                    c2b = p_n + n * w;\n                    b2 = c2b;\n                    b1 = p_n - m2 * (w / dot(m2, n));\n                }\n                Sector4(p, c1a, c1b, color);\n                Sector4(p_n, c2a, c2b, color);\n                Triangle(p, a1, b1, color);\n                Triangle(p, b1, p_n, color);\n                Triangle(p, a2, b2, color);\n                Triangle(p, b2, p_n, color);\n            }\n        ")["PolylineRound"];
+        spec.repeatBegin = 1;
+        spec.repeatEnd = 1;
+        return spec;
     }
     shape.polyline = polyline;
 })(shape = exports.shape || (exports.shape = {}));
@@ -6637,7 +6644,9 @@ function FlattenEmits(shape) {
         input: {},
         output: shape.output,
         variables: shape.variables,
-        statements: []
+        statements: [],
+        repeatBegin: shape.repeatBegin,
+        repeatEnd: shape.repeatEnd
     };
     for (var i in shape.input) {
         if (shape.input.hasOwnProperty(i)) {
@@ -8169,7 +8178,7 @@ var WebGLPlatformShape = (function (_super) {
         if (this._programPick) {
             data.buffers.set("s3_pick_index", GL.createBuffer());
         }
-        data.vertexCount = 0;
+        data.ranges = [];
         return data;
     };
     // Is the input attribute compiled as uniform?
@@ -8200,33 +8209,64 @@ var WebGLPlatformShape = (function (_super) {
             this._programPick.setUniform(name, type, value);
         }
     };
-    WebGLPlatformShape.prototype.uploadData = function (data) {
+    WebGLPlatformShape.prototype.uploadData = function (datas) {
         var buffers = this.initializeBuffers();
-        var n = data.length;
+        buffers.ranges = [];
+        var repeatBegin = this._spec.repeatBegin || 0;
+        var repeatEnd = this._spec.repeatEnd || 0;
         var GL = this._GL;
         var bindings = this._bindings;
         var rep = this._flattenedVertexCount;
+        var totalCount = 0;
+        datas.forEach(function (data) {
+            var n = data.length;
+            if (n == 0) {
+                buffers.ranges.push(null);
+                return;
+            }
+            else {
+                var c1 = totalCount;
+                totalCount += n + repeatBegin + repeatEnd;
+                var c2 = totalCount;
+                buffers.ranges.push([c1 * rep, c2 * rep]);
+            }
+        });
         this._bindings.forEach(function (binding, name) {
             var buffer = buffers.buffers.get(name);
             if (buffer == null)
                 return;
             var type = binding.type;
-            var array = new Float32Array(type.primitiveCount * n * rep);
-            binding.fillBinary(data, rep, array);
+            var array = new Float32Array(type.primitiveCount * totalCount * rep);
+            var currentIndex = 0;
+            var multiplier = type.primitiveCount * rep;
+            datas.forEach(function (data) {
+                if (data.length == 0)
+                    return;
+                for (var i = 0; i < repeatBegin; i++) {
+                    binding.fillBinary([data[0]], rep, array.subarray(currentIndex, currentIndex + multiplier));
+                    currentIndex += multiplier;
+                }
+                binding.fillBinary(data, rep, array.subarray(currentIndex, currentIndex + data.length * multiplier));
+                currentIndex += data.length * multiplier;
+                for (var i = 0; i < repeatEnd; i++) {
+                    binding.fillBinary([data[data.length - 1]], rep, array.subarray(currentIndex, currentIndex + multiplier));
+                    currentIndex += multiplier;
+                }
+            });
             GL.bindBuffer(GL.ARRAY_BUFFER, buffer);
             GL.bufferData(GL.ARRAY_BUFFER, array, GL.STATIC_DRAW);
         });
         // The vertex index attribute.
-        var array = new Float32Array(n * rep);
-        for (var i = 0; i < n * rep; i++) {
+        var array = new Float32Array(totalCount * rep);
+        for (var i = 0; i < totalCount * rep; i++) {
             array[i] = i % rep;
         }
         GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get(this._flattenedVertexIndexVariable));
         GL.bufferData(GL.ARRAY_BUFFER, array, GL.STATIC_DRAW);
         // The pick index attribute.
         if (this._programPick) {
-            var array_1 = new Float32Array(n * rep * 4);
-            for (var i = 0; i < n * rep; i++) {
+            var array_1 = new Float32Array(totalCount * rep * 4);
+            for (var i = 0; i < totalCount * rep; i++) {
                 var index = Math.floor(i / rep);
                 array_1[i * 4 + 0] = (index & 0xff) / 255.0;
                 array_1[i * 4 + 1] = ((index & 0xff00) >> 8) / 255.0;
@@ -8236,21 +8276,21 @@ var WebGLPlatformShape = (function (_super) {
             GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get("s3_pick_index"));
             GL.bufferData(GL.ARRAY_BUFFER, array_1, GL.STATIC_DRAW);
         }
-        buffers.vertexCount = n * rep;
         return buffers;
     };
     // Render the graphics.
-    WebGLPlatformShape.prototype.renderBase = function (buffers, mode) {
-        if (buffers.vertexCount > 0) {
-            var GL = this._GL;
+    WebGLPlatformShape.prototype.renderBase = function (buffers, mode, onRender) {
+        var _this = this;
+        if (buffers.ranges.length > 0) {
+            var GL_1 = this._GL;
             var spec = this._specFlattened;
             var bindings = this._bindings;
             // Decide which program to use
-            var program = this._program;
+            var program_1 = this._program;
             if (mode == generator_1.GenerateMode.PICK) {
-                program = this._programPick;
+                program_1 = this._programPick;
             }
-            program.use();
+            program_1.use();
             var minOffset_1 = 0;
             var maxOffset_1 = 0;
             this._shiftBindings.forEach(function (shift, name) {
@@ -8261,34 +8301,34 @@ var WebGLPlatformShape = (function (_super) {
             });
             // Assign attributes to buffers
             for (var name_2 in spec.input) {
-                var attributeLocation = program.getAttribLocation(name_2);
+                var attributeLocation = program_1.getAttribLocation(name_2);
                 if (attributeLocation == null)
                     continue;
                 if (this._shiftBindings.has(name_2)) {
                     var shift = this._shiftBindings.get(name_2);
-                    GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get(shift.name));
-                    GL.enableVertexAttribArray(attributeLocation);
+                    GL_1.bindBuffer(GL_1.ARRAY_BUFFER, buffers.buffers.get(shift.name));
+                    GL_1.enableVertexAttribArray(attributeLocation);
                     var type = bindings.get(shift.name).type;
-                    GL.vertexAttribPointer(attributeLocation, type.primitiveCount, type.primitive == "float" ? GL.FLOAT : GL.INT, false, 0, type.size * (shift.offset - minOffset_1) * this._flattenedVertexCount);
+                    GL_1.vertexAttribPointer(attributeLocation, type.primitiveCount, type.primitive == "float" ? GL_1.FLOAT : GL_1.INT, false, 0, type.size * (shift.offset - minOffset_1) * this._flattenedVertexCount);
                 }
                 else {
-                    GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get(name_2));
-                    GL.enableVertexAttribArray(attributeLocation);
+                    GL_1.bindBuffer(GL_1.ARRAY_BUFFER, buffers.buffers.get(name_2));
+                    GL_1.enableVertexAttribArray(attributeLocation);
                     if (name_2 == this._flattenedVertexIndexVariable) {
-                        GL.vertexAttribPointer(attributeLocation, 1, GL.FLOAT, false, 0, 4 * (-minOffset_1) * this._flattenedVertexCount);
+                        GL_1.vertexAttribPointer(attributeLocation, 1, GL_1.FLOAT, false, 0, 4 * (-minOffset_1) * this._flattenedVertexCount);
                     }
                     else {
                         var type = bindings.get(name_2).type;
-                        GL.vertexAttribPointer(attributeLocation, type.primitiveCount, type.primitive == "float" ? GL.FLOAT : GL.INT, false, 0, type.size * (-minOffset_1) * this._flattenedVertexCount);
+                        GL_1.vertexAttribPointer(attributeLocation, type.primitiveCount, type.primitive == "float" ? GL_1.FLOAT : GL_1.INT, false, 0, type.size * (-minOffset_1) * this._flattenedVertexCount);
                     }
                 }
             }
             // For pick mode, assign the pick index buffer
             if (mode == generator_1.GenerateMode.PICK) {
-                var attributeLocation = program.getAttribLocation("s3_pick_index");
-                GL.bindBuffer(GL.ARRAY_BUFFER, buffers.buffers.get("s3_pick_index"));
-                GL.enableVertexAttribArray(attributeLocation);
-                GL.vertexAttribPointer(attributeLocation, 4, GL.FLOAT, false, 0, 0);
+                var attributeLocation = program_1.getAttribLocation("s3_pick_index");
+                GL_1.bindBuffer(GL_1.ARRAY_BUFFER, buffers.buffers.get("s3_pick_index"));
+                GL_1.enableVertexAttribArray(attributeLocation);
+                GL_1.vertexAttribPointer(attributeLocation, 4, GL_1.FLOAT, false, 0, 0);
             }
             // Set view uniforms
             var viewInfo = this._platform.viewInfo;
@@ -8296,67 +8336,75 @@ var WebGLPlatformShape = (function (_super) {
             switch (viewInfo.type) {
                 case generator_1.ViewType.VIEW_2D:
                     {
-                        GL.uniform4f(program.getUniformLocation("s3_view_params"), 2.0 / viewInfo.width, -2.0 / viewInfo.height, -1, +1);
+                        GL_1.uniform4f(program_1.getUniformLocation("s3_view_params"), 2.0 / viewInfo.width, -2.0 / viewInfo.height, -1, +1);
                     }
                     break;
                 case generator_1.ViewType.VIEW_3D:
                     {
-                        GL.uniform4f(program.getUniformLocation("s3_view_params"), 1.0 / Math.tan(viewInfo.fovY / 2.0) / viewInfo.aspectRatio, 1.0 / Math.tan(viewInfo.fovY / 2.0), (viewInfo.near + viewInfo.far) / (viewInfo.near - viewInfo.far), (2.0 * viewInfo.near * viewInfo.far) / (viewInfo.near - viewInfo.far));
+                        GL_1.uniform4f(program_1.getUniformLocation("s3_view_params"), 1.0 / Math.tan(viewInfo.fovY / 2.0) / viewInfo.aspectRatio, 1.0 / Math.tan(viewInfo.fovY / 2.0), (viewInfo.near + viewInfo.far) / (viewInfo.near - viewInfo.far), (2.0 * viewInfo.near * viewInfo.far) / (viewInfo.near - viewInfo.far));
                         if (pose) {
                             // Rotation and position.
-                            GL.uniform4f(program.getUniformLocation("s3_view_rotation"), pose.rotation.x, pose.rotation.y, pose.rotation.z, pose.rotation.w);
-                            GL.uniform3f(program.getUniformLocation("s3_view_position"), pose.position.x, pose.position.y, pose.position.z);
+                            GL_1.uniform4f(program_1.getUniformLocation("s3_view_rotation"), pose.rotation.x, pose.rotation.y, pose.rotation.z, pose.rotation.w);
+                            GL_1.uniform3f(program_1.getUniformLocation("s3_view_position"), pose.position.x, pose.position.y, pose.position.z);
                         }
                         else {
-                            GL.uniform4f(program.getUniformLocation("s3_view_rotation"), 0, 0, 0, 1);
-                            GL.uniform3f(program.getUniformLocation("s3_view_position"), 0, 0, 0);
+                            GL_1.uniform4f(program_1.getUniformLocation("s3_view_rotation"), 0, 0, 0, 1);
+                            GL_1.uniform3f(program_1.getUniformLocation("s3_view_position"), 0, 0, 0);
                         }
                     }
                     break;
                 case generator_1.ViewType.VIEW_WEBVR:
                     {
-                        GL.uniformMatrix4fv(program.getUniformLocation("s3_view_matrix"), false, viewInfo.viewMatrix);
-                        GL.uniformMatrix4fv(program.getUniformLocation("s3_projection_matrix"), false, viewInfo.projectionMatrix);
+                        GL_1.uniformMatrix4fv(program_1.getUniformLocation("s3_view_matrix"), false, viewInfo.viewMatrix);
+                        GL_1.uniformMatrix4fv(program_1.getUniformLocation("s3_projection_matrix"), false, viewInfo.projectionMatrix);
                         if (pose) {
                             // Rotation and position.
-                            GL.uniform4f(program.getUniformLocation("s3_view_rotation"), pose.rotation.x, pose.rotation.y, pose.rotation.z, pose.rotation.w);
-                            GL.uniform3f(program.getUniformLocation("s3_view_position"), pose.position.x, pose.position.y, pose.position.z);
+                            GL_1.uniform4f(program_1.getUniformLocation("s3_view_rotation"), pose.rotation.x, pose.rotation.y, pose.rotation.z, pose.rotation.w);
+                            GL_1.uniform3f(program_1.getUniformLocation("s3_view_position"), pose.position.x, pose.position.y, pose.position.z);
                         }
                         else {
-                            GL.uniform4f(program.getUniformLocation("s3_view_rotation"), 0, 0, 0, 1);
-                            GL.uniform3f(program.getUniformLocation("s3_view_position"), 0, 0, 0);
+                            GL_1.uniform4f(program_1.getUniformLocation("s3_view_rotation"), 0, 0, 0, 1);
+                            GL_1.uniform3f(program_1.getUniformLocation("s3_view_position"), 0, 0, 0);
                         }
                     }
                     break;
             }
             // For pick, set the shape index
             if (mode == generator_1.GenerateMode.PICK) {
-                GL.uniform1f(program.getUniformLocation("s3_pick_index_alpha"), this._pickIndex / 255.0);
+                GL_1.uniform1f(program_1.getUniformLocation("s3_pick_index_alpha"), this._pickIndex / 255.0);
             }
             // Draw arrays
-            GL.drawArrays(GL.TRIANGLES, 0, buffers.vertexCount - (maxOffset_1 - minOffset_1) * this._flattenedVertexCount);
+            buffers.ranges.forEach(function (range, index) {
+                if (onRender) {
+                    onRender(index);
+                }
+                if (range != null) {
+                    program_1.use();
+                    GL_1.drawArrays(GL_1.TRIANGLES, range[0], range[1] - range[0] - (maxOffset_1 - minOffset_1) * _this._flattenedVertexCount);
+                }
+            });
             // Unbind attributes
             for (var name_3 in spec.input) {
-                var attributeLocation = program.getAttribLocation(name_3);
+                var attributeLocation = program_1.getAttribLocation(name_3);
                 if (attributeLocation != null) {
-                    GL.disableVertexAttribArray(attributeLocation);
+                    GL_1.disableVertexAttribArray(attributeLocation);
                 }
             }
             // Unbind the pick index buffer
             if (mode == generator_1.GenerateMode.PICK) {
-                var attributeLocation = program.getAttribLocation("s3_pick_index");
-                GL.disableVertexAttribArray(attributeLocation);
+                var attributeLocation = program_1.getAttribLocation("s3_pick_index");
+                GL_1.disableVertexAttribArray(attributeLocation);
             }
         }
     };
     WebGLPlatformShape.prototype.setPickIndex = function (index) {
         this._pickIndex = index;
     };
-    WebGLPlatformShape.prototype.render = function (buffers) {
+    WebGLPlatformShape.prototype.render = function (buffers, onRender) {
         if (this._platform.renderMode == generator_1.GenerateMode.PICK) {
             this.setPickIndex(this._platform.assignPickIndex(this._shape));
         }
-        this.renderBase(buffers, this._platform.renderMode);
+        this.renderBase(buffers, this._platform.renderMode, onRender);
     };
     return WebGLPlatformShape;
 }(stardust_core_1.PlatformShape));
