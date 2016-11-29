@@ -6516,6 +6516,19 @@ function op(name, returnType) {
     };
 }
 exports.op = op;
+function cast(from, to) {
+    return {
+        type: "function",
+        functionName: intrinsics_1.getInternalName({
+            name: "cast:" + from.valueType + ":" + to,
+            argTypes: [from.valueType],
+            returnType: to
+        }),
+        valueType: to,
+        arguments: [from],
+    };
+}
+exports.cast = cast;
 function variable(varName, varType) {
     return {
         type: "variable",
@@ -6560,6 +6573,10 @@ function div(a1, a2) {
     return op("/", a1.valueType, a1, a2);
 }
 exports.div = div;
+function equals(a1, a2) {
+    return op("==", "bool", a1, a2);
+}
+exports.equals = equals;
 function greaterThan(a1, a2) {
     return op(">", "bool", a1, a2);
 }
@@ -6568,6 +6585,14 @@ function lessThan(a1, a2) {
     return op("<", "bool", a1, a2);
 }
 exports.lessThan = lessThan;
+function greaterThanOrEquals(a1, a2) {
+    return op(">=", "bool", a1, a2);
+}
+exports.greaterThanOrEquals = greaterThanOrEquals;
+function lessThanOrEquals(a1, a2) {
+    return op("<=", "bool", a1, a2);
+}
+exports.lessThanOrEquals = lessThanOrEquals;
 
 },{"./intrinsics":9}],20:[function(require,module,exports){
 // Flattener: Resolve emit statements into individual render calls.
@@ -6638,7 +6663,8 @@ var utils_1 = require("../utils");
 // }
 // For now, assume there is no conditional emits.
 function FlattenEmits(shape) {
-    var vertexIndexName = utils_1.attemptName("s3idx", function (c) { return !shape.variables.hasOwnProperty(c) && !shape.input.hasOwnProperty(c); });
+    var vertexIndexNameFloat = utils_1.attemptName("s3idx", function (c) { return !shape.variables.hasOwnProperty(c) && !shape.input.hasOwnProperty(c); });
+    var vertexIndexName = utils_1.attemptName("s3idx_i", function (c) { return !shape.variables.hasOwnProperty(c) && !shape.input.hasOwnProperty(c); });
     var emitIndexName = utils_1.attemptName("s3emitidx", function (c) { return !shape.variables.hasOwnProperty(c) && !shape.input.hasOwnProperty(c); });
     var newShape = {
         input: {},
@@ -6653,15 +6679,21 @@ function FlattenEmits(shape) {
             newShape.input[i] = shape.input[i];
         }
     }
-    newShape.input[vertexIndexName] = {
+    newShape.input[vertexIndexNameFloat] = {
         type: "float",
         default: 0
     };
-    newShape.variables[emitIndexName] = "float";
+    newShape.variables[vertexIndexName] = "int";
+    newShape.variables[emitIndexName] = "int";
+    newShape.statements.push({
+        type: "assign",
+        variableName: vertexIndexName,
+        expression: SC.cast(SC.variable(vertexIndexNameFloat, "float"), "int")
+    });
     newShape.statements.push({
         type: "assign",
         variableName: emitIndexName,
-        expression: SC.constant(-0.5, "float")
+        expression: SC.constant(0, "int")
     });
     var generateStatements = function (statements) {
         var result = [];
@@ -6672,14 +6704,14 @@ function FlattenEmits(shape) {
                     {
                         result.push({
                             type: "condition",
-                            condition: SC.greaterThan(SC.variable(vertexIndexName, "float"), SC.variable(emitIndexName, "float")),
+                            condition: SC.equals(SC.variable(vertexIndexName, "int"), SC.variable(emitIndexName, "int")),
                             trueStatements: [statements[i]],
                             falseStatements: []
                         });
                         result.push({
                             type: "assign",
                             variableName: emitIndexName,
-                            expression: SC.add(SC.variable(emitIndexName, "float"), SC.constant(1, "float"))
+                            expression: SC.add(SC.variable(emitIndexName, "int"), SC.constant(1, "int"))
                         });
                         maxNumberEmits += 1;
                     }
@@ -6688,13 +6720,47 @@ function FlattenEmits(shape) {
                     {
                         var forStatement = statements[i];
                         var _a = generateStatements(forStatement.statements), generatedStatements_1 = _a[0], maxNumber = _a[1];
-                        result.push({
-                            type: "for",
-                            variableName: forStatement.variableName,
-                            rangeMin: forStatement.rangeMin,
-                            rangeMax: forStatement.rangeMax,
-                            statements: generatedStatements_1
-                        });
+                        var mappingMode = true;
+                        if (mappingMode) {
+                            // Here we assume for loops only alter its internal variables, not anything outside, so each turn is independent.
+                            var tStatements = [];
+                            tStatements.push({
+                                type: "assign",
+                                variableName: forStatement.variableName,
+                                expression: SC.add(SC.div(SC.sub(SC.variable(vertexIndexName, "int"), SC.variable(emitIndexName, "int")), SC.constant(maxNumber, "int")), SC.constant(forStatement.rangeMin, "int"))
+                            });
+                            tStatements.push({
+                                type: "assign",
+                                variableName: emitIndexName,
+                                expression: SC.add(SC.variable(emitIndexName, "int"), SC.mul(SC.constant(maxNumber, "int"), SC.sub(SC.variable(forStatement.variableName, "int"), SC.constant(forStatement.rangeMin, "int"))))
+                            });
+                            tStatements = tStatements.concat(generatedStatements_1);
+                            tStatements.push({
+                                type: "assign",
+                                variableName: emitIndexName,
+                                expression: SC.add(SC.variable(emitIndexName, "int"), SC.mul(SC.constant(maxNumber, "int"), SC.sub(SC.constant(forStatement.rangeMax, "int"), SC.variable(forStatement.variableName, "int"))))
+                            });
+                            result.push({
+                                type: "condition",
+                                condition: SC.op("&&", "bool", SC.greaterThanOrEquals(SC.variable(vertexIndexName, "int"), SC.variable(emitIndexName, "int")), SC.lessThan(SC.variable(vertexIndexName, "int"), SC.add(SC.variable(emitIndexName, "int"), SC.constant(maxNumber * (forStatement.rangeMax - forStatement.rangeMin + 1), "int")))),
+                                trueStatements: tStatements,
+                                falseStatements: [{
+                                        type: "assign",
+                                        variableName: emitIndexName,
+                                        expression: SC.add(SC.variable(emitIndexName, "int"), SC.constant((forStatement.rangeMax - forStatement.rangeMin + 1) * maxNumber, "int"))
+                                    }
+                                ]
+                            });
+                        }
+                        else {
+                            result.push({
+                                type: "for",
+                                variableName: forStatement.variableName,
+                                rangeMin: forStatement.rangeMin,
+                                rangeMax: forStatement.rangeMax,
+                                statements: generatedStatements_1
+                            });
+                        }
                         maxNumberEmits += (forStatement.rangeMax - forStatement.rangeMin + 1) * maxNumber;
                     }
                     break;
@@ -6726,7 +6792,7 @@ function FlattenEmits(shape) {
     return {
         specification: newShape,
         count: maxNumberEmits,
-        indexVariable: vertexIndexName
+        indexVariable: vertexIndexNameFloat
     };
 }
 exports.FlattenEmits = FlattenEmits;
