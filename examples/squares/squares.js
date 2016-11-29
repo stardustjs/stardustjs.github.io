@@ -344,6 +344,7 @@ class SquaresVisualization {
         this._shapes.squaresOutlined.render();
     }
     renderSelection() {
+        this._platform.clear();
         this._shapes.squares.render();
         this._shapes.squaresOutlined.render();
         this._shapes.squaresOverlay.render();
