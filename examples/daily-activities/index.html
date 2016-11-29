@@ -1,0 +1,571 @@
+---
+layout: default
+title: "Stardust Example: Daily Activities of Creative People"
+---
+<h1>Stardust Example: Daily Activities of Creative People</h1>
+<iframe class="example-container" src="content.html" width="960px" height="500px" scrolling="no" sandbox="allow-popups allow-scripts allow-forms allow-same-origin"></iframe>
+
+    <h2>data.js</h2>
+    <pre><code class="highlight javascript">
+  var activities = {
+    '18': [
+        [&quot;food&quot;,0.5,0,&quot;Drinking&quot;],
+        [&quot;sleep&quot;,7.5,0.5,&quot;Sleep&quot;],
+        [&quot;food&quot;,1.5,8,&quot;Grapefruit, cereal, banana, tea&quot;],
+        [&quot;creative&quot;,3.5,9.5,&quot;He would pick up from where he left off the previous evening&quot;],
+        [&quot;food&quot;,3.5,13,&quot;Lunch at the pub with a drink before and a coffee after&quot;],
+        [&quot;sleep&quot;,0.5,16.5,&quot;Nap in his favorite armchair&quot;],
+        [&quot;creative&quot;,2,17,&quot;Main work&quot;],
+        [&quot;food&quot;,4,19,&quot;Dinner with family, drinking scotch and water whilst settling down to his favorite television programs&quot;],
+        [&quot;food&quot;,1,23,&quot;Final scotch and water&quot;]
+      ],
+     '7': [
+        [&quot;sleep&quot;,5.5,0,&quot;Sleep&quot;],
+        [&quot;other&quot;,0.5,5.5,&quot;Getting dressed&quot;],
+        [&quot;food&quot;,0.5,6,&quot;Coffee with husband&quot;],
+        [&quot;other&quot;,0.5,6.5,&quot;Commute to hotel room she rented for work&quot;],
+        [&quot;creative&quot;,8,7,&quot;Writing in hotel room, the more anonymous the better&quot;],
+        [&quot;food&quot;,4.5,15,&quot;Shower, cook, have dinner with husband&quot;],
+        [&quot;creative&quot;,0.5,19.5,&quot;Reading work to husband&quot;],
+        [&quot;food&quot;,2,20,&quot;Time with husband&quot;],
+        [&quot;sleep&quot;,2,22,&quot;Sleep&quot;]
+      ],
+      '8': [
+        [&quot;sleep&quot;,5.5,0,&quot;Sleep&quot;],
+        [&quot;food&quot;,0.5,5.5,&quot;Coffee with a crossword&quot;],
+        [&quot;creative&quot;,5,6,&quot;Worked with a dose of Benzedrine, a daily routine he kept up for 20 years&quot;],
+        [&quot;food&quot;,0.5,11,&quot;Lunch&quot;],
+        [&quot;creative&quot;,6.5,11.5,&quot;Main work&quot;],
+        [&quot;food&quot;,1.5,18,&quot;Strong vodka martinis&quot;],
+        [&quot;food&quot;,2.5,19.5,&quot;Dinner with friends&quot;],
+        [&quot;sleep&quot;,2,22,&quot;Used sedative to go to sleep&quot;]
+      ],
+      '0': [
+        [&quot;sleep&quot;,1,0,&quot;Sleep&quot;],
+        [&quot;creative&quot;,7,1,&quot;Wore monkish robe and Moroccan slippers for his priest-like work&quot;],
+        [&quot;sleep&quot;,1.5,8,&quot;Nap&quot;],
+        [&quot;creative&quot;,6,9.5,&quot;Had a cup of black coffee before starting work&quot;],
+        [&quot;food&quot;,2.5,15.5,&quot;Received friends, took a bath, went out for dinner&quot;],
+        [&quot;sleep&quot;,6,18,&quot;Sleep&quot;]
+      ],
+      '9': [
+        [&quot;sleep&quot;,6,0,&quot;Sleep&quot;],
+        [&quot;food&quot;,0.5,6,&quot;Just a coffee, 60 beans per cup &quot;],
+        [&quot;creative&quot;,8,6.5,&quot;Worked on compositions at his desk, taking the occasional break to walk outdoors, which aided his creativity&quot;],
+        [&quot;food&quot;,1,14.5,&quot;Dinner with wine&quot;],
+        [&quot;exercise&quot;,1,15.5,&quot;Long walk&quot;],
+        [&quot;food&quot;,4,16.5,&quot;Tavern to eat and to read a newspaper&quot;],
+        [&quot;food&quot;,1,20.5,&quot;Supper&quot;],
+        [&quot;sleep&quot;,2.5,21.5,&quot;Sleep&quot;]
+      ],
+      '10': [
+        [&quot;sleep&quot;,6,0,&quot;Sleep&quot;],
+        [&quot;food&quot;,1,6,&quot;Praying, having coffee&quot;],
+        [&quot;food&quot;,2,7,&quot;Church&quot;],
+        [&quot;creative&quot;,3,9,&quot;Work&quot;],
+        [&quot;food&quot;,9,12,&quot;Hobbies, guests, painting, taking care of birds&quot;],
+        [&quot;sleep&quot;,3,21,&quot;Sleep&quot;]
+      ],
+      '11': [
+        [&quot;sleep&quot;,6,0,&quot;Sleep&quot;],
+        [&quot;exercise&quot;,0.5,6,&quot;Preparing mind and body for the day ahead&quot;],
+        [&quot;food&quot;,2.5,6.5,&quot;Breakfast with wife&quot;],
+        [&quot;creative&quot;,5.5,9,&quot;Painting, drawing, writing&quot;],
+        [&quot;admin&quot;,3,14.5,&quot;Office hours (getting others to work on his ideas)&quot;],
+        [&quot;food&quot;,5.5,17.5,&quot;Time at home&quot;],
+        [&quot;sleep&quot;,1,23,&quot;Sleep&quot;]
+      ],
+      '14': [
+        [&quot;sleep&quot;,7,0,&quot;Sleep&quot;],
+        [&quot;exercise&quot;,0.5,7,&quot;Walk&quot;],
+        [&quot;food&quot;,0.5,7.5,&quot;Breakfast&quot;],
+        [&quot;creative&quot;,1.5,8,&quot;Focused work&quot;],
+        [&quot;admin&quot;,1,9.5,&quot;Reading mail&quot;],
+        [&quot;creative&quot;,1.5,10.5,&quot;Work&quot;],
+        [&quot;exercise&quot;,0.5,12,&quot;Walking the dog&quot;],
+        [&quot;food&quot;,0.5,12.5,&quot;Lunch&quot;],
+        [&quot;admin&quot;,1,13,&quot;Reading newspapers&quot;],
+        [&quot;admin&quot;,1,14,&quot;Writing letters&quot;],
+        [&quot;sleep&quot;,1,15,&quot;Nap&quot;],
+        [&quot;exercise&quot;,0.5,16,&quot;Walk&quot;],
+        [&quot;admin&quot;,1,16.5,&quot;Admin bits and bobs&quot;],
+        [&quot;food&quot;,0.5,17.5,&quot;Idleness&quot;],
+        [&quot;food&quot;,1,18,&quot;Reading for pleasure&quot;],
+        [&quot;food&quot;,1,19,&quot;Tea with egg&quot;],
+        [&quot;food&quot;,1,20,&quot;Playing backgammon&quot;],
+        [&quot;admin&quot;,1,21,&quot;Reading science books&quot;],
+        [&quot;creative&quot;,2,22,&quot;Lying in bed, solving problems&quot;]
+      ],
+      '15': [
+        [&quot;sleep&quot;,7,0,&quot;Sleep&quot;],
+        [&quot;other&quot;,1,7,&quot;Waking up&quot;],
+        [&quot;food&quot;,1,8,&quot;Breakfast&quot;],
+        [&quot;creative&quot;,5,9,&quot;Writing in absolute quiet&quot;],
+        [&quot;exercise&quot;,3,14,&quot;Walking around London&quot;],
+        [&quot;food&quot;,1,17,&quot;Gap time&quot;],
+        [&quot;food&quot;,1,18,&quot;Dinner&quot;],
+        [&quot;food&quot;,5,19,&quot;Time with friends and family&quot;]
+      ],
+      '23': [
+        [&quot;creative&quot;,3,0,&quot;Writing&quot;],
+        [&quot;sleep&quot;,7,3,&quot;Sleep&quot;],
+        [&quot;admin&quot;,0.5,10,&quot;Newspapers, mail&quot;],
+        [&quot;other&quot;,0.5,10.5,&quot;Taking a bath&quot;],
+        [&quot;food&quot;,1,11,&quot;Light breakfast, typically eggs, vegetables, cheese or fruit and a cup of cold chocolate&quot;],
+        [&quot;exercise&quot;,1,12,&quot;Outdoor stroll with family&quot;],
+        [&quot;admin&quot;,1,13,&quot;Teaching history&quot;],
+        [&quot;creative&quot;,5,14,&quot;Creative work, mostly reading&quot;],
+        [&quot;food&quot;,1,19,&quot;Dinner with family&quot;],
+        [&quot;food&quot;,1.5,20,&quot;Time with family, talking to mother&quot;],
+        [&quot;creative&quot;,2.5,21.5,&quot;Creative work&quot;]
+      ],
+      '4': [
+        [&quot;sleep&quot;,5,0,&quot;Sleep&quot;],
+        [&quot;food&quot;,3,5,&quot;Wash, make a resolution, have breakfast&quot;],
+        [&quot;creative&quot;,4,8,&quot;Work&quot;],
+        [&quot;food&quot;,2,12,&quot;Reading, life admin, lunch&quot;],
+        [&quot;creative&quot;,4,14,&quot;Work&quot;],
+        [&quot;food&quot;,4,18,&quot;Supper, music, putting things in order, socialising&quot;],
+        [&quot;sleep&quot;,2,22,&quot;Sleep&quot;]
+      ],
+      '16': [
+        [&quot;creative&quot;,1,0,&quot;Writing&quot;],
+        [&quot;sleep&quot;,6,1,&quot;Sleep&quot;],
+        [&quot;food&quot;,1,7,&quot;Breakfast and trimming beard&quot;],
+        [&quot;creative&quot;,4,8,&quot;Treating patients&quot;],
+        [&quot;food&quot;,1,12,&quot;Gap time&quot;],
+        [&quot;food&quot;,1,13,&quot;Lunch&quot;],
+        [&quot;exercise&quot;,1,14,&quot;Speedy walk&quot;],
+        [&quot;creative&quot;,6,15,&quot;Consulting and treating patients&quot;],
+        [&quot;food&quot;,1.5,21,&quot;Supper and card games&quot;],
+        [&quot;creative&quot;,1.5,22.5,&quot;Reading and writing&quot;]
+      ],
+      '12': [
+        [&quot;sleep&quot;,6,0,&quot;Sleep&quot;],
+        [&quot;food&quot;,0.5,6,&quot;Coffee and two raw eggs&quot;],
+        [&quot;creative&quot;,4.5,6.5,&quot;Writing&quot;],
+        [&quot;other&quot;,1,11,&quot;Ice bath on the roof&quot;],
+        [&quot;food&quot;,1,12,&quot;Guests and lunch&quot;],
+        [&quot;exercise&quot;,2,13,&quot;Long, strenuous exercise&quot;],
+        [&quot;other&quot;,1,15,&quot;Visit to the barber&quot;],
+        [&quot;food&quot;,2,16,&quot;Date&quot;],
+        [&quot;creative&quot;,2,18,&quot;Writing&quot;],
+        [&quot;food&quot;,2,20,&quot;Dinner, playing cards, going out&quot;],
+        [&quot;sleep&quot;,2,22,&quot;Sleep&quot;]
+      ],
+      '22': [
+        [&quot;creative&quot;,6,0,&quot;Writing&quot;],
+        [&quot;sleep&quot;,2.5,6,&quot;Sleeping after struggling to fall asleep&quot;],
+        [&quot;admin&quot;,6,8.5,&quot;Work at the worker's accident insurance institute&quot;],
+        [&quot;food&quot;,1,14.5,&quot;Lunch&quot;],
+        [&quot;sleep&quot;,4,15.5,&quot;Catching up on sleep&quot;],
+        [&quot;exercise&quot;,1.5,19.5,&quot;Exercises next to the window, then a walk&quot;],
+        [&quot;food&quot;,2,21,&quot;Dinner with family&quot;],
+        [&quot;creative&quot;,1,23,&quot;Writing&quot;]
+      ],
+      '5': [
+        [&quot;sleep&quot;,5,0,&quot;Sleep&quot;],
+        [&quot;food&quot;,1,5,&quot;Tea and pipe&quot;],
+        [&quot;creative&quot;,1,6,&quot;Writing&quot;],
+        [&quot;admin&quot;,4,7,&quot;Lecturing at the university&quot;],
+        [&quot;food&quot;,4,11,&quot;Meat and wine at the pub for lunch, main meal of the day&quot;],
+        [&quot;exercise&quot;,1,15,&quot;Walk&quot;],
+        [&quot;creative&quot;,3,16,&quot;Working with Joseph Green&quot;],
+        [&quot;food&quot;,3,19,&quot;Reading&quot;],
+        [&quot;sleep&quot;,2,22,&quot;Sleep&quot;]
+      ],
+      '19': [
+        [&quot;sleep&quot;,8,0,&quot;Sleep&quot;],
+        [&quot;other&quot;,1,8,&quot;Taking a bath&quot;],
+        [&quot;creative&quot;,3,9,&quot;Writing&quot;],
+        [&quot;food&quot;,0.5,12,&quot;Lunch&quot;],
+        [&quot;creative&quot;,3.5,12.5,&quot;Reading&quot;],
+        [&quot;sleep&quot;,1,16,&quot;Nap&quot;],
+        [&quot;food&quot;,0.5,17,&quot;Tea with family&quot;],
+        [&quot;admin&quot;,1.5,17.5,&quot;Reading newspapers, mail&quot;],
+        [&quot;exercise&quot;,0.5,19,&quot;Walk&quot;],
+        [&quot;food&quot;,4.5,19.5,&quot;Time with family, guests, listening to music&quot;]
+      ],
+      '1': [
+        [&quot;sleep&quot;,4,0,&quot;Sleep&quot;],
+        [&quot;other&quot;,1,4,&quot;Meditation&quot;],
+        [&quot;food&quot;,2,5,&quot;Listening to aide reading bible&quot;],
+        [&quot;creative&quot;,3,7,&quot;Dictating to aide&quot;],
+        [&quot;creative&quot;,2,10,&quot;Listening to aide read back&quot;],
+        [&quot;food&quot;,1,12,&quot;Lunch&quot;],
+        [&quot;exercise&quot;,3,13,&quot;Walk up and down his garden&quot;],
+        [&quot;food&quot;,5,16,&quot;Having guests over, supper, smoking a pipe&quot;],
+        [&quot;sleep&quot;,3,21,&quot;Sleep&quot;]
+      ],
+      '13': [
+        [&quot;creative&quot;,1,0,&quot;Composing&quot;],
+        [&quot;sleep&quot;,5,1,&quot;Sleep&quot;],
+        [&quot;other&quot;,1,6,&quot;Getting dressed&quot;],
+        [&quot;creative&quot;,2,7,&quot;Composing&quot;],
+        [&quot;admin&quot;,4,9,&quot;Giving music lessons&quot;],
+        [&quot;food&quot;,4,13,&quot;Lunch with friends&quot;],
+        [&quot;creative&quot;,4,17,&quot;Composing or giving concerts&quot;],
+        [&quot;food&quot;,2,21,&quot;Time with friends&quot;],
+        [&quot;creative&quot;,1,23,&quot;Composing&quot;]
+      ],
+      '2': [
+        [&quot;sleep&quot;,4,0,&quot;Sleep&quot;],
+        [&quot;creative&quot;,8,4,&quot;Writing&quot;],
+        [&quot;exercise&quot;,1,12,&quot;Walking and swimming&quot;],
+        [&quot;food&quot;,8,13,&quot;Doing housework, admin and spending time with family&quot;],
+        [&quot;sleep&quot;,3,21,&quot;Sleep&quot;]
+      ],
+      '17': [
+        [&quot;sleep&quot;,1,0,&quot;Trying to fall sleep&quot;],
+        [&quot;sleep&quot;,6.5,1,&quot;Sleep&quot;],
+        [&quot;food&quot;,1,7.5,&quot;Thinking in bed&quot;],
+        [&quot;food&quot;,1.5,8.5,&quot;Shave, breakfast, meditation, bath&quot;],
+        [&quot;creative&quot;,1,10,&quot;Writing&quot;],
+        [&quot;exercise&quot;,0.5,11,&quot;Walk&quot;],
+        [&quot;creative&quot;,1.5,11.5,&quot;Work&quot;],
+        [&quot;food&quot;,1,13,&quot;Lunch&quot;],
+        [&quot;creative&quot;,4.5,14,&quot;Writing&quot;],
+        [&quot;exercise&quot;,0.5,18.5,&quot;Walk&quot;],
+        [&quot;food&quot;,2,19,&quot;Time with family&quot;],
+        [&quot;creative&quot;,2.5,21,&quot;Reading&quot;],
+        [&quot;sleep&quot;,0.5,23.5,&quot;Trying to sleep&quot;]
+      ],
+      '24': [
+        [&quot;creative&quot;,2.5,0,&quot;Painting&quot;],
+        [&quot;sleep&quot;,8.5,2.5,&quot;Sleep&quot;],
+        [&quot;food&quot;,4,11,&quot;Breakfast, seeing friends&quot;],
+        [&quot;creative&quot;,7.5,15,&quot;Painting&quot;],
+        [&quot;food&quot;,1,22.5,&quot;Dinner&quot;],
+        [&quot;creative&quot;,0.5,23.5,&quot;Painting&quot;]
+      ],
+      '20': [
+        [&quot;sleep&quot;,8,0,&quot;Sleep&quot;],
+        [&quot;food&quot;,1.5,8,&quot;Breakfast of 3 eggs, tea, and jam; bath&quot;],
+        [&quot;exercise&quot;,0.5,9.5,&quot;Walk&quot;],
+        [&quot;creative&quot;,3,10,&quot;Composing&quot;],
+        [&quot;food&quot;,1,13,&quot;Lunch with friends&quot;],
+        [&quot;food&quot;,1,14,&quot;Reading or playing games&quot;],
+        [&quot;creative&quot;,1,15,&quot;Composing&quot;],
+        [&quot;food&quot;,1,16,&quot;Dinner and tea&quot;],
+        [&quot;exercise&quot;,1,17,&quot;Walk&quot;],
+        [&quot;admin&quot;,1,18,&quot;Writing letters&quot;],
+        [&quot;food&quot;,2.5,19,&quot;Dinner and socialising&quot;],
+        [&quot;food&quot;,0.5,21.5,&quot;Reading for pleasure&quot;],
+        [&quot;sleep&quot;,2,22,&quot;Sleep&quot;]
+      ],
+      '25': [
+        [&quot;food&quot;,1,0,&quot;Up at night&quot;],
+        [&quot;food&quot;,2,1,&quot;Listening to music, drinking, smoking&quot;],
+        [&quot;sleep&quot;,9,3,&quot;Sleep&quot;],
+        [&quot;food&quot;,1.5,12,&quot;Reading and thinking in bed&quot;],
+        [&quot;food&quot;,1,13.5,&quot;Lunch&quot;],
+        [&quot;admin&quot;,1.5,14.5,&quot;Errands, mail&quot;],
+        [&quot;creative&quot;,4,16,&quot;Writing&quot;],
+        [&quot;food&quot;,4,20,&quot;Dinner with family, then listening to music, drinking, smoking&quot;]
+      ],
+      '21': [
+        [&quot;sleep&quot;,8,0,&quot;Sleep&quot;],
+        [&quot;food&quot;,1,8,&quot;Tea, smoking, reading bible and philosophy&quot;],
+        [&quot;exercise&quot;,0.5,9,&quot;Walk&quot;],
+        [&quot;admin&quot;,0.5,9.5,&quot;Mail&quot;],
+        [&quot;creative&quot;,2,10,&quot;Composing&quot;],
+        [&quot;food&quot;,1,12,&quot;Lunch&quot;],
+        [&quot;exercise&quot;,2,13,&quot;Long walk&quot;],
+        [&quot;food&quot;,2,15,&quot;Tea, reading newspapers&quot;],
+        [&quot;creative&quot;,2,17,&quot;Composing&quot;],
+        [&quot;other&quot;,1,19,&quot;Gap time&quot;],
+        [&quot;food&quot;,4,20,&quot;Dinner, having guests, socialising&quot;]
+      ],
+      '3': [
+        [&quot;sleep&quot;,4,0,&quot;Sleep&quot;],
+        [&quot;creative&quot;,8,4,&quot;Working in bed, dictating his thoughts to a secretary&quot;],
+        [&quot;other&quot;,0.5,12,&quot;Getting dressed&quot;],
+        [&quot;creative&quot;,1.5,12.5,&quot;Working&quot;],
+        [&quot;admin&quot;,2,14,&quot;Surveying the estate with secretary&quot;],
+        [&quot;creative&quot;,4,16,&quot;Working&quot;],
+        [&quot;food&quot;,1.5,20,&quot;Dinner with family&quot;],
+        [&quot;creative&quot;,2.5,21.5,&quot;Working&quot;]
+      ],
+      '6': [
+        [&quot;sleep&quot;,5.5,0,&quot;Sleep&quot;],
+        [&quot;creative&quot;,2.5,5.5,&quot;Writing&quot;],
+        [&quot;food&quot;,0.5,8,&quot;Breakfast&quot;],
+        [&quot;creative&quot;,1.5,8.5,&quot;Writing&quot;],
+        [&quot;exercise&quot;,1.5,10,&quot;Walk, swim&quot;],
+        [&quot;food&quot;,1,11.5,&quot;Lunch&quot;],
+        [&quot;admin&quot;,5,12.5,&quot;Teaching at school&quot;],
+        [&quot;food&quot;,4.5,17.5,&quot;Drinking scotch, making supper, listenting to jazz&quot;],
+        [&quot;sleep&quot;,2,22,&quot;Sleep&quot;]
+    ]
+  };
+  var about = [
+  [&quot;Honoré de Balzac&quot;,&quot;Writer&quot;,&quot;Hailed as a founder of realism, he shook the 19th century literary scene with his unflinching take on Parisian society.&quot;],
+  [&quot;John Milton&quot;,&quot;Poet&quot;,&quot;Milton’s poem ‘Paradise Lost’ is an epic in the true sense of the word – originally published as ten books and over ten thousand lines of verse. Writing in the 17th century, during a time of religious upheaval, he passionately defended the right to free speech.&quot;],
+  [&quot;Haruki Murakami&quot;,&quot;Writer&quot;,&quot;A contemporary Japanese author, Murakami penned works including ‘Norwegian Wood’ and ‘Kafka on the Shore’. His magic realist style has earned him the Franz Kafka Prize, and other awards.&quot;],
+  [&quot;Voltaire&quot;,&quot;Writer&quot;,&quot;A French Enlightenment writer, outspoken critic of the Catholic Church and defender of free speech, Voltaire applied his witty approach to all sorts of literary forms including novels, poems and essays. &quot;],
+  [&quot;Benjamin Franklin&quot;,&quot;Politician&quot;,&quot;One of the founding fathers of the United States, Franklin earned the title of the ‘first American’. Through his writing and campaigning for colonial unity, he was a defining voice in the shaping of American society.&quot;],
+  [&quot;Immanuel Kant&quot;,&quot;Philosopher&quot;,&quot;A German philosopher who continues to have a profound influence on contemporary thought. Among his achievements, he established a firm basis for factual knowledge, paving the way for the scientific method.&quot;],
+  [&quot;Kurt Vonnegut&quot;,&quot;Writer&quot;,&quot;Described as a counterculture’s novelist, Vonnegut wrote in a satirical style that embodied the more cynical views of American society. His works like ‘Cat’s Cradle’ are praised for their blending of science fiction with gallows humor.&quot;],
+  [&quot;Maya Angelou&quot;,&quot;Writer&quot;,&quot;Poet and author, Angelou represented a strong voice of the Civil Rights movement. Her novel ‘I Know Why the Caged Bird Sings’ brought her international acclaim for its frank exploration of race and identity. &quot;],
+  [&quot;Wystan Hugh Auden&quot;,&quot;Poet&quot;,&quot;Auden was an English-born poet who wrote about religion, politics and love. His 400-odd poems ranged enormously in style, from ballads and haikus to obscure modern forms.&quot;],
+  [&quot;Ludwig Van Beethoven &quot;,&quot;Composer&quot;,&quot;A revolutionary in the music world, Beethoven broke with convention to compose highly original works, continuing to write even after losing his hearing.&quot;],
+  [&quot;Mary Flannery O'Connor&quot;,&quot;Writer&quot;,&quot;Known as one of America’s most important fiction writers, O’Connor developed a Southern Gothic style. Her works include ‘The Violent Bear it Away’ which explores themes of violence and spiritual awakening.&quot;],
+  [&quot;Le Corbusier&quot;,&quot;Architect&quot;,&quot;A Swiss-French architect who enraged the establishment with his bold modern designs. Famous works include Unité d'Habitation in Marseilles, and Notre Dame du Haut in Ronchamp.&quot;],
+  [&quot;Victor Hugo&quot;,&quot;Writer&quot;,&quot;This French writer brought the world ‘Les Misérables’ and ‘The Hunchback of Notre-Dame’, among other novels. He was one of the few Romanticists to have achieved popularity during his lifetime. &quot;],
+  [&quot;Wolfgang Amadeus Mozart&quot;,&quot;Composer&quot;,&quot;A composer from the age of 5, Mozart worked prolifically throughout his life.  He created such masterpieces as ‘Symphony No. 40’ and the opera ‘Don Giovanni’. &quot;],
+  [&quot;Charles Darwin&quot;,&quot;Scientist&quot;,&quot;In ‘The Origin of the Species’, Darwin established his theory of evolution, along with his place in history as a revolutionary thinker.&quot;],
+  [&quot;Charles Dickens&quot;,&quot;Writer&quot;,&quot;Arguably the most famous novelist of the Victorian period, Dickens is known for his vivid characters, as found in novels like ‘Great Expectations’ and ‘The Christmas Carol’. &quot;],
+  [&quot;Sigmund Freud&quot;,&quot;Psychoanalyst&quot;,&quot;Freud both shocked and intrigued European society with his theories of the human psyche and sexual urges. Writings like ‘The Interpretation of Dreams’ are still key texts in academic courses around the world. &quot;],
+  [&quot;Vladimir Nabokov &quot;,&quot;Writer&quot;,&quot;A Russian American novelist who wrote the daring ‘Lolita’. The book is among the most controversial yet enduring works of 20th century literature. &quot;],
+  [&quot;Kingsley Amis&quot;,&quot;Writer&quot;,&quot;This London-born writer was best known for his comedic novels. ‘Lucky Jim’ was his first and most famous. &quot;],
+  [&quot;Thomas Mann&quot;,&quot;Writer&quot;,&quot;Mann’s bold use of symbolism and irony made him one of Germany’s most significant 20th century writers. He drew on influences from Nietzsche to Goethe to express the psychology of the artist and the intellectual. &quot;],
+  [&quot;Richard Strauss&quot;,&quot;Composer&quot;,&quot;A leading composer of the German Romantic movement, Strauss is most famed for his operas, including the modern, dissonant work ‘Salome’, which produced a highly passionate reaction from the audience who cheered for 38 curtain calls. &quot;],
+  [&quot;Pyotr Ilyich Tchaikovsky&quot;,&quot;Composer&quot;,&quot;Russia’s most famous composer, Tchaikovsky created works throughout his life, including ‘The Nutcracker’ and ‘The Sleeping Beauty’. Piano lessons began when he was just 5 years old and prompted a life-long fascination with music.&quot;],
+  [&quot;Franz Kafka&quot;,&quot;Writer&quot;,&quot;The author of ‘Metamorphosis’, Prague-born Kafka helped shape the course of modern literature, exploring existential themes of alienation and fear.&quot;],
+  [&quot;Gustave Flaubert&quot;,&quot;Writer&quot;,&quot;Author of the controversial ‘Madame Bovary’, Flaubert was charged with immorality by the government. Luckily, he was acquitted and continued to write his candid portraits of life in French society.&quot;],
+  [&quot;Pablo Picasso&quot;,&quot;Painter&quot;,&quot;Potentially the most important painter of the 20th century, Picasso’s long career spanned many styles of artwork, including the angular lines of Cubism, for which he is most well-known.&quot;],
+  [&quot;William Styron&quot;,&quot;Writer&quot;,&quot;Author of ‘Sophie’s Choice’, Styron was an American novelist considered to be one of the true original writers of his generation. His work often caused controversy for exploring challenging moral themes and morbid subject matter. &quot;]
+];
+
+let data  = about.map((d, i) =&gt; {
+    var artist = {
+        name: d[0],
+        type: d[1],
+        description: d[2],
+        activities: activities[i].map((d) =&gt; {
+            return {
+                type: d[0],
+                duration: d[1],
+                start: d[2],
+                description: d[3]
+            };
+        })
+    };
+    return artist;
+});
+
+require(&quot;fs&quot;).writeFileSync(&quot;data.json&quot;, JSON.stringify(data, null, 2), &quot;utf-8&quot;);
+</code></pre>
+    <h2>index.html</h2>
+    <pre><code class="highlight html">&lt;!DOCTYPE html&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;style type=&quot;text/css&quot;&gt;
+    body { margin: 0; padding: 0; font-size: 12px; }
+    .chart {
+        margin: 0;
+        padding: 0;
+        width: 960px;
+        height: 470px;
+    }
+    p {
+        margin: 0; padding: 0 10px;
+        line-height: 30px;
+        height: 30px;
+    }
+    .switch-mode {
+        display: inline-block;
+        margin: 0; padding: 0; border: none;
+        padding: 2px 5px;
+        cursro: pointer;
+        background: none;
+        border: 1px solid black;
+        color: black;
+    }
+    .switch-mode.active {
+        background: #CCC;
+    }
+&lt;/style&gt;
+&lt;div class=&quot;chart&quot;&gt;
+    &lt;canvas id=&quot;main-canvas&quot;&gt;&lt;/canvas&gt;
+&lt;/div&gt;
+&lt;p&gt;
+    &lt;button class=&quot;switch-mode active&quot; id=&quot;switch-mode1&quot;&gt;Circular&lt;/button&gt;
+    &lt;button class=&quot;switch-mode&quot; id=&quot;switch-mode2&quot;&gt;Linear&lt;/button&gt;
+&lt;/p&gt;
+&lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script type=&quot;text/javascript&quot;&gt;
+    var canvas = document.getElementById(&quot;main-canvas&quot;);
+    var width = 960;
+    var height = 470;
+    var platform = Stardust.platform(&quot;webgl-2d&quot;, canvas, width, height);
+
+    var barSpec = Stardust.shape.compile(`
+        import Triangle from P2D;
+
+        shape Wedge(
+            p1: Vector2,
+            theta1: float,
+            theta2: float,
+            length: float,
+            width: float,
+            color: Color = [ 0, 0, 0, 1 ]
+        ) {
+            let dTheta = (theta2 - theta1) / 60;
+            let dL = length / 60;
+            for(i in 0..59) {
+                let dThetaA = i * dTheta;
+                let dThetaB = (i + 1) * dTheta;
+                let thetaA = theta1 + dThetaA;
+                let thetaB = theta1 + dThetaB;
+                let thetaCenterA = theta1 + dThetaA / 2;
+                let thetaCenterB = theta1 + dThetaB / 2;
+                let dlA = dL * i;
+                let dlB = dL * (i + 1);
+                if(dTheta &gt; 1e-5) {
+                    dlA = dlA / dThetaA * 2 * sin(dThetaA / 2);
+                }
+                if(dTheta &gt; 1e-5) {
+                    dlB = dlB / dThetaB * 2 * sin(dThetaB / 2);
+                }
+                let pAdvA = Vector2(-sin(thetaCenterA), cos(thetaCenterA)) * dlA;
+                let pAdvB = Vector2(-sin(thetaCenterB), cos(thetaCenterB)) * dlB;
+                let pA = p1 + pAdvA;
+                let pB = p1 + pAdvB;
+
+                let dpA = Vector2(cos(thetaA), sin(thetaA)) * width * 0.5;
+                let dpB = Vector2(cos(thetaB), sin(thetaB)) * width * 0.5;
+
+                Triangle(pA + dpA, pB + dpB, pB - dpB, color);
+                Triangle(pA + dpA, pB - dpB, pA - dpA, color);
+            }
+        }
+        function mix(a: float, b: float, t: float) {
+            return a + (b - a) * t;
+        }
+        function mix(a: Vector2, b: Vector2, t: float) {
+            return a + (b - a) * t;
+        }
+        shape Bar(
+            center: Vector2,
+            vcenter: Vector2,
+            radius: float,
+            t1: float,
+            t2: float,
+            t: float,
+            width: float,
+            width2: float,
+            color: Color = [ 0, 0, 0, 1 ]
+        ) {
+            let thetaA = t1 / 12.0 * PI;
+            let thetaB = t2 / 12.0 * PI;
+            let cP1 = center + Vector2(cos(thetaA), sin(thetaA)) * radius;
+            let k = 1.5;
+            if(t1 + t2 &lt; 24) k = -0.5;
+            Wedge(
+                mix(cP1, vcenter + Vector2(t1 * 38, 0), t),
+                mix(thetaA, PI * k, t),
+                mix(thetaB, PI * k, t),
+                mix(radius * (thetaB - thetaA), (t2 - t1) * 38, t),
+                mix(width2, width, t),
+                color
+            );
+        }
+    `)[&quot;Bar&quot;];
+
+    var bar = Stardust.shape.create(barSpec, platform);
+
+    var colorScale = d3.scale.category10();
+    var convertD3Color = (c) =&gt; {
+        let m = d3.rgb(c);
+        return [ m.r / 255, m.g / 255, m.b / 255, 1.0 ];
+    };
+
+    d3.json(&quot;data.json&quot;, (err, data) =&gt; {
+        bar.attr(&quot;center&quot;, [ 480, 250 ] );
+        bar.attr(&quot;vcenter&quot;, [ 480, 250 ]);
+        bar.attr(&quot;radius&quot;, 40);
+        bar.attr(&quot;t&quot;, 0);
+        bar.attr(&quot;t1&quot;, d =&gt; d.start);
+        bar.attr(&quot;t2&quot;, d =&gt; d.start + d.duration);
+        bar.attr(&quot;color&quot;, d =&gt; convertD3Color(colorScale(d.type)));
+
+        // let d0 = data.slice();
+        // // Have more stuff on the screen, let's repeat the data 4 times.
+        // for(let i = 0; i &lt; 3; i++) {
+        //     data = data.concat(d0);
+        // }
+
+        let yScale = d3.scale.linear().domain([ 0, data.length - 1 ]).range([ 15, height - 15 ]);
+        let h = (yScale(1) - yScale(0)) * 0.8;
+        bar.attr(&quot;width&quot;, h);
+
+
+        let sz = Math.sqrt((width - 15) * (height - 15) / data.length / 5);
+        let grouping = Math.floor(width / sz / 2);
+
+        bar.attr(&quot;width2&quot;, sz * 0.3);
+
+        bar.instance((d, i) =&gt; {
+             return {
+                 data: d.activities,
+                 attrs: {
+                     center: [ i % grouping * sz * 2 + sz + 4, Math.floor(i / grouping) * sz * 2 + sz + 10 ],
+                     radius: sz - sz * 0.3 / 2 - 2,
+                     vcenter: [ 20, yScale(i) ]
+                 }
+             };
+        });
+
+        bar.data(data);
+
+        function render() {
+            platform.clear();
+            bar.render();
+        }
+
+        render();
+
+        function beginTransition(func) {
+            let t0 = new Date().getTime();
+            let req = null;
+            let rerender = () =&gt; {
+                req = null;
+                let t1 = new Date().getTime();
+                let t = (t1 - t0) / 1000;
+                let shouldStop = false;
+                if(t &gt; 1) {
+                    t = 1;
+                    shouldStop = true;
+                }
+                func(t);
+                render();
+                if(!shouldStop) {
+                    req = requestAnimationFrame(rerender);
+                }
+            }
+            req = requestAnimationFrame(rerender);
+            return {
+                stop: () =&gt; {
+                    if(req != null) cancelAnimationFrame(rerender);
+                }
+            }
+        }
+
+        let previousMode = &quot;mode1&quot;;
+        d3.select(&quot;#switch-mode1&quot;).on(&quot;click&quot;, () =&gt; {
+            d3.selectAll(&quot;.switch-mode&quot;).classed(&quot;active&quot;, false);
+            d3.select(&quot;#switch-mode1&quot;).classed(&quot;active&quot;, true);
+            let pm = previousMode;
+            previousMode = &quot;mode1&quot;;
+            beginTransition((t) =&gt; {
+                if(pm == &quot;mode2&quot;) {
+                    bar.attr(&quot;t&quot;, 1 - t);
+                    render();
+                }
+            });
+        });
+        d3.select(&quot;#switch-mode2&quot;).on(&quot;click&quot;, () =&gt; {
+            d3.selectAll(&quot;.switch-mode&quot;).classed(&quot;active&quot;, false);
+            d3.select(&quot;#switch-mode2&quot;).classed(&quot;active&quot;, true);
+            let pm = previousMode;
+            previousMode = &quot;mode2&quot;;
+            beginTransition((t) =&gt; {
+                if(pm == &quot;mode1&quot;) {
+                    bar.attr(&quot;t&quot;, t);
+                    render();
+                }
+            });
+        });
+    });
+&lt;/script&gt;</code></pre>

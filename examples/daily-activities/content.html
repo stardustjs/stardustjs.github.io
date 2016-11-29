@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style type="text/css">
+    body { margin: 0; padding: 0; font-size: 12px; }
+    .chart {
+        margin: 0;
+        padding: 0;
+        width: 960px;
+        height: 470px;
+    }
+    p {
+        margin: 0; padding: 0 10px;
+        line-height: 30px;
+        height: 30px;
+    }
+    .switch-mode {
+        display: inline-block;
+        margin: 0; padding: 0; border: none;
+        padding: 2px 5px;
+        cursro: pointer;
+        background: none;
+        border: 1px solid black;
+        color: black;
+    }
+    .switch-mode.active {
+        background: #CCC;
+    }
+</style>
+<div class="chart">
+    <canvas id="main-canvas"></canvas>
+</div>
+<p>
+    <button class="switch-mode active" id="switch-mode1">Circular</button>
+    <button class="switch-mode" id="switch-mode2">Linear</button>
+</p>
+<script src="//d3js.org/d3.v3.min.js" type="text/javascript"></script>
+<script src="//stardust-vis.github.io/stardust/stardust.bundle.min.js" type="text/javascript"></script>
+<script type="text/javascript">
+    var canvas = document.getElementById("main-canvas");
+    var width = 960;
+    var height = 470;
+    var platform = Stardust.platform("webgl-2d", canvas, width, height);
+
+    var barSpec = Stardust.shape.compile(`
+        import Triangle from P2D;
+
+        shape Wedge(
+            p1: Vector2,
+            theta1: float,
+            theta2: float,
+            length: float,
+            width: float,
+            color: Color = [ 0, 0, 0, 1 ]
+        ) {
+            let dTheta = (theta2 - theta1) / 60;
+            let dL = length / 60;
+            for(i in 0..59) {
+                let dThetaA = i * dTheta;
+                let dThetaB = (i + 1) * dTheta;
+                let thetaA = theta1 + dThetaA;
+                let thetaB = theta1 + dThetaB;
+                let thetaCenterA = theta1 + dThetaA / 2;
+                let thetaCenterB = theta1 + dThetaB / 2;
+                let dlA = dL * i;
+                let dlB = dL * (i + 1);
+                if(dTheta > 1e-5) {
+                    dlA = dlA / dThetaA * 2 * sin(dThetaA / 2);
+                }
+                if(dTheta > 1e-5) {
+                    dlB = dlB / dThetaB * 2 * sin(dThetaB / 2);
+                }
+                let pAdvA = Vector2(-sin(thetaCenterA), cos(thetaCenterA)) * dlA;
+                let pAdvB = Vector2(-sin(thetaCenterB), cos(thetaCenterB)) * dlB;
+                let pA = p1 + pAdvA;
+                let pB = p1 + pAdvB;
+
+                let dpA = Vector2(cos(thetaA), sin(thetaA)) * width * 0.5;
+                let dpB = Vector2(cos(thetaB), sin(thetaB)) * width * 0.5;
+
+                Triangle(pA + dpA, pB + dpB, pB - dpB, color);
+                Triangle(pA + dpA, pB - dpB, pA - dpA, color);
+            }
+        }
+        function mix(a: float, b: float, t: float) {
+            return a + (b - a) * t;
+        }
+        function mix(a: Vector2, b: Vector2, t: float) {
+            return a + (b - a) * t;
+        }
+        shape Bar(
+            center: Vector2,
+            vcenter: Vector2,
+            radius: float,
+            t1: float,
+            t2: float,
+            t: float,
+            width: float,
+            width2: float,
+            color: Color = [ 0, 0, 0, 1 ]
+        ) {
+            let thetaA = t1 / 12.0 * PI;
+            let thetaB = t2 / 12.0 * PI;
+            let cP1 = center + Vector2(cos(thetaA), sin(thetaA)) * radius;
+            let k = 1.5;
+            if(t1 + t2 < 24) k = -0.5;
+            Wedge(
+                mix(cP1, vcenter + Vector2(t1 * 38, 0), t),
+                mix(thetaA, PI * k, t),
+                mix(thetaB, PI * k, t),
+                mix(radius * (thetaB - thetaA), (t2 - t1) * 38, t),
+                mix(width2, width, t),
+                color
+            );
+        }
+    `)["Bar"];
+
+    var bar = Stardust.shape.create(barSpec, platform);
+
+    var colorScale = d3.scale.category10();
+    var convertD3Color = (c) => {
+        let m = d3.rgb(c);
+        return [ m.r / 255, m.g / 255, m.b / 255, 1.0 ];
+    };
+
+    d3.json("data.json", (err, data) => {
+        bar.attr("center", [ 480, 250 ] );
+        bar.attr("vcenter", [ 480, 250 ]);
+        bar.attr("radius", 40);
+        bar.attr("t", 0);
+        bar.attr("t1", d => d.start);
+        bar.attr("t2", d => d.start + d.duration);
+        bar.attr("color", d => convertD3Color(colorScale(d.type)));
+
+        // let d0 = data.slice();
+        // // Have more stuff on the screen, let's repeat the data 4 times.
+        // for(let i = 0; i < 3; i++) {
+        //     data = data.concat(d0);
+        // }
+
+        let yScale = d3.scale.linear().domain([ 0, data.length - 1 ]).range([ 15, height - 15 ]);
+        let h = (yScale(1) - yScale(0)) * 0.8;
+        bar.attr("width", h);
+
+
+        let sz = Math.sqrt((width - 15) * (height - 15) / data.length / 5);
+        let grouping = Math.floor(width / sz / 2);
+
+        bar.attr("width2", sz * 0.3);
+
+        bar.instance((d, i) => {
+             return {
+                 data: d.activities,
+                 attrs: {
+                     center: [ i % grouping * sz * 2 + sz + 4, Math.floor(i / grouping) * sz * 2 + sz + 10 ],
+                     radius: sz - sz * 0.3 / 2 - 2,
+                     vcenter: [ 20, yScale(i) ]
+                 }
+             };
+        });
+
+        bar.data(data);
+
+        function render() {
+            platform.clear();
+            bar.render();
+        }
+
+        render();
+
+        function beginTransition(func) {
+            let t0 = new Date().getTime();
+            let req = null;
+            let rerender = () => {
+                req = null;
+                let t1 = new Date().getTime();
+                let t = (t1 - t0) / 1000;
+                let shouldStop = false;
+                if(t > 1) {
+                    t = 1;
+                    shouldStop = true;
+                }
+                func(t);
+                render();
+                if(!shouldStop) {
+                    req = requestAnimationFrame(rerender);
+                }
+            }
+            req = requestAnimationFrame(rerender);
+            return {
+                stop: () => {
+                    if(req != null) cancelAnimationFrame(rerender);
+                }
+            }
+        }
+
+        let previousMode = "mode1";
+        d3.select("#switch-mode1").on("click", () => {
+            d3.selectAll(".switch-mode").classed("active", false);
+            d3.select("#switch-mode1").classed("active", true);
+            let pm = previousMode;
+            previousMode = "mode1";
+            beginTransition((t) => {
+                if(pm == "mode2") {
+                    bar.attr("t", 1 - t);
+                    render();
+                }
+            });
+        });
+        d3.select("#switch-mode2").on("click", () => {
+            d3.selectAll(".switch-mode").classed("active", false);
+            d3.select("#switch-mode2").classed("active", true);
+            let pm = previousMode;
+            previousMode = "mode2";
+            beginTransition((t) => {
+                if(pm == "mode1") {
+                    bar.attr("t", t);
+                    render();
+                }
+            });
+        });
+    });
+</script>
