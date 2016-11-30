@@ -43,10 +43,10 @@ title: "Stardust Example: Scatterplot"
         }
     }
 
-    let circle = new Stardust.shape.circle(16);
+    let circle = new Stardust.mark.circle(16);
 
-    var circles = Stardust.shape.create(circle, platform);
-    var circles2 = Stardust.shape.create(circle, platform);
+    var circles = Stardust.mark.create(circle, platform);
+    var circles2 = Stardust.mark.create(circle, platform);
 
     var scaleX = Stardust.scale.linear()
         .domain([ -1, 1 ])

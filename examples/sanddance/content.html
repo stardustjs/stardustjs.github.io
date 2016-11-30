@@ -55,7 +55,7 @@
     platform.clear([ 1, 1, 1, 1 ]);
     d3.tsv("demovoteclean.tsv", (err, data) => {
         let demovote = data;
-        let shape = Stardust.shape.compile(`
+        let mark = Stardust.mark.compile(`
             import Cube from P3D;
 
             let longitude: float;
@@ -103,7 +103,7 @@
                 return t;
             }
 
-            shape Shape(color: Color, t1: float, t2: float, t3: float, ki1: float, ki2: float, ki3: float) {
+            mark Mark(color: Color, t1: float, t2: float, t3: float, ki1: float, ki2: float, ki3: float) {
                 let p1 = getPositionScatterplot();
                 let p2 = getPositionStateBins();
                 let p3 = getPositionXYBinning();
@@ -116,8 +116,8 @@
                     color
                 );
             }
-        `)["Shape"];
-        let shapes = Stardust.shape.create(shape, platform);
+        `)["Mark"];
+        let marks = Stardust.mark.create(mark, platform);
 
         demovote.forEach(d => {
             d.Longitude = +d.Longitude;
@@ -179,7 +179,7 @@
             }
         }
 
-        shapes
+        marks
             .attr("index", d => d.index / (demovote.length - 1))
             .attr("longitude", d => d.Longitude)
             .attr("latitude", d => d.Latitude)
@@ -192,22 +192,22 @@
 
         function transition12(t) {
             let tt = t * 1.3 - 0.3;
-            shapes.attr("t1", 1 - tt).attr("t2", tt).attr("t3", 0).attr("ki1", -0.3).attr("ki2", +0.3).attr("ki3", 0);
+            marks.attr("t1", 1 - tt).attr("t2", tt).attr("t3", 0).attr("ki1", -0.3).attr("ki2", +0.3).attr("ki3", 0);
         }
         function transition23(t) {
             let tt = t * 1.3 - 0.3;
-            shapes.attr("t1", 0).attr("t2", 1 - tt).attr("t3", tt).attr("ki1", 0).attr("ki2", -0.3).attr("ki3", +0.3);
+            marks.attr("t1", 0).attr("t2", 1 - tt).attr("t3", tt).attr("ki1", 0).attr("ki2", -0.3).attr("ki3", +0.3);
         }
         function transition31(t) {
             let tt = t * 1.3 - 0.3;
-            shapes.attr("t1", tt).attr("t2", 0).attr("t3", 1 - tt).attr("ki1", +0.3).attr("ki2", 0).attr("ki3", -0.3);
+            marks.attr("t1", tt).attr("t2", 0).attr("t3", 1 - tt).attr("ki1", +0.3).attr("ki2", 0).attr("ki3", -0.3);
         }
 
-        shapes.data(demovote);
+        marks.data(demovote);
 
         function render() {
             platform.clear([ 1, 1, 1, 1 ]);
-            shapes.render();
+            marks.render();
         }
 
         function beginTransition(func) {

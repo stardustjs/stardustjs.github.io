@@ -1,7 +1,7 @@
 class SquaresVisualization {
 
-    makeSquaresShape(side, mode) {
-        let squares = Stardust.shape.custom()
+    makeSquaresMark(side, mode) {
+        let squares = Stardust.mark.custom()
             .input("size", "float")
             .input("spacing", "float")
             .input("x0", "float")
@@ -81,12 +81,12 @@ class SquaresVisualization {
     }
 
     constructor(container) {
-        let squares = this.makeSquaresShape("right", "solid");
-        let squaresOutlined = this.makeSquaresShape("left", "outlined");
-        let squaresSelection = this.makeSquaresShape("right", "selection");
-        let squaresOutlinedSelection = this.makeSquaresShape("left", "selection");
+        let squares = this.makeSquaresMark("right", "solid");
+        let squaresOutlined = this.makeSquaresMark("left", "outlined");
+        let squaresSelection = this.makeSquaresMark("right", "selection");
+        let squaresOutlinedSelection = this.makeSquaresMark("left", "selection");
 
-        let parallelCoordinates = Stardust.shape.custom()
+        let parallelCoordinates = Stardust.mark.custom()
             .input("color", "Color")
             .input("x0", "float")
             .input("xSpacing", "float");
@@ -126,50 +126,50 @@ class SquaresVisualization {
         let colors = [[31,119,180],[255,127,14],[44,160,44],[214,39,40],[148,103,189],[140,86,75],[227,119,194],[127,127,127],[188,189,34],[23,190,207]];
         colors = colors.map((x) => [ x[0] / 255, x[1] / 255, x[2] / 255, 1 ]);
 
-        let shape = Stardust.shape.create(squares, platform);
-        shape
+        let mark = Stardust.mark.create(squares, platform);
+        mark
             .attr("color", d => colors[d.label])
             .attr("assigned", d => d.assigned)
             .attr("binIndex", d => d.binIndex)
             .attr("bin", d => d.scoreBin);
 
-        let shape2 = Stardust.shape.create(squaresOutlined, platform);
-        shape2
+        let mark2 = Stardust.mark.create(squaresOutlined, platform);
+        mark2
             .attr("color", d => colors[d.assigned])
             .attr("label", d => d.label)
             .attr("binIndex", d => d.binIndex2)
             .attr("bin", d => d.scoreBin);
 
-        let shapeOverlay = Stardust.shape.create(squaresSelection, platform);
-        shapeOverlay
+        let markOverlay = Stardust.mark.create(squaresSelection, platform);
+        markOverlay
             .attr("color", [ 0, 0, 0, 1 ])
             .attr("assigned", d => d.assigned)
             .attr("binIndex", d => d.binIndex)
             .attr("bin", d => d.scoreBin);
 
-        let shapeOverlayOutlined = Stardust.shape.create(squaresOutlinedSelection, platform);
-        shapeOverlayOutlined
+        let markOverlayOutlined = Stardust.mark.create(squaresOutlinedSelection, platform);
+        markOverlayOutlined
             .attr("color", [ 0, 0, 0, 1 ])
             .attr("label", d => d.label)
             .attr("binIndex", d => d.binIndex2)
             .attr("bin", d => d.scoreBin);
 
-        let shapePC = Stardust.shape.create(parallelCoordinates, platform);
+        let markPC = Stardust.mark.create(parallelCoordinates, platform);
         let yScale = Stardust.scale.linear()
             .domain([ 0, 1 ]).range([ 500, 100 ]);
-        shapePC.attr("color", d => colors[d.label]);
+        markPC.attr("color", d => colors[d.label]);
         for(let i = 0; i < 10; i++) {
             ((i) => {
-                shapePC.attr(`y${i}`, yScale(d => d.scores[i]));
+                markPC.attr(`y${i}`, yScale(d => d.scores[i]));
             })(i);
         }
 
-        this._shapes = {
-            squares: shape,
-            squaresOutlined: shape2,
-            squaresOverlay: shapeOverlay,
-            squaresOverlayOutlined: shapeOverlayOutlined,
-            parallelCoordinates: shapePC,
+        this._marks = {
+            squares: mark,
+            squaresOutlined: mark2,
+            squaresOverlay: markOverlay,
+            squaresOverlayOutlined: markOverlayOutlined,
+            parallelCoordinates: markPC,
             yScale: yScale
         }
 
@@ -215,9 +215,9 @@ class SquaresVisualization {
     }
 
     setSelection(instances) {
-        this._shapes.squaresOverlay.data(instances);
-        this._shapes.squaresOverlayOutlined.data(instances.filter(d => d.label != d.assigned));
-        this._shapes.parallelCoordinates.data(instances);
+        this._marks.squaresOverlay.data(instances);
+        this._marks.squaresOverlayOutlined.data(instances.filter(d => d.label != d.assigned));
+        this._marks.parallelCoordinates.data(instances);
         this.renderSelection();
     }
 
@@ -291,8 +291,8 @@ class SquaresVisualization {
 
         this._instances = instances;
 
-        this._shapes.squares.data(this._instances);
-        this._shapes.squaresOutlined.data(this._instances.filter(d => d.label != d.assigned));
+        this._marks.squares.data(this._instances);
+        this._marks.squaresOutlined.data(this._instances.filter(d => d.label != d.assigned));
 
         this.layout();
         this.render();
@@ -300,13 +300,13 @@ class SquaresVisualization {
 
     layoutConfigSquares() {
         let binSpacing = this._layout.squareSpacing * this._layout.squaresPerBin + this._layout.squareSpacing;
-        this._shapes.yScale.range([ this._layout.y0 + binSpacing * this._layout.numberBins, this._layout.y0 ]);
+        this._marks.yScale.range([ this._layout.y0 + binSpacing * this._layout.numberBins, this._layout.y0 ]);
 
         [
-            this._shapes.squares,
-            this._shapes.squaresOutlined,
-            this._shapes.squaresOverlay,
-            this._shapes.squaresOverlayOutlined
+            this._marks.squares,
+            this._marks.squaresOutlined,
+            this._marks.squaresOverlay,
+            this._marks.squaresOverlayOutlined
         ].forEach(s => s
             .attr("size", this._layout.squareSize)
             .attr("spacing", this._layout.squareSpacing)
@@ -316,14 +316,14 @@ class SquaresVisualization {
             .attr("binSpacing", binSpacing)
             .attr("binSquares", this._layout.squaresPerBin)
         );
-        this._shapes.parallelCoordinates
+        this._marks.parallelCoordinates
             .attr("x0", this._layout.x0)
             .attr("xSpacing", this._layout.xSpacing);
     }
     layout() {
         this.layoutConfigSquares();
 
-        var d3yscale = d3.scale.linear().domain(this._shapes.yScale.domain()).range(this._shapes.yScale.range());
+        var d3yscale = d3.scale.linear().domain(this._marks.yScale.domain()).range(this._marks.yScale.range());
         var axis = d3.svg.axis().scale(d3yscale).orient("left");
         this._svgAxis.attr("transform", "translate(30, 0)");
         this._svgAxis.call(axis);
@@ -335,21 +335,21 @@ class SquaresVisualization {
     }
     render() {
         this._platform.beginPicking(this._canvasNode.width, this._canvasNode.height);
-        this._shapes.squares.render();
-        this._shapes.squaresOutlined.render();
+        this._marks.squares.render();
+        this._marks.squaresOutlined.render();
         this._platform.endPicking();
 
         this._platform.clear();
-        this._shapes.squares.render();
-        this._shapes.squaresOutlined.render();
+        this._marks.squares.render();
+        this._marks.squaresOutlined.render();
     }
     renderSelection() {
         this._platform.clear();
-        this._shapes.squares.render();
-        this._shapes.squaresOutlined.render();
-        this._shapes.squaresOverlay.render();
-        this._shapes.squaresOverlayOutlined.render();
-        this._shapes.parallelCoordinates.render();
+        this._marks.squares.render();
+        this._marks.squaresOutlined.render();
+        this._marks.squaresOverlay.render();
+        this._marks.squaresOverlayOutlined.render();
+        this._marks.parallelCoordinates.render();
     }
 
     setLayoutParameter(layout) {

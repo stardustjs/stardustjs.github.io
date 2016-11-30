@@ -32,7 +32,7 @@ title: "Stardust Example: Glyph-based Visualization"
     var marginBottom = 20;
     var platform = Stardust.platform(&quot;webgl-2d&quot;, canvas, width, height);
 
-    var glyphSpec = Stardust.shape.custom()
+    var glyphSpec = Stardust.mark.custom()
         .input(&quot;x&quot;, &quot;float&quot;)
         .input(&quot;y&quot;, &quot;float&quot;)
         .input(&quot;v1&quot;, &quot;float&quot;)
@@ -54,7 +54,7 @@ title: "Stardust Example: Glyph-based Visualization"
     glyphSpec.add(&quot;P2D.Triangle&quot;)
         .attr(&quot;p1&quot;, &quot;c&quot;).attr(&quot;p2&quot;, &quot;p4&quot;).attr(&quot;p3&quot;, &quot;p1&quot;).attr(&quot;color&quot;, &quot;color&quot;);
 
-    var glyphs = Stardust.shape.create(glyphSpec, platform);
+    var glyphs = Stardust.mark.create(glyphSpec, platform);
 
     var glyphSize = 20;
 

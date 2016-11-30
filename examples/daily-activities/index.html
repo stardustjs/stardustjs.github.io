@@ -49,10 +49,10 @@ title: "Stardust Example: Daily Activities of Creative People"
     var height = 470;
     var platform = Stardust.platform(&quot;webgl-2d&quot;, canvas, width, height);
 
-    var barSpec = Stardust.shape.compile(`
+    var barSpec = Stardust.mark.compile(`
         import Triangle from P2D;
 
-        shape Wedge(
+        mark Wedge(
             p1: Vector2,
             theta1: float,
             theta2: float,
@@ -95,7 +95,7 @@ title: "Stardust Example: Daily Activities of Creative People"
         function mix(a: Vector2, b: Vector2, t: float) {
             return a + (b - a) * t;
         }
-        shape Bar(
+        mark Bar(
             center: Vector2,
             vcenter: Vector2,
             radius: float,
@@ -122,7 +122,7 @@ title: "Stardust Example: Daily Activities of Creative People"
         }
     `)[&quot;Bar&quot;];
 
-    var bar = Stardust.shape.create(barSpec, platform);
+    var bar = Stardust.mark.create(barSpec, platform);
 
     var colorScale = d3.scale.category10();
     var convertD3Color = (c) =&gt; {

@@ -64,7 +64,7 @@ title: "Stardust Example: SandDance"
     platform.clear([ 1, 1, 1, 1 ]);
     d3.tsv(&quot;demovoteclean.tsv&quot;, (err, data) =&gt; {
         let demovote = data;
-        let shape = Stardust.shape.compile(`
+        let mark = Stardust.mark.compile(`
             import Cube from P3D;
 
             let longitude: float;
@@ -112,7 +112,7 @@ title: "Stardust Example: SandDance"
                 return t;
             }
 
-            shape Shape(color: Color, t1: float, t2: float, t3: float, ki1: float, ki2: float, ki3: float) {
+            mark Mark(color: Color, t1: float, t2: float, t3: float, ki1: float, ki2: float, ki3: float) {
                 let p1 = getPositionScatterplot();
                 let p2 = getPositionStateBins();
                 let p3 = getPositionXYBinning();
@@ -125,8 +125,8 @@ title: "Stardust Example: SandDance"
                     color
                 );
             }
-        `)[&quot;Shape&quot;];
-        let shapes = Stardust.shape.create(shape, platform);
+        `)[&quot;Mark&quot;];
+        let marks = Stardust.mark.create(mark, platform);
 
         demovote.forEach(d =&gt; {
             d.Longitude = +d.Longitude;
@@ -188,7 +188,7 @@ title: "Stardust Example: SandDance"
             }
         }
 
-        shapes
+        marks
             .attr(&quot;index&quot;, d =&gt; d.index / (demovote.length - 1))
             .attr(&quot;longitude&quot;, d =&gt; d.Longitude)
             .attr(&quot;latitude&quot;, d =&gt; d.Latitude)
@@ -201,22 +201,22 @@ title: "Stardust Example: SandDance"
 
         function transition12(t) {
             let tt = t * 1.3 - 0.3;
-            shapes.attr(&quot;t1&quot;, 1 - tt).attr(&quot;t2&quot;, tt).attr(&quot;t3&quot;, 0).attr(&quot;ki1&quot;, -0.3).attr(&quot;ki2&quot;, +0.3).attr(&quot;ki3&quot;, 0);
+            marks.attr(&quot;t1&quot;, 1 - tt).attr(&quot;t2&quot;, tt).attr(&quot;t3&quot;, 0).attr(&quot;ki1&quot;, -0.3).attr(&quot;ki2&quot;, +0.3).attr(&quot;ki3&quot;, 0);
         }
         function transition23(t) {
             let tt = t * 1.3 - 0.3;
-            shapes.attr(&quot;t1&quot;, 0).attr(&quot;t2&quot;, 1 - tt).attr(&quot;t3&quot;, tt).attr(&quot;ki1&quot;, 0).attr(&quot;ki2&quot;, -0.3).attr(&quot;ki3&quot;, +0.3);
+            marks.attr(&quot;t1&quot;, 0).attr(&quot;t2&quot;, 1 - tt).attr(&quot;t3&quot;, tt).attr(&quot;ki1&quot;, 0).attr(&quot;ki2&quot;, -0.3).attr(&quot;ki3&quot;, +0.3);
         }
         function transition31(t) {
             let tt = t * 1.3 - 0.3;
-            shapes.attr(&quot;t1&quot;, tt).attr(&quot;t2&quot;, 0).attr(&quot;t3&quot;, 1 - tt).attr(&quot;ki1&quot;, +0.3).attr(&quot;ki2&quot;, 0).attr(&quot;ki3&quot;, -0.3);
+            marks.attr(&quot;t1&quot;, tt).attr(&quot;t2&quot;, 0).attr(&quot;t3&quot;, 1 - tt).attr(&quot;ki1&quot;, +0.3).attr(&quot;ki2&quot;, 0).attr(&quot;ki3&quot;, -0.3);
         }
 
-        shapes.data(demovote);
+        marks.data(demovote);
 
         function render() {
             platform.clear([ 1, 1, 1, 1 ]);
-            shapes.render();
+            marks.render();
         }
 
         function beginTransition(func) {

@@ -88,9 +88,9 @@
                     [ 0xa6, 0xd8, 0x54 ]
                 ];
                 colors = colorsOriginal.map((x) => [ x[0] / 255, x[1] / 255, x[2] / 255, 1 ]);
-                let polyline = Stardust.shape.polyline();
+                let polyline = Stardust.mark.polyline();
 
-                let polylines = Stardust.shape.create(polyline, platform);
+                let polylines = Stardust.mark.create(polyline, platform);
 
                 let ranges = names.map((d) => {
                     return [ d3.min(data, (x) => +x[d]), d3.max(data, (x) => +x[d]) ];

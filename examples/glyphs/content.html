@@ -24,7 +24,7 @@
     var marginBottom = 20;
     var platform = Stardust.platform("webgl-2d", canvas, width, height);
 
-    var glyphSpec = Stardust.shape.custom()
+    var glyphSpec = Stardust.mark.custom()
         .input("x", "float")
         .input("y", "float")
         .input("v1", "float")
@@ -46,7 +46,7 @@
     glyphSpec.add("P2D.Triangle")
         .attr("p1", "c").attr("p2", "p4").attr("p3", "p1").attr("color", "color");
 
-    var glyphs = Stardust.shape.create(glyphSpec, platform);
+    var glyphs = Stardust.mark.create(glyphSpec, platform);
 
     var glyphSize = 20;
 
