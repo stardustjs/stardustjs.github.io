@@ -88,6 +88,7 @@
             return a + (b - a) * t;
         }
         mark Bar(
+            index: float,
             center: Vector2,
             vcenter: Vector2,
             radius: float,
@@ -98,17 +99,20 @@
             width2: float,
             color: Color = [ 0, 0, 0, 1 ]
         ) {
-            let thetaA = t1 / 12.0 * PI;
-            let thetaB = t2 / 12.0 * PI;
+            let thetaA = (t1 - 6) / 12.0 * PI;
+            let thetaB = (t2 - 6) / 12.0 * PI;
             let cP1 = center + Vector2(cos(thetaA), sin(thetaA)) * radius;
             let k = 1.5;
-            if(t1 + t2 < 24) k = -0.5;
+            if(t1 + t2 < 12) k = -0.5;
+            let ti = t * 1.95 - 0.95 + index * 0.95;
+            if(ti < 0) ti = 0;
+            if(ti > 1) ti = 1;
             Wedge(
-                mix(cP1, vcenter + Vector2(t1 * 38, 0), t),
-                mix(thetaA, PI * k, t),
-                mix(thetaB, PI * k, t),
-                mix(radius * (thetaB - thetaA), (t2 - t1) * 38, t),
-                mix(width2, width, t),
+                mix(cP1, vcenter + Vector2(t1 * 38, 0), ti),
+                mix(thetaA, PI * k, ti),
+                mix(thetaB, PI * k, ti),
+                mix(radius * (thetaB - thetaA), (t2 - t1) * 38, ti),
+                mix(width2, width, ti),
                 color
             );
         }
@@ -130,6 +134,7 @@
         bar.attr("t1", d => d.start);
         bar.attr("t2", d => d.start + d.duration);
         bar.attr("color", d => convertD3Color(colorScale(d.type)));
+        bar.attr("index", 0);
 
         // let d0 = data.slice();
         // // Have more stuff on the screen, let's repeat the data 4 times.
@@ -151,6 +156,7 @@
              return {
                  data: d.activities,
                  attrs: {
+                     index: i / (data.length - 1),
                      center: [ i % grouping * sz * 2 + sz + 4, Math.floor(i / grouping) * sz * 2 + sz + 10 ],
                      radius: sz - sz * 0.3 / 2 - 2,
                      vcenter: [ 20, yScale(i) ]
