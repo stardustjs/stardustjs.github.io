@@ -16,3 +16,6 @@ Stardust Examples
     <li><a href="{{base}}/examples/daily-activities"><img src="{{base}}/examples/daily-activities/preview_small.png" /><div class="overlay"><span>Daily Activities</span></div></a></li>
     <li><a href="{{base}}/examples/scatterplot"><img src="{{base}}/examples/scatterplot/preview_small.png" /><div class="overlay"><span>Scatterplot</span></div></a></li>
 </ul>
+
+
+Note: Examples are written in ES6 with WebGL. They work best in the latest version of Google Chrome browser.
