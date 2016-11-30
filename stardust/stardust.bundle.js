@@ -8,10 +8,10 @@ var stardust_webgl_1 = require("stardust-webgl");
 exports.WebGLPlatform = stardust_webgl_1.WebGLPlatform;
 exports.WebGLCanvasPlatform2D = stardust_webgl_1.WebGLCanvasPlatform2D;
 var stardust_isotype_1 = require("stardust-isotype");
-var shape;
-(function (shape) {
-    shape.isotype = stardust_isotype_1.isotype;
-})(shape = exports.shape || (exports.shape = {}));
+var mark;
+(function (mark) {
+    mark.isotype = stardust_isotype_1.isotype;
+})(mark = exports.mark || (exports.mark = {}));
 require("stardust-webgl");
 
 },{"stardust-core":24,"stardust-isotype":25,"stardust-webgl":27}],2:[function(require,module,exports){
