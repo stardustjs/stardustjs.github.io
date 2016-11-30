@@ -18,4 +18,4 @@ Stardust Examples
 </ul>
 
 
-Note: Examples are written in ES6 with WebGL. They work best in the latest version of Google Chrome browser.
+Note: Examples are written in ES6 with WebGL. They work best in the latest version of [Google Chrome](https://www.google.com/chrome/) browser.
