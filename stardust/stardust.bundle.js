@@ -18,8 +18,8 @@ require("stardust-webgl");
 // binding.js:
 // Take care of data binding.
 "use strict";
-var types_1 = require("./types");
-var math_1 = require("./math");
+var spec_1 = require("../spec/spec");
+var math_1 = require("../math/math");
 // Resolve binding primitives to Value (Value = number or number[]).
 function getBindingValue(value) {
     if (value instanceof math_1.MathType) {
@@ -41,7 +41,7 @@ exports.ShiftBinding = ShiftBinding;
 // The main binding class.
 var Binding = (function () {
     function Binding(typeName, value) {
-        this._type = types_1.types[typeName];
+        this._type = spec_1.types[typeName];
         this._value = value;
     }
     Object.defineProperty(Binding.prototype, "typeName", {
@@ -161,12 +161,12 @@ var Binding = (function () {
 }());
 exports.Binding = Binding;
 
-},{"./math":13,"./types":22}],3:[function(require,module,exports){
+},{"../math/math":15,"../spec/spec":20}],3:[function(require,module,exports){
 "use strict";
 var exceptions_1 = require("../exceptions");
 var parser_1 = require("./parser");
-var utils_1 = require("../utils");
-var Intrinsics = require("../intrinsics");
+var utils_1 = require("../utils/utils");
+var Intrinsics = require("../intrinsics/intrinsics");
 var Library = require("../library/library");
 var ScopeVariables = (function () {
     function ScopeVariables(owner, parentScope, argMap) {
@@ -467,7 +467,7 @@ var Compiler = (function () {
         Intrinsics.forEachIntrinsicFunction(function (info) {
             _this.addIntrinsicFunction(info.name, {
                 type: "function",
-                isShape: false,
+                isMark: false,
                 name: info.internalName,
                 returnType: info.returnType,
                 arguments: info.argTypes.map(function (x, idx) { return { name: "a" + idx, type: x }; }),
@@ -503,18 +503,18 @@ var Compiler = (function () {
             _loop_1(block);
         }
     };
-    Compiler.prototype.compileFunctionToShape = function (globals, block) {
+    Compiler.prototype.compileFunctionToMark = function (globals, block) {
         // Re-init state.
         this._scope.resetScope();
         this._lastIndex = 1;
-        var shapeInput = {};
-        var shapeOutput = {};
-        var shapeVariables = {};
+        var markInput = {};
+        var markOutput = {};
+        var markVariables = {};
         // Setup input parameters.
         for (var _i = 0, globals_1 = globals; _i < globals_1.length; _i++) {
             var global = globals_1[_i];
             this._scope.addVariable(global.name, global.valueType, "global");
-            shapeInput[global.name] = {
+            markInput[global.name] = {
                 type: global.valueType,
                 default: global.default
             };
@@ -522,7 +522,7 @@ var Compiler = (function () {
         for (var _a = 0, _b = block.arguments; _a < _b.length; _a++) {
             var arg = _b[_a];
             this._scope.addVariable(arg.name, arg.type, "local");
-            shapeInput[arg.name] = {
+            markInput[arg.name] = {
                 type: arg.type,
                 default: arg.default
             };
@@ -534,8 +534,8 @@ var Compiler = (function () {
         });
         // Figure out variables.
         this._scope.forEach(function (name, type) {
-            if (!shapeInput[name]) {
-                shapeVariables[name] = type;
+            if (!markInput[name]) {
+                markVariables[name] = type;
             }
         });
         // Figure out outputs.
@@ -544,13 +544,13 @@ var Compiler = (function () {
                 if (x.type == "emit") {
                     var sEmit = x;
                     for (var attr in sEmit.attributes) {
-                        if (shapeOutput.hasOwnProperty(attr)) {
-                            if (shapeOutput[attr].type != sEmit.attributes[attr].valueType) {
+                        if (markOutput.hasOwnProperty(attr)) {
+                            if (markOutput[attr].type != sEmit.attributes[attr].valueType) {
                                 throw new exceptions_1.CompileError("output variable '" + attr + " has conflicting types.");
                             }
                         }
                         else {
-                            shapeOutput[attr] = { type: sEmit.attributes[attr].valueType };
+                            markOutput[attr] = { type: sEmit.attributes[attr].valueType };
                         }
                     }
                 }
@@ -567,9 +567,9 @@ var Compiler = (function () {
         };
         processStatementsForOutputs(this._statements);
         return {
-            input: shapeInput,
-            output: shapeOutput,
-            variables: shapeVariables,
+            input: markInput,
+            output: markOutput,
+            variables: markVariables,
             statements: this._statements
         };
     };
@@ -886,11 +886,11 @@ function compileTree(file) {
         var block = _a[_i];
         if (block.type == "function") {
             var blockFunction = block;
-            if (blockFunction.isShape) {
+            if (blockFunction.isMark) {
                 var scope = new Compiler();
                 scope.loadFile(file);
-                var shape = scope.compileFunctionToShape(globals, blockFunction);
-                spec[blockFunction.name] = shape;
+                var mark = scope.compileFunctionToMark(globals, blockFunction);
+                spec[blockFunction.name] = mark;
             }
         }
     }
@@ -903,67 +903,67 @@ function compileExpression(expr, variables) {
 }
 exports.compileExpression = compileExpression;
 function compileString(content) {
-    var file = parser_1.parseString(content);
+    var file = parser_1.parseFile(content);
     return compileTree(file);
 }
 exports.compileString = compileString;
 
-},{"../exceptions":8,"../intrinsics":9,"../library/library":10,"../utils":23,"./parser":5}],4:[function(require,module,exports){
-// Declare shape code with Javascript calls.
+},{"../exceptions":8,"../intrinsics/intrinsics":9,"../library/library":10,"../utils/utils":23,"./parser":5}],4:[function(require,module,exports){
+// Declare mark code with Javascript calls.
 "use strict";
-var utils_1 = require("../utils");
+var utils_1 = require("../utils/utils");
 var compiler_1 = require("./compiler");
-var CustomShapeItem = (function () {
-    function CustomShapeItem(name) {
+var CustomMarkItem = (function () {
+    function CustomMarkItem(name) {
         this._name = name;
         this._attrs = new utils_1.Dictionary();
     }
-    CustomShapeItem.prototype.attr = function (name, expression) {
+    CustomMarkItem.prototype.attr = function (name, expression) {
         this._attrs.set(name, expression);
         return this;
     };
-    CustomShapeItem.prototype.generateCode = function () {
+    CustomMarkItem.prototype.generateCode = function () {
         var attrDefs = [];
         this._attrs.forEach(function (value, key) {
             attrDefs.push(key + " = " + value);
         });
         return this._name + "(" + attrDefs.join(", ") + ")";
     };
-    return CustomShapeItem;
+    return CustomMarkItem;
 }());
-exports.CustomShapeItem = CustomShapeItem;
-var CustomShape = (function () {
-    function CustomShape() {
+exports.CustomMarkItem = CustomMarkItem;
+var CustomMark = (function () {
+    function CustomMark() {
         this._imports = [];
         this._inputs = [];
         this._variables = [];
         this._items = [];
     }
-    CustomShape.prototype.input = function (name, type, initial) {
+    CustomMark.prototype.input = function (name, type, initial) {
         this._inputs.push([name, type, initial]);
         return this;
     };
-    CustomShape.prototype.variable = function (name, expression) {
+    CustomMark.prototype.variable = function (name, expression) {
         this._variables.push([name, expression]);
         return this;
     };
-    CustomShape.prototype.add = function (name) {
-        var _a = name.split("."), libraryName = _a[0], shapeName = _a[1];
+    CustomMark.prototype.add = function (name) {
+        var _a = name.split("."), libraryName = _a[0], markName = _a[1];
         var alreadyImported = false;
         for (var _i = 0, _b = this._imports; _i < _b.length; _i++) {
-            var _c = _b[_i], lib = _c[0], shape = _c[1];
-            if (lib == libraryName && shape == shapeName) {
+            var _c = _b[_i], lib = _c[0], mark = _c[1];
+            if (lib == libraryName && mark == markName) {
                 alreadyImported = true;
             }
         }
         if (!alreadyImported) {
-            this._imports.push([libraryName, shapeName]);
+            this._imports.push([libraryName, markName]);
         }
-        var item = new CustomShapeItem(shapeName);
+        var item = new CustomMarkItem(markName);
         this._items.push(item);
         return item;
     };
-    CustomShape.prototype.generateCode = function (shapeName) {
+    CustomMark.prototype.generateCode = function (markName) {
         var lines = [];
         for (var _i = 0, _a = this._imports; _i < _a.length; _i++) {
             var _b = _a[_i], library = _b[0], name_1 = _b[1];
@@ -980,7 +980,7 @@ var CustomShape = (function () {
                 inputDefs.push(name_2 + ": " + type + " = " + initial);
             }
         }
-        lines.push("shape " + shapeName + "(");
+        lines.push("mark " + markName + "(");
         lines.push("    " + inputDefs.join(", "));
         lines.push(") {");
         // Variables
@@ -995,26 +995,16 @@ var CustomShape = (function () {
         lines.push("}");
         return lines.join("\n");
     };
-    CustomShape.prototype.compile = function () {
-        var code = this.generateCode("Shape");
+    CustomMark.prototype.compile = function () {
+        var code = this.generateCode("Mark");
         var specs = compiler_1.compileString(code);
-        return specs["Shape"];
+        return specs["Mark"];
     };
-    CustomShape.test = function () {
-        var g = new CustomShape();
-        g.input("x", "float").input("y", "float")
-            .add("P2D.Circle")
-            .attr("center", "Vector2(x, y)")
-            .attr("radius", "1")
-            .attr("color", "Color(0, 1, 0, 1)");
-        console.log(g.generateCode("Shape"));
-        console.log(g.compile());
-    };
-    return CustomShape;
+    return CustomMark;
 }());
-exports.CustomShape = CustomShape;
+exports.CustomMark = CustomMark;
 
-},{"../utils":23,"./compiler":3}],5:[function(require,module,exports){
+},{"../utils/utils":23,"./compiler":3}],5:[function(require,module,exports){
 "use strict";
 var exceptions_1 = require("../exceptions");
 var parser_pegjs = require("./parser_pegjs");
@@ -1023,11 +1013,11 @@ function stripComments(content) {
     content = content.replace(/\/\/[^\n]*$/g, "");
     return content;
 }
-function parseString(content) {
+function parseFile(content) {
     content = stripComments(content);
     var result = null;
     try {
-        result = parser_pegjs.parse(content, { startRule: "Start" });
+        result = parser_pegjs.parse(content, { startRule: "File" });
     }
     catch (e) {
         if (e.location) {
@@ -1039,7 +1029,7 @@ function parseString(content) {
     }
     return result;
 }
-exports.parseString = parseString;
+exports.parseFile = parseFile;
 function parseExpression(content) {
     var result = null;
     try {
@@ -1093,14 +1083,14 @@ module.exports = (function() {
 
         peg$FAILED = {},
 
-        peg$startRuleFunctions = { Start: peg$parseStart, Expression: peg$parseExpression },
-        peg$startRuleFunction  = peg$parseStart,
+        peg$startRuleFunctions = { File: peg$parseFile, Expression: peg$parseExpression },
+        peg$startRuleFunction  = peg$parseFile,
 
         peg$c0 = function(blocks) { return { blocks: blocks.map(function(d) { return d[0]; }) }; },
         peg$c1 = "function",
         peg$c2 = { type: "literal", value: "function", description: "\"function\"" },
-        peg$c3 = "shape",
-        peg$c4 = { type: "literal", value: "shape", description: "\"shape\"" },
+        peg$c3 = "mark",
+        peg$c4 = { type: "literal", value: "mark", description: "\"mark\"" },
         peg$c5 = "(",
         peg$c6 = { type: "literal", value: "(", description: "\"(\"" },
         peg$c7 = ")",
@@ -1114,7 +1104,7 @@ module.exports = (function() {
         peg$c15 = function(type, name, args, ret, statements) {
               return {
                 type: "function",
-                isShape: flatten(type) == "shape",
+                isMark: flatten(type) == "mark",
                 name: name,
                 returnType: ret ? ret[3] : "void",
                 arguments: args,
@@ -1443,7 +1433,7 @@ module.exports = (function() {
       );
     }
 
-    function peg$parseStart() {
+    function peg$parseFile() {
       var s0, s1, s2, s3, s4, s5;
 
       s0 = peg$currPos;
@@ -1525,9 +1515,9 @@ module.exports = (function() {
         if (peg$silentFails === 0) { peg$fail(peg$c2); }
       }
       if (s1 === peg$FAILED) {
-        if (input.substr(peg$currPos, 5) === peg$c3) {
+        if (input.substr(peg$currPos, 4) === peg$c3) {
           s1 = peg$c3;
-          peg$currPos += 5;
+          peg$currPos += 4;
         } else {
           s1 = peg$FAILED;
           if (peg$silentFails === 0) { peg$fail(peg$c4); }
@@ -5189,8 +5179,8 @@ module.exports = (function() {
 },{}],7:[function(require,module,exports){
 "use strict";
 var exceptions_1 = require("../exceptions");
-var utils_1 = require("../utils");
-var Intrinsics = require("../intrinsics");
+var utils_1 = require("../utils/utils");
+var Intrinsics = require("../intrinsics/intrinsics");
 var Context = (function () {
     function Context() {
         this._variables = new utils_1.Dictionary();
@@ -5281,17 +5271,17 @@ var Context = (function () {
         }
         return result;
     };
-    Context.prototype.evaluateShape = function (shape, inputs) {
+    Context.prototype.evaluateMark = function (mark, inputs) {
         for (var name_2 in inputs) {
             this.set(name_2, inputs[name_2]);
         }
-        return this.evaluateStatements(shape.statements);
+        return this.evaluateStatements(mark.statements);
     };
     return Context;
 }());
 exports.Context = Context;
 
-},{"../exceptions":8,"../intrinsics":9,"../utils":23}],8:[function(require,module,exports){
+},{"../exceptions":8,"../intrinsics/intrinsics":9,"../utils/utils":23}],8:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -5350,8 +5340,8 @@ exports.RuntimeError = RuntimeError;
 
 },{}],9:[function(require,module,exports){
 "use strict";
-var utils_1 = require("./utils");
-var math_1 = require("./math");
+var utils_1 = require("../utils/utils");
+var math_1 = require("../math/math");
 // Global intrinsic functions.
 var intrinsicFunctions = new utils_1.Dictionary();
 var intrinsicFunctionList = [];
@@ -5555,10 +5545,10 @@ addConstant("SQRT2", "float", Math.SQRT2);
 addConstant("SQRT1_2", "float", Math.SQRT1_2);
 addConstant("RED", "Color", [1, 0, 0, 1]);
 
-},{"./math":13,"./utils":23}],10:[function(require,module,exports){
+},{"../math/math":15,"../utils/utils":23}],10:[function(require,module,exports){
 "use strict";
 var parser_1 = require("../compiler/parser");
-var utils_1 = require("../utils");
+var utils_1 = require("../utils/utils");
 var modules = new utils_1.Dictionary();
 function importPrimitiveCode(name, code) {
     var thisModule = null;
@@ -5569,7 +5559,7 @@ function importPrimitiveCode(name, code) {
         thisModule = new utils_1.Dictionary();
         modules.set(name, thisModule);
     }
-    var tree = parser_1.parseString(code);
+    var tree = parser_1.parseFile(code);
     for (var _i = 0, _a = tree.blocks; _i < _a.length; _i++) {
         var f = _a[_i];
         if (f.type == "function") {
@@ -5591,15 +5581,325 @@ function forEachModuleFunction(name, callback) {
 }
 exports.forEachModuleFunction = forEachModuleFunction;
 
-},{"../compiler/parser":5,"../utils":23,"./primitives2d":11,"./primitives3d":12}],11:[function(require,module,exports){
+},{"../compiler/parser":5,"../utils/utils":23,"./primitives2d":11,"./primitives3d":12}],11:[function(require,module,exports){
 "use strict";
-exports.primitives = "\n    shape Triangle(\n        p1: Vector2,\n        p2: Vector2,\n        p3: Vector2,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: p1, color: color },\n            { position: p2, color: color },\n            { position: p3, color: color }\n        ];\n    }\n\n    shape Rectangle(\n        p1: Vector2,\n        p2: Vector2,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p2.x, p1.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p1.x, p2.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n    }\n\n    shape OutlinedRectangle(\n        p1: Vector2,\n        p2: Vector2,\n        width: float = 1,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        Rectangle(p1, Vector2(p1.x + width, p2.y - width), color);\n        Rectangle(Vector2(p1.x, p2.y - width), Vector2(p2.x - width, p2.y), color);\n        Rectangle(Vector2(p1.x + width, p1.y), Vector2(p2.x, p1.y + width), color);\n        Rectangle(Vector2(p2.x - width, p1.y + width), p2, color);\n    }\n\n    shape Hexagon(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..5) {\n            let a1 = i / 6.0 * PI * 2.0;\n            let a2 = (i + 1) / 6.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle16(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..15) {\n            let a1 = i / 16.0 * PI * 2.0;\n            let a2 = (i + 1) / 16.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Circle(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..31) {\n            let a1 = i / 32.0 * PI * 2.0;\n            let a2 = (i + 1) / 32.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    shape Line(\n        p1: Vector2,\n        p2: Vector2,\n        width: float = 1,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let d = normalize(p2 - p1);\n        let t = Vector2(d.y, -d.x) * (width / 2);\n        emit [\n            { position: p1 + t, color: color },\n            { position: p1 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n        emit [\n            { position: p1 - t, color: color },\n            { position: p2 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n    }\n\n    shape Sector2(\n        c: Vector2,\n        p1: Vector2,\n        p2: Vector2,\n        color: Color\n    ) {\n        let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n        Triangle(c, p1, pc, color);\n        Triangle(c, pc, p2, color);\n    }\n\n    shape Sector4(\n        c: Vector2,\n        p1: Vector2,\n        p2: Vector2,\n        color: Color\n    ) {\n        let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n        Sector2(c, p1, pc, color);\n        Sector2(c, pc, p2, color);\n    }\n\n    shape Polyline(\n        p: Vector2, p_p: Vector2, p_n: Vector2, p_nn: Vector2,\n        width: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let EPS = 1e-5;\n        let w = width / 2;\n        let d = normalize(p - p_n);\n        let n = Vector2(d.y, -d.x);\n        let m1: Vector2;\n        if(length(p - p_p) < EPS) {\n            m1 = n * w;\n        } else {\n            m1 = normalize(d + normalize(p - p_p)) * w;\n        }\n        let m2: Vector2;\n        if(length(p_n - p_nn) < EPS) {\n            m2 = -n * w;\n        } else {\n            m2 = normalize(normalize(p_n - p_nn) - d) * w;\n        }\n        let c1a: Vector2;\n        let c1b: Vector2;\n        let a1: Vector2;\n        let a2: Vector2;\n        if(dot(m1, n) > 0) {\n            c1a = p + m1;\n            c1b = p + n * w;\n            a2 = c1b;\n            a1 = p - m1 * (w / dot(m1, n));\n        } else {\n            c1a = p + m1;\n            c1b = p - n * w;\n            a2 = p + m1 * (w / dot(m1, n));\n            a1 = c1b;\n        }\n        let c2a: Vector2;\n        let c2b: Vector2;\n        let b1: Vector2;\n        let b2: Vector2;\n        if(dot(m2, n) < 0) {\n            c2a = p_n + m2;\n            c2b = p_n - n * w;\n            b1 = c2b;\n            b2 = p_n + m2 * (w / dot(m2, n));\n        } else {\n            c2a = p_n + m2;\n            c2b = p_n + n * w;\n            b2 = c2b;\n            b1 = p_n - m2 * (w / dot(m2, n));\n        }\n        emit [\n            { position: p, color: color },\n            { position: c1a, color: color },\n            { position: c1b, color: color }\n        ];\n        emit [\n            { position: p_n, color: color },\n            { position: c2a, color: color },\n            { position: c2b, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: a1, color: color },\n            { position: b1, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: b1, color: color },\n            { position: p_n, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: a2, color: color },\n            { position: b2, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: b2, color: color },\n            { position: p_n, color: color }\n        ];\n    }\n";
+exports.primitives = "\n    mark Triangle(\n        p1: Vector2,\n        p2: Vector2,\n        p3: Vector2,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: p1, color: color },\n            { position: p2, color: color },\n            { position: p3, color: color }\n        ];\n    }\n\n    mark Rectangle(\n        p1: Vector2,\n        p2: Vector2,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p2.x, p1.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p1.x, p2.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n    }\n\n    mark OutlinedRectangle(\n        p1: Vector2,\n        p2: Vector2,\n        width: float = 1,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        Rectangle(p1, Vector2(p1.x + width, p2.y - width), color);\n        Rectangle(Vector2(p1.x, p2.y - width), Vector2(p2.x - width, p2.y), color);\n        Rectangle(Vector2(p1.x + width, p1.y), Vector2(p2.x, p1.y + width), color);\n        Rectangle(Vector2(p2.x - width, p1.y + width), p2, color);\n    }\n\n    mark Hexagon(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..5) {\n            let a1 = i / 6.0 * PI * 2.0;\n            let a2 = (i + 1) / 6.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    mark Circle16(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..15) {\n            let a1 = i / 16.0 * PI * 2.0;\n            let a2 = (i + 1) / 16.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    mark Circle(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..31) {\n            let a1 = i / 32.0 * PI * 2.0;\n            let a2 = (i + 1) / 32.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    mark Line(\n        p1: Vector2,\n        p2: Vector2,\n        width: float = 1,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let d = normalize(p2 - p1);\n        let t = Vector2(d.y, -d.x) * (width / 2);\n        emit [\n            { position: p1 + t, color: color },\n            { position: p1 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n        emit [\n            { position: p1 - t, color: color },\n            { position: p2 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n    }\n\n    mark Sector2(\n        c: Vector2,\n        p1: Vector2,\n        p2: Vector2,\n        color: Color\n    ) {\n        let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n        Triangle(c, p1, pc, color);\n        Triangle(c, pc, p2, color);\n    }\n\n    mark Sector4(\n        c: Vector2,\n        p1: Vector2,\n        p2: Vector2,\n        color: Color\n    ) {\n        let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n        Sector2(c, p1, pc, color);\n        Sector2(c, pc, p2, color);\n    }\n\n    mark Polyline(\n        p: Vector2, p_p: Vector2, p_n: Vector2, p_nn: Vector2,\n        width: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let EPS = 1e-5;\n        let w = width / 2;\n        let d = normalize(p - p_n);\n        let n = Vector2(d.y, -d.x);\n        let m1: Vector2;\n        if(length(p - p_p) < EPS) {\n            m1 = n * w;\n        } else {\n            m1 = normalize(d + normalize(p - p_p)) * w;\n        }\n        let m2: Vector2;\n        if(length(p_n - p_nn) < EPS) {\n            m2 = -n * w;\n        } else {\n            m2 = normalize(normalize(p_n - p_nn) - d) * w;\n        }\n        let c1a: Vector2;\n        let c1b: Vector2;\n        let a1: Vector2;\n        let a2: Vector2;\n        if(dot(m1, n) > 0) {\n            c1a = p + m1;\n            c1b = p + n * w;\n            a2 = c1b;\n            a1 = p - m1 * (w / dot(m1, n));\n        } else {\n            c1a = p + m1;\n            c1b = p - n * w;\n            a2 = p + m1 * (w / dot(m1, n));\n            a1 = c1b;\n        }\n        let c2a: Vector2;\n        let c2b: Vector2;\n        let b1: Vector2;\n        let b2: Vector2;\n        if(dot(m2, n) < 0) {\n            c2a = p_n + m2;\n            c2b = p_n - n * w;\n            b1 = c2b;\n            b2 = p_n + m2 * (w / dot(m2, n));\n        } else {\n            c2a = p_n + m2;\n            c2b = p_n + n * w;\n            b2 = c2b;\n            b1 = p_n - m2 * (w / dot(m2, n));\n        }\n        emit [\n            { position: p, color: color },\n            { position: c1a, color: color },\n            { position: c1b, color: color }\n        ];\n        emit [\n            { position: p_n, color: color },\n            { position: c2a, color: color },\n            { position: c2b, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: a1, color: color },\n            { position: b1, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: b1, color: color },\n            { position: p_n, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: a2, color: color },\n            { position: b2, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: b2, color: color },\n            { position: p_n, color: color }\n        ];\n    }\n";
 
 },{}],12:[function(require,module,exports){
 "use strict";
-exports.primitives = "\n    shape Triangle(\n        p1: Vector3,\n        p2: Vector3,\n        p3: Vector3,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let normal = normalize(cross(p2 - p1, p3 - p1));\n        emit [\n            { position: p1, color: color, normal: normal },\n            { position: p2, color: color, normal: normal },\n            { position: p3, color: color, normal: normal }\n        ];\n    }\n\n    shape Tetrahedron(\n        p1: Vector3,\n        p2: Vector3,\n        p3: Vector3,\n        p4: Vector3\n    ) {\n        Triangle(p3, p4, p1);\n        Triangle(p1, p4, p2);\n        Triangle(p1, p2, p3);\n        Triangle(p2, p3, p4);\n    }\n\n    shape Cube(\n        center: Vector3,\n        radius: float,\n        color: Color\n    ) {\n        let p000 = Vector3(center.x - radius, center.y - radius, center.z - radius);\n        let p001 = Vector3(center.x - radius, center.y - radius, center.z + radius);\n        let p010 = Vector3(center.x - radius, center.y + radius, center.z - radius);\n        let p011 = Vector3(center.x - radius, center.y + radius, center.z + radius);\n        let p100 = Vector3(center.x + radius, center.y - radius, center.z - radius);\n        let p101 = Vector3(center.x + radius, center.y - radius, center.z + radius);\n        let p110 = Vector3(center.x + radius, center.y + radius, center.z - radius);\n        let p111 = Vector3(center.x + radius, center.y + radius, center.z + radius);\n        let nx = Vector3(1, 0, 0);\n        let ny = Vector3(0, 1, 0);\n        let nz = Vector3(0, 0, 1);\n        emit [ { position: p000, color: color, normal: nz }, { position: p110, color: color, normal: nz }, { position: p100, color: color, normal: nz } ];\n        emit [ { position: p000, color: color, normal: nz }, { position: p010, color: color, normal: nz }, { position: p110, color: color, normal: nz } ];\n        emit [ { position: p001, color: color, normal: nz }, { position: p101, color: color, normal: nz }, { position: p111, color: color, normal: nz } ];\n        emit [ { position: p001, color: color, normal: nz }, { position: p111, color: color, normal: nz }, { position: p011, color: color, normal: nz } ];\n        emit [ { position: p000, color: color, normal: ny }, { position: p100, color: color, normal: ny }, { position: p101, color: color, normal: ny } ];\n        emit [ { position: p000, color: color, normal: ny }, { position: p101, color: color, normal: ny }, { position: p001, color: color, normal: ny } ];\n        emit [ { position: p010, color: color, normal: ny }, { position: p111, color: color, normal: ny }, { position: p110, color: color, normal: ny } ];\n        emit [ { position: p010, color: color, normal: ny }, { position: p011, color: color, normal: ny }, { position: p111, color: color, normal: ny } ];\n        emit [ { position: p000, color: color, normal: nx }, { position: p001, color: color, normal: nx }, { position: p011, color: color, normal: nx } ];\n        emit [ { position: p000, color: color, normal: nx }, { position: p011, color: color, normal: nx }, { position: p010, color: color, normal: nx } ];\n        emit [ { position: p100, color: color, normal: nx }, { position: p101, color: color, normal: nx }, { position: p111, color: color, normal: nx } ];\n        emit [ { position: p100, color: color, normal: nx }, { position: p111, color: color, normal: nx }, { position: p110, color: color, normal: nx } ];\n    }\n";
+exports.primitives = "\n    mark Triangle(\n        p1: Vector3,\n        p2: Vector3,\n        p3: Vector3,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let normal = normalize(cross(p2 - p1, p3 - p1));\n        emit [\n            { position: p1, color: color, normal: normal },\n            { position: p2, color: color, normal: normal },\n            { position: p3, color: color, normal: normal }\n        ];\n    }\n\n    mark Tetrahedron(\n        p1: Vector3,\n        p2: Vector3,\n        p3: Vector3,\n        p4: Vector3\n    ) {\n        Triangle(p3, p4, p1);\n        Triangle(p1, p4, p2);\n        Triangle(p1, p2, p3);\n        Triangle(p2, p3, p4);\n    }\n\n    mark Cube(\n        center: Vector3,\n        radius: float,\n        color: Color\n    ) {\n        let p000 = Vector3(center.x - radius, center.y - radius, center.z - radius);\n        let p001 = Vector3(center.x - radius, center.y - radius, center.z + radius);\n        let p010 = Vector3(center.x - radius, center.y + radius, center.z - radius);\n        let p011 = Vector3(center.x - radius, center.y + radius, center.z + radius);\n        let p100 = Vector3(center.x + radius, center.y - radius, center.z - radius);\n        let p101 = Vector3(center.x + radius, center.y - radius, center.z + radius);\n        let p110 = Vector3(center.x + radius, center.y + radius, center.z - radius);\n        let p111 = Vector3(center.x + radius, center.y + radius, center.z + radius);\n        let nx = Vector3(1, 0, 0);\n        let ny = Vector3(0, 1, 0);\n        let nz = Vector3(0, 0, 1);\n        emit [ { position: p000, color: color, normal: nz }, { position: p110, color: color, normal: nz }, { position: p100, color: color, normal: nz } ];\n        emit [ { position: p000, color: color, normal: nz }, { position: p010, color: color, normal: nz }, { position: p110, color: color, normal: nz } ];\n        emit [ { position: p001, color: color, normal: nz }, { position: p101, color: color, normal: nz }, { position: p111, color: color, normal: nz } ];\n        emit [ { position: p001, color: color, normal: nz }, { position: p111, color: color, normal: nz }, { position: p011, color: color, normal: nz } ];\n        emit [ { position: p000, color: color, normal: ny }, { position: p100, color: color, normal: ny }, { position: p101, color: color, normal: ny } ];\n        emit [ { position: p000, color: color, normal: ny }, { position: p101, color: color, normal: ny }, { position: p001, color: color, normal: ny } ];\n        emit [ { position: p010, color: color, normal: ny }, { position: p111, color: color, normal: ny }, { position: p110, color: color, normal: ny } ];\n        emit [ { position: p010, color: color, normal: ny }, { position: p011, color: color, normal: ny }, { position: p111, color: color, normal: ny } ];\n        emit [ { position: p000, color: color, normal: nx }, { position: p001, color: color, normal: nx }, { position: p011, color: color, normal: nx } ];\n        emit [ { position: p000, color: color, normal: nx }, { position: p011, color: color, normal: nx }, { position: p010, color: color, normal: nx } ];\n        emit [ { position: p100, color: color, normal: nx }, { position: p101, color: color, normal: nx }, { position: p111, color: color, normal: nx } ];\n        emit [ { position: p100, color: color, normal: nx }, { position: p111, color: color, normal: nx }, { position: p110, color: color, normal: nx } ];\n    }\n";
 
 },{}],13:[function(require,module,exports){
+"use strict";
+var binding_1 = require("../binding/binding");
+var exceptions_1 = require("../exceptions");
+var utils_1 = require("../utils/utils");
+var scale_1 = require("../scale/scale");
+;
+var shiftBindingDescriptions = [
+    { shift: -2, suffix: "_pp" },
+    { shift: -1, suffix: "_p" },
+    { shift: +1, suffix: "_n" },
+    { shift: +2, suffix: "_nn" }
+];
+var Mark = (function () {
+    function Mark(spec, platform) {
+        this._spec = spec;
+        this._data = [];
+        this._platform = platform;
+        this._bindings = new utils_1.Dictionary();
+        this._shiftBindings = new utils_1.Dictionary();
+        this._platformMark = null;
+        this._shouldUploadData = true;
+        this._instanceFunction = null;
+        // Set bindings to default value whenever exists.
+        for (var name_1 in this._spec.input) {
+            if (this._spec.input.hasOwnProperty(name_1)) {
+                var input = this._spec.input[name_1];
+                if (input.default != null) {
+                    this._bindings.set(name_1, new binding_1.Binding(input.type, input.default));
+                }
+            }
+        }
+        // Assign shift bindings based on naming convention.
+        for (var name_2 in this._spec.input) {
+            if (this._spec.input.hasOwnProperty(name_2)) {
+                for (var _i = 0, shiftBindingDescriptions_1 = shiftBindingDescriptions; _i < shiftBindingDescriptions_1.length; _i++) {
+                    var _a = shiftBindingDescriptions_1[_i], shift = _a.shift, suffix = _a.suffix;
+                    if (this._spec.input.hasOwnProperty(name_2 + suffix)) {
+                        this._shiftBindings.set(name_2 + suffix, new binding_1.ShiftBinding(name_2, shift));
+                    }
+                }
+            }
+        }
+    }
+    Object.defineProperty(Mark.prototype, "spec", {
+        get: function () {
+            return this._spec;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Mark.prototype.attr = function (name, value) {
+        if (value === undefined) {
+            if (!this._bindings.has(name)) {
+                throw new exceptions_1.RuntimeError("attr '" + name + " is undefined.");
+            }
+            var binding = this._bindings.get(name);
+            if (binding instanceof binding_1.Binding) {
+                return binding.value;
+            }
+            else {
+                return binding;
+            }
+        }
+        else {
+            if (!this._spec.input.hasOwnProperty(name)) {
+                throw new exceptions_1.RuntimeError("attr '" + name + " is undefined.");
+            }
+            if (value instanceof scale_1.ScaleBinding) {
+                if (this._platformMark) {
+                    if (this._bindings.get(name) != value) {
+                        this._platformMark = null;
+                    }
+                }
+                this._bindings.set(name, value);
+            }
+            else {
+                // Create new binding.
+                var newBinding = new binding_1.Binding(this._spec.input[name].type, value);
+                // Decide if we should recompile the platform code.
+                if (this._platformMark) {
+                    // Recompile if the input was compiled as input,
+                    // and the new binding is not a function.
+                    if (this._platformMark.isUniform(name) && !newBinding.isFunction) {
+                        this._platformMark.updateUniform(name, newBinding.specValue);
+                    }
+                    else {
+                        this._platformMark = null;
+                    }
+                }
+                this._bindings.set(name, newBinding);
+            }
+            return this;
+        }
+    };
+    Mark.prototype.data = function (data) {
+        if (data === undefined) {
+            return this._data;
+        }
+        else {
+            this._data = data.slice();
+            this._shouldUploadData = true;
+            return this;
+        }
+    };
+    Mark.prototype.instance = function (func) {
+        if (func === undefined) {
+            return this._instanceFunction;
+        }
+        else {
+            this._instanceFunction = func;
+        }
+    };
+    // Make alternative spec to include ScaleBinding values.
+    Mark.prototype.prepareSpecification = function () {
+        var newSpec = {
+            input: utils_1.shallowClone(this._spec.input),
+            output: this._spec.output,
+            statements: this._spec.statements.slice(),
+            variables: utils_1.shallowClone(this._spec.variables),
+            repeatBegin: this._spec.repeatBegin,
+            repeatEnd: this._spec.repeatEnd
+        };
+        var newBindings = this._bindings.clone();
+        var shiftBindings = this._shiftBindings.clone();
+        this._bindings.forEach(function (binding, name) {
+            if (binding instanceof scale_1.ScaleBinding) {
+                var attributes = binding.getAttributes();
+                var attrs_1 = {};
+                attributes.forEach(function (attr) {
+                    var bindedName = name + attr.bindedName;
+                    newBindings.set(bindedName, new binding_1.Binding(attr.type, attr.binding));
+                    attrs_1[attr.bindedName] = {
+                        type: "variable",
+                        valueType: attr.type,
+                        variableName: bindedName
+                    };
+                    newSpec.input[bindedName] = {
+                        type: attr.type,
+                        default: null
+                    };
+                });
+                // Move the attribute to variables.
+                newSpec.variables[name] = newSpec.input[name].type;
+                newSpec.statements.splice(0, 0, {
+                    type: "assign",
+                    variableName: name,
+                    expression: binding.getExpression(attrs_1),
+                    valueType: newSpec.input[name].type
+                });
+                var _loop_1 = function(suffix, shift) {
+                    if (newSpec.input.hasOwnProperty(name + suffix)) {
+                        newSpec.variables[name + suffix] = newSpec.input[name].type;
+                        var shiftAttrs_1 = {};
+                        attributes.forEach(function (attr) {
+                            var bindedName = name + attr.bindedName;
+                            if (newBindings.get(bindedName).isFunction) {
+                                var shiftBindedName = bindedName + suffix;
+                                shiftBindings.set(shiftBindedName, new binding_1.ShiftBinding(bindedName, shift));
+                                shiftAttrs_1[attr.bindedName] = {
+                                    type: "variable",
+                                    valueType: attr.type,
+                                    variableName: shiftBindedName
+                                };
+                                newSpec.input[shiftBindedName] = {
+                                    type: attr.type,
+                                    default: null
+                                };
+                            }
+                            else {
+                                shiftAttrs_1[attr.bindedName] = {
+                                    type: "variable",
+                                    valueType: attr.type,
+                                    variableName: bindedName
+                                };
+                            }
+                        });
+                        newSpec.statements.splice(0, 0, {
+                            type: "assign",
+                            variableName: name + suffix,
+                            expression: binding.getExpression(shiftAttrs_1),
+                            valueType: newSpec.input[name].type
+                        });
+                    }
+                };
+                for (var _i = 0, shiftBindingDescriptions_2 = shiftBindingDescriptions; _i < shiftBindingDescriptions_2.length; _i++) {
+                    var _a = shiftBindingDescriptions_2[_i], suffix = _a.suffix, shift = _a.shift;
+                    _loop_1(suffix, shift);
+                }
+                delete newSpec.input[name];
+                newBindings.delete(name);
+                for (var _b = 0, shiftBindingDescriptions_3 = shiftBindingDescriptions; _b < shiftBindingDescriptions_3.length; _b++) {
+                    var suffix = shiftBindingDescriptions_3[_b].suffix;
+                    if (shiftBindings.has(name + suffix)) {
+                        delete newSpec.input[name + suffix];
+                        shiftBindings.delete(name + suffix);
+                    }
+                }
+            }
+        });
+        return [newSpec, newBindings, shiftBindings];
+    };
+    Mark.prototype.uploadScaleUniforms = function () {
+        var _this = this;
+        this._bindings.forEach(function (binding, name) {
+            if (binding instanceof scale_1.ScaleBinding) {
+                var attributes = binding.getAttributes();
+                var attrs = {};
+                attributes.forEach(function (attr) {
+                    _this._platformMark.updateUniform(name + attr.bindedName, attr.binding);
+                });
+            }
+        });
+    };
+    Mark.prototype.prepare = function () {
+        var _this = this;
+        if (!this._platformMark) {
+            var _a = this.prepareSpecification(), spec = _a[0], binding = _a[1], shiftBinding = _a[2];
+            this._platformMark = this._platform.compile(this, spec, binding, shiftBinding);
+            this._shouldUploadData = true;
+        }
+        if (this._shouldUploadData) {
+            if (this._instanceFunction == null) {
+                this._platformMarkData = this._platformMark.uploadData([this._data]);
+            }
+            else {
+                var allData_1 = [];
+                this._data.forEach(function (datum, index) {
+                    var info = _this._instanceFunction(datum, index, _this._data);
+                    allData_1.push(info.data);
+                });
+                this._platformMarkData = this._platformMark.uploadData(allData_1);
+            }
+            this._shouldUploadData = false;
+        }
+        return this;
+    };
+    Mark.prototype.render = function () {
+        var _this = this;
+        this.prepare();
+        if (this._instanceFunction == null) {
+            this._platformMark.render(this._platformMarkData, function () {
+                _this.uploadScaleUniforms();
+            });
+        }
+        else {
+            this._platformMark.render(this._platformMarkData, function (index) {
+                var datum = _this._data[index];
+                var info = _this._instanceFunction(datum, index, _this._data);
+                if (info.attrs != null) {
+                    for (var attr in info.attrs) {
+                        if (info.attrs.hasOwnProperty(attr)) {
+                            _this._platformMark.updateUniform(attr, binding_1.getBindingValue(info.attrs[attr]));
+                        }
+                    }
+                }
+                if (info.onRender) {
+                    info.onRender(datum, index, _this._data);
+                }
+                _this.uploadScaleUniforms();
+            });
+        }
+        return this;
+    };
+    return Mark;
+}());
+exports.Mark = Mark;
+
+},{"../binding/binding":2,"../exceptions":8,"../scale/scale":17,"../utils/utils":23}],14:[function(require,module,exports){
+"use strict";
+var compiler_1 = require("../compiler/compiler");
+var declare_1 = require("../compiler/declare");
+var mark_1 = require("./mark");
+var mark;
+(function (mark) {
+    function create(spec, platform) {
+        if (spec instanceof declare_1.CustomMark) {
+            return new mark_1.Mark(spec.compile(), platform);
+        }
+        else {
+            return new mark_1.Mark(spec, platform);
+        }
+    }
+    mark.create = create;
+    function custom() {
+        return new declare_1.CustomMark();
+    }
+    mark.custom = custom;
+    function compile(code) {
+        return compiler_1.compileString(code);
+    }
+    mark.compile = compile;
+    function circle(sides) {
+        if (sides === void 0) { sides = 32; }
+        return mark.compile("\n            mark Circle(\n                center: Vector2,\n                radius: float,\n                color: Color\n            ) {\n                for(i in 0.." + (sides - 1) + ") {\n                    let a1 = i / " + sides.toFixed(1) + " * PI * 2.0;\n                    let a2 = (i + 1) / " + sides.toFixed(1) + " * PI * 2.0;\n                    let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n                    let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n                    emit [\n                        { position: center + p1, color: color },\n                        { position: center, color: color },\n                        { position: center + p2, color: color }\n                    ];\n                }\n            }\n        ")["Circle"];
+    }
+    mark.circle = circle;
+    function line() {
+        return mark.compile("\n            mark Line(\n                p1: Vector2,\n                p2: Vector2,\n                width: float = 1,\n                color: Color = [ 0, 0, 0, 1 ]\n            ) {\n                let d = normalize(p2 - p1);\n                let t = Vector2(d.y, -d.x) * (width / 2);\n                emit [\n                    { position: p1 + t, color: color },\n                    { position: p1 - t, color: color },\n                    { position: p2 + t, color: color }\n                ];\n                emit [\n                    { position: p1 - t, color: color },\n                    { position: p2 - t, color: color },\n                    { position: p2 + t, color: color }\n                ];\n            }\n        ")["Line"];
+    }
+    mark.line = line;
+    function polyline() {
+        var spec = mark.compile("\n            import Triangle from P2D;\n\n            mark Sector2(\n                c: Vector2,\n                p1: Vector2,\n                p2: Vector2,\n                color: Color\n            ) {\n                let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Triangle(c, p1, pc, color);\n                Triangle(c, pc, p2, color);\n            }\n\n            mark Sector4(\n                c: Vector2,\n                p1: Vector2,\n                p2: Vector2,\n                color: Color\n            ) {\n                let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Sector2(c, p1, pc, color);\n                Sector2(c, pc, p2, color);\n            }\n\n            mark PolylineRound(\n                p: Vector2, p_p: Vector2, p_n: Vector2, p_nn: Vector2,\n                width: float,\n                color: Color = [ 0, 0, 0, 1 ]\n            ) {\n                let EPS = 1e-5;\n                let w = width / 2;\n                let d = normalize(p - p_n);\n                let n = Vector2(d.y, -d.x);\n                let m1: Vector2;\n                if(length(p - p_p) < EPS) {\n                    m1 = n * w;\n                } else {\n                    m1 = normalize(d + normalize(p - p_p)) * w;\n                }\n                let m2: Vector2;\n                if(length(p_n - p_nn) < EPS) {\n                    m2 = -n * w;\n                } else {\n                    m2 = normalize(normalize(p_n - p_nn) - d) * w;\n                }\n                let c1a: Vector2;\n                let c1b: Vector2;\n                let a1: Vector2;\n                let a2: Vector2;\n                if(dot(m1, n) > 0) {\n                    c1a = p + m1;\n                    c1b = p + n * w;\n                    a2 = c1b;\n                    a1 = p - m1 * (w / dot(m1, n));\n                } else {\n                    c1a = p + m1;\n                    c1b = p - n * w;\n                    a2 = p + m1 * (w / dot(m1, n));\n                    a1 = c1b;\n                }\n                let c2a: Vector2;\n                let c2b: Vector2;\n                let b1: Vector2;\n                let b2: Vector2;\n                if(dot(m2, n) < 0) {\n                    c2a = p_n + m2;\n                    c2b = p_n - n * w;\n                    b1 = c2b;\n                    b2 = p_n + m2 * (w / dot(m2, n));\n                } else {\n                    c2a = p_n + m2;\n                    c2b = p_n + n * w;\n                    b2 = c2b;\n                    b1 = p_n - m2 * (w / dot(m2, n));\n                }\n                Sector4(p, c1a, c1b, color);\n                Sector4(p_n, c2a, c2b, color);\n                Triangle(p, a1, b1, color);\n                Triangle(p, b1, p_n, color);\n                Triangle(p, a2, b2, color);\n                Triangle(p, b2, p_n, color);\n            }\n        ")["PolylineRound"];
+        spec.repeatBegin = 1;
+        spec.repeatEnd = 1;
+        return spec;
+    }
+    mark.polyline = polyline;
+})(mark = exports.mark || (exports.mark = {}));
+
+},{"../compiler/compiler":3,"../compiler/declare":4,"./mark":13}],15:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -5792,26 +6092,26 @@ var Pose = (function () {
 }());
 exports.Pose = Pose;
 
-},{}],14:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
-var utils_1 = require("./utils");
-var PlatformShapeData = (function () {
-    function PlatformShapeData() {
+var utils_1 = require("../utils/utils");
+var PlatformMarkData = (function () {
+    function PlatformMarkData() {
     }
-    return PlatformShapeData;
+    return PlatformMarkData;
 }());
-exports.PlatformShapeData = PlatformShapeData;
-var PlatformShape = (function () {
-    function PlatformShape() {
+exports.PlatformMarkData = PlatformMarkData;
+var PlatformMark = (function () {
+    function PlatformMark() {
     }
-    return PlatformShape;
+    return PlatformMark;
 }());
-exports.PlatformShape = PlatformShape;
+exports.PlatformMark = PlatformMark;
 var Viewport = (function () {
     function Viewport() {
     }
@@ -5859,7 +6159,7 @@ function platform(name) {
 }
 exports.platform = platform;
 
-},{"./utils":23}],15:[function(require,module,exports){
+},{"../utils/utils":23}],17:[function(require,module,exports){
 "use strict";
 var ScaleBinding = (function () {
     function ScaleBinding(scale, returnType, argTypes) {
@@ -5944,14 +6244,14 @@ var ScaleBinding = (function () {
 }());
 exports.ScaleBinding = ScaleBinding;
 
-},{}],16:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 "use strict";
 // Prebuilt scales.
-var utils_1 = require("../utils");
+var utils_1 = require("../utils/utils");
 var compiler_1 = require("../compiler/compiler");
 var parser_1 = require("../compiler/parser");
 var scale_1 = require("./scale");
-var SC = require("../specConstruct");
+var SC = require("../spec/construct");
 var scale;
 (function (scale_2) {
     function linear(valueType) {
@@ -6168,320 +6468,10 @@ var scale;
     scale_2.custom = custom;
 })(scale = exports.scale || (exports.scale = {}));
 
-},{"../compiler/compiler":3,"../compiler/parser":5,"../specConstruct":19,"../utils":23,"./scale":15}],17:[function(require,module,exports){
-"use strict";
-var binding_1 = require("./binding");
-var exceptions_1 = require("./exceptions");
-var utils_1 = require("./utils");
-var scale_1 = require("./scale/scale");
-;
-var shiftBindingDescriptions = [
-    { shift: -2, suffix: "_pp" },
-    { shift: -1, suffix: "_p" },
-    { shift: +1, suffix: "_n" },
-    { shift: +2, suffix: "_nn" }
-];
-var Shape = (function () {
-    function Shape(spec, platform) {
-        this._spec = spec;
-        this._data = [];
-        this._platform = platform;
-        this._bindings = new utils_1.Dictionary();
-        this._shiftBindings = new utils_1.Dictionary();
-        this._platformShape = null;
-        this._shouldUploadData = true;
-        this._instanceFunction = null;
-        // Set bindings to default value whenever exists.
-        for (var name_1 in this._spec.input) {
-            if (this._spec.input.hasOwnProperty(name_1)) {
-                var input = this._spec.input[name_1];
-                if (input.default != null) {
-                    this._bindings.set(name_1, new binding_1.Binding(input.type, input.default));
-                }
-            }
-        }
-        // Assign shift bindings based on naming convention.
-        for (var name_2 in this._spec.input) {
-            if (this._spec.input.hasOwnProperty(name_2)) {
-                for (var _i = 0, shiftBindingDescriptions_1 = shiftBindingDescriptions; _i < shiftBindingDescriptions_1.length; _i++) {
-                    var _a = shiftBindingDescriptions_1[_i], shift = _a.shift, suffix = _a.suffix;
-                    if (this._spec.input.hasOwnProperty(name_2 + suffix)) {
-                        this._shiftBindings.set(name_2 + suffix, new binding_1.ShiftBinding(name_2, shift));
-                    }
-                }
-            }
-        }
-    }
-    Object.defineProperty(Shape.prototype, "spec", {
-        get: function () {
-            return this._spec;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Shape.prototype.attr = function (name, value) {
-        if (value === undefined) {
-            if (!this._bindings.has(name)) {
-                throw new exceptions_1.RuntimeError("attr '" + name + " is undefined.");
-            }
-            var binding = this._bindings.get(name);
-            if (binding instanceof binding_1.Binding) {
-                return binding.value;
-            }
-            else {
-                return binding;
-            }
-        }
-        else {
-            if (!this._spec.input.hasOwnProperty(name)) {
-                throw new exceptions_1.RuntimeError("attr '" + name + " is undefined.");
-            }
-            if (value instanceof scale_1.ScaleBinding) {
-                if (this._platformShape) {
-                    if (this._bindings.get(name) != value) {
-                        this._platformShape = null;
-                    }
-                }
-                this._bindings.set(name, value);
-            }
-            else {
-                // Create new binding.
-                var newBinding = new binding_1.Binding(this._spec.input[name].type, value);
-                // Decide if we should recompile the platform code.
-                if (this._platformShape) {
-                    // Recompile if the input was compiled as input,
-                    // and the new binding is not a function.
-                    if (this._platformShape.isUniform(name) && !newBinding.isFunction) {
-                        this._platformShape.updateUniform(name, newBinding.specValue);
-                    }
-                    else {
-                        this._platformShape = null;
-                    }
-                }
-                this._bindings.set(name, newBinding);
-            }
-            return this;
-        }
-    };
-    Shape.prototype.data = function (data) {
-        if (data === undefined) {
-            return this._data;
-        }
-        else {
-            this._data = data.slice();
-            this._shouldUploadData = true;
-            return this;
-        }
-    };
-    Shape.prototype.instance = function (func) {
-        if (func === undefined) {
-            return this._instanceFunction;
-        }
-        else {
-            this._instanceFunction = func;
-        }
-    };
-    // Make alternative spec to include ScaleBinding values.
-    Shape.prototype.prepareSpecification = function () {
-        var newSpec = {
-            input: utils_1.shallowClone(this._spec.input),
-            output: this._spec.output,
-            statements: this._spec.statements.slice(),
-            variables: utils_1.shallowClone(this._spec.variables),
-            repeatBegin: this._spec.repeatBegin,
-            repeatEnd: this._spec.repeatEnd
-        };
-        var newBindings = this._bindings.clone();
-        var shiftBindings = this._shiftBindings.clone();
-        this._bindings.forEach(function (binding, name) {
-            if (binding instanceof scale_1.ScaleBinding) {
-                var attributes = binding.getAttributes();
-                var attrs_1 = {};
-                attributes.forEach(function (attr) {
-                    var bindedName = name + attr.bindedName;
-                    newBindings.set(bindedName, new binding_1.Binding(attr.type, attr.binding));
-                    attrs_1[attr.bindedName] = {
-                        type: "variable",
-                        valueType: attr.type,
-                        variableName: bindedName
-                    };
-                    newSpec.input[bindedName] = {
-                        type: attr.type,
-                        default: null
-                    };
-                });
-                // Move the attribute to variables.
-                newSpec.variables[name] = newSpec.input[name].type;
-                newSpec.statements.splice(0, 0, {
-                    type: "assign",
-                    variableName: name,
-                    expression: binding.getExpression(attrs_1),
-                    valueType: newSpec.input[name].type
-                });
-                var _loop_1 = function(suffix, shift) {
-                    if (newSpec.input.hasOwnProperty(name + suffix)) {
-                        newSpec.variables[name + suffix] = newSpec.input[name].type;
-                        var shiftAttrs_1 = {};
-                        attributes.forEach(function (attr) {
-                            var bindedName = name + attr.bindedName;
-                            if (newBindings.get(bindedName).isFunction) {
-                                var shiftBindedName = bindedName + suffix;
-                                shiftBindings.set(shiftBindedName, new binding_1.ShiftBinding(bindedName, shift));
-                                shiftAttrs_1[attr.bindedName] = {
-                                    type: "variable",
-                                    valueType: attr.type,
-                                    variableName: shiftBindedName
-                                };
-                                newSpec.input[shiftBindedName] = {
-                                    type: attr.type,
-                                    default: null
-                                };
-                            }
-                            else {
-                                shiftAttrs_1[attr.bindedName] = {
-                                    type: "variable",
-                                    valueType: attr.type,
-                                    variableName: bindedName
-                                };
-                            }
-                        });
-                        newSpec.statements.splice(0, 0, {
-                            type: "assign",
-                            variableName: name + suffix,
-                            expression: binding.getExpression(shiftAttrs_1),
-                            valueType: newSpec.input[name].type
-                        });
-                    }
-                };
-                for (var _i = 0, shiftBindingDescriptions_2 = shiftBindingDescriptions; _i < shiftBindingDescriptions_2.length; _i++) {
-                    var _a = shiftBindingDescriptions_2[_i], suffix = _a.suffix, shift = _a.shift;
-                    _loop_1(suffix, shift);
-                }
-                delete newSpec.input[name];
-                newBindings.delete(name);
-                for (var _b = 0, shiftBindingDescriptions_3 = shiftBindingDescriptions; _b < shiftBindingDescriptions_3.length; _b++) {
-                    var suffix = shiftBindingDescriptions_3[_b].suffix;
-                    if (shiftBindings.has(name + suffix)) {
-                        delete newSpec.input[name + suffix];
-                        shiftBindings.delete(name + suffix);
-                    }
-                }
-            }
-        });
-        return [newSpec, newBindings, shiftBindings];
-    };
-    Shape.prototype.uploadScaleUniforms = function () {
-        var _this = this;
-        this._bindings.forEach(function (binding, name) {
-            if (binding instanceof scale_1.ScaleBinding) {
-                var attributes = binding.getAttributes();
-                var attrs = {};
-                attributes.forEach(function (attr) {
-                    _this._platformShape.updateUniform(name + attr.bindedName, attr.binding);
-                });
-            }
-        });
-    };
-    Shape.prototype.prepare = function () {
-        var _this = this;
-        if (!this._platformShape) {
-            var _a = this.prepareSpecification(), spec = _a[0], binding = _a[1], shiftBinding = _a[2];
-            this._platformShape = this._platform.compile(this, spec, binding, shiftBinding);
-            this._shouldUploadData = true;
-        }
-        if (this._shouldUploadData) {
-            if (this._instanceFunction == null) {
-                this._platformShapeData = this._platformShape.uploadData([this._data]);
-            }
-            else {
-                var allData_1 = [];
-                this._data.forEach(function (datum, index) {
-                    var info = _this._instanceFunction(datum, index, _this._data);
-                    allData_1.push(info.data);
-                });
-                this._platformShapeData = this._platformShape.uploadData(allData_1);
-            }
-            this._shouldUploadData = false;
-        }
-        return this;
-    };
-    Shape.prototype.render = function () {
-        var _this = this;
-        this.prepare();
-        if (this._instanceFunction == null) {
-            this._platformShape.render(this._platformShapeData, function () {
-                _this.uploadScaleUniforms();
-            });
-        }
-        else {
-            this._platformShape.render(this._platformShapeData, function (index) {
-                var datum = _this._data[index];
-                var info = _this._instanceFunction(datum, index, _this._data);
-                if (info.attrs != null) {
-                    for (var attr in info.attrs) {
-                        if (info.attrs.hasOwnProperty(attr)) {
-                            _this._platformShape.updateUniform(attr, binding_1.getBindingValue(info.attrs[attr]));
-                        }
-                    }
-                }
-                if (info.onRender) {
-                    info.onRender(datum, index, _this._data);
-                }
-                _this.uploadScaleUniforms();
-            });
-        }
-        return this;
-    };
-    return Shape;
-}());
-exports.Shape = Shape;
-
-},{"./binding":2,"./exceptions":8,"./scale/scale":15,"./utils":23}],18:[function(require,module,exports){
-"use strict";
-var compiler_1 = require("./compiler/compiler");
-var declare_1 = require("./compiler/declare");
-var shape_1 = require("./shape");
-var shape;
-(function (shape) {
-    function create(spec, platform) {
-        if (spec instanceof declare_1.CustomShape) {
-            return new shape_1.Shape(spec.compile(), platform);
-        }
-        else {
-            return new shape_1.Shape(spec, platform);
-        }
-    }
-    shape.create = create;
-    function custom() {
-        return new declare_1.CustomShape();
-    }
-    shape.custom = custom;
-    function compile(code) {
-        return compiler_1.compileString(code);
-    }
-    shape.compile = compile;
-    function circle(sides) {
-        if (sides === void 0) { sides = 32; }
-        return shape.compile("\n            shape Circle(\n                center: Vector2,\n                radius: float,\n                color: Color\n            ) {\n                for(i in 0.." + (sides - 1) + ") {\n                    let a1 = i / " + sides.toFixed(1) + " * PI * 2.0;\n                    let a2 = (i + 1) / " + sides.toFixed(1) + " * PI * 2.0;\n                    let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n                    let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n                    emit [\n                        { position: center + p1, color: color },\n                        { position: center, color: color },\n                        { position: center + p2, color: color }\n                    ];\n                }\n            }\n        ")["Circle"];
-    }
-    shape.circle = circle;
-    function line() {
-        return shape.compile("\n            shape Line(\n                p1: Vector2,\n                p2: Vector2,\n                width: float = 1,\n                color: Color = [ 0, 0, 0, 1 ]\n            ) {\n                let d = normalize(p2 - p1);\n                let t = Vector2(d.y, -d.x) * (width / 2);\n                emit [\n                    { position: p1 + t, color: color },\n                    { position: p1 - t, color: color },\n                    { position: p2 + t, color: color }\n                ];\n                emit [\n                    { position: p1 - t, color: color },\n                    { position: p2 - t, color: color },\n                    { position: p2 + t, color: color }\n                ];\n            }\n        ")["Line"];
-    }
-    shape.line = line;
-    function polyline() {
-        var spec = shape.compile("\n            import Triangle from P2D;\n\n            shape Sector2(\n                c: Vector2,\n                p1: Vector2,\n                p2: Vector2,\n                color: Color\n            ) {\n                let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Triangle(c, p1, pc, color);\n                Triangle(c, pc, p2, color);\n            }\n\n            shape Sector4(\n                c: Vector2,\n                p1: Vector2,\n                p2: Vector2,\n                color: Color\n            ) {\n                let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Sector2(c, p1, pc, color);\n                Sector2(c, pc, p2, color);\n            }\n\n            shape PolylineRound(\n                p: Vector2, p_p: Vector2, p_n: Vector2, p_nn: Vector2,\n                width: float,\n                color: Color = [ 0, 0, 0, 1 ]\n            ) {\n                let EPS = 1e-5;\n                let w = width / 2;\n                let d = normalize(p - p_n);\n                let n = Vector2(d.y, -d.x);\n                let m1: Vector2;\n                if(length(p - p_p) < EPS) {\n                    m1 = n * w;\n                } else {\n                    m1 = normalize(d + normalize(p - p_p)) * w;\n                }\n                let m2: Vector2;\n                if(length(p_n - p_nn) < EPS) {\n                    m2 = -n * w;\n                } else {\n                    m2 = normalize(normalize(p_n - p_nn) - d) * w;\n                }\n                let c1a: Vector2;\n                let c1b: Vector2;\n                let a1: Vector2;\n                let a2: Vector2;\n                if(dot(m1, n) > 0) {\n                    c1a = p + m1;\n                    c1b = p + n * w;\n                    a2 = c1b;\n                    a1 = p - m1 * (w / dot(m1, n));\n                } else {\n                    c1a = p + m1;\n                    c1b = p - n * w;\n                    a2 = p + m1 * (w / dot(m1, n));\n                    a1 = c1b;\n                }\n                let c2a: Vector2;\n                let c2b: Vector2;\n                let b1: Vector2;\n                let b2: Vector2;\n                if(dot(m2, n) < 0) {\n                    c2a = p_n + m2;\n                    c2b = p_n - n * w;\n                    b1 = c2b;\n                    b2 = p_n + m2 * (w / dot(m2, n));\n                } else {\n                    c2a = p_n + m2;\n                    c2b = p_n + n * w;\n                    b2 = c2b;\n                    b1 = p_n - m2 * (w / dot(m2, n));\n                }\n                Sector4(p, c1a, c1b, color);\n                Sector4(p_n, c2a, c2b, color);\n                Triangle(p, a1, b1, color);\n                Triangle(p, b1, p_n, color);\n                Triangle(p, a2, b2, color);\n                Triangle(p, b2, p_n, color);\n            }\n        ")["PolylineRound"];
-        spec.repeatBegin = 1;
-        spec.repeatEnd = 1;
-        return spec;
-    }
-    shape.polyline = polyline;
-})(shape = exports.shape || (exports.shape = {}));
-
-},{"./compiler/compiler":3,"./compiler/declare":4,"./shape":17}],19:[function(require,module,exports){
+},{"../compiler/compiler":3,"../compiler/parser":5,"../spec/construct":19,"../utils/utils":23,"./scale":17}],19:[function(require,module,exports){
 "use strict";
 // Construct part of specification.
-var intrinsics_1 = require("./intrinsics");
+var intrinsics_1 = require("../intrinsics/intrinsics");
 function func(name, returnType) {
     var args = [];
     for (var _i = 2; _i < arguments.length; _i++) {
@@ -6594,103 +6584,52 @@ function lessThanOrEquals(a1, a2) {
 }
 exports.lessThanOrEquals = lessThanOrEquals;
 
-},{"./intrinsics":9}],20:[function(require,module,exports){
+},{"../intrinsics/intrinsics":9}],20:[function(require,module,exports){
+"use strict";
+exports.types = {
+    "float": { name: "float", size: 4, primitive: "float", primitiveCount: 1 },
+    "int": { name: "int", size: 4, primitive: "int", primitiveCount: 1 },
+    "Vector2": { name: "Vector2", size: 8, primitive: "float", primitiveCount: 2 },
+    "Vector3": { name: "Vector3", size: 12, primitive: "float", primitiveCount: 3 },
+    "Quaternion": { name: "Quaternion", size: 16, primitive: "float", primitiveCount: 4 },
+    "Color": { name: "Color", size: 16, primitive: "float", primitiveCount: 4 }
+};
+
+},{}],21:[function(require,module,exports){
 // Flattener: Resolve emit statements into individual render calls.
 "use strict";
-var SC = require("../specConstruct");
-var utils_1 = require("../utils");
-// Old recursive if statements - not as fast as the individual if statement version.
-// // For now, assume there is no conditional emits.
-// export function  FlattenEmits(shape: Specification.Shape): FlattenedEmits {
-//     let vertexIndexName = attemptName("s3idx", (c) => !shape.variables.hasOwnProperty(c) && !shape.input.hasOwnProperty(c));
-//     let newShape: Specification.Shape = {
-//         input: {},
-//         output: shape.output,
-//         variables: shape.variables,
-//         statements: []
-//     }
-//     for(let i in shape.input) {
-//         if(shape.input.hasOwnProperty(i)) {
-//             newShape.input[i] = shape.input[i];
-//         }
-//     }
-//     newShape.input[vertexIndexName] = {
-//         type: "float",
-//         default: 0
-//     };
-//     let emitStatementIndices: number[] = [];
-//     for(let i = 0; i < shape.statements.length; i++) {
-//         if(shape.statements[i].type == "emit") {
-//             emitStatementIndices.push(i);
-//         }
-//     }
-//     let compileEmitStatements = (indexStart: number, indexEnd: number): Specification.Statement[] => {
-//         if(indexStart == indexEnd) {
-//             let result: Specification.Statement[] = [];
-//             let i = emitStatementIndices[indexStart];
-//             for(let j = 0; j <= i; j++) {
-//                 let s = shape.statements[j];
-//                 if(s.type != "emit" || j == i) {
-//                     result.push(s);
-//                 }
-//             }
-//             return result;
-//         } else {
-//             let middle = Math.floor((indexStart + indexEnd) / 2);
-//             let condition: Specification.StatementCondition = {
-//                 type: "condition",
-//                 condition: {
-//                     type: "function",
-//                     valueType: "bool",
-//                     functionName: "@@<:float,float:bool",
-//                     arguments: [
-//                         { type: "variable", variableName: vertexIndexName, valueType: "float" } as Specification.ExpressionVariable,
-//                         { type: "constant", value: middle + 0.5, valueType: "float" } as Specification.ExpressionConstant
-//                     ]
-//                 } as Specification.ExpressionFunction,
-//                 trueStatements: compileEmitStatements(indexStart, middle),
-//                 falseStatements: compileEmitStatements(middle + 1, indexEnd)
-//             }
-//             return [ condition ];
-//         }
-//     };
-//     newShape.statements = compileEmitStatements(0, emitStatementIndices.length - 1);
-//     return {
-//         specification: newShape,
-//         count: emitStatementIndices.length,
-//         indexVariable: vertexIndexName
-//     };
-// }
+var SC = require("../spec/construct");
+var utils_1 = require("../utils/utils");
 // For now, assume there is no conditional emits.
-function FlattenEmits(shape) {
-    var vertexIndexNameFloat = utils_1.attemptName("s3idx", function (c) { return !shape.variables.hasOwnProperty(c) && !shape.input.hasOwnProperty(c); });
-    var vertexIndexName = utils_1.attemptName("s3idx_i", function (c) { return !shape.variables.hasOwnProperty(c) && !shape.input.hasOwnProperty(c); });
-    var emitIndexName = utils_1.attemptName("s3emitidx", function (c) { return !shape.variables.hasOwnProperty(c) && !shape.input.hasOwnProperty(c); });
-    var newShape = {
+function flattenEmits(mark) {
+    var vertexIndexNameFloat = utils_1.attemptName("s3idx", function (c) { return !mark.variables.hasOwnProperty(c) && !mark.input.hasOwnProperty(c); });
+    var vertexIndexName = utils_1.attemptName("s3idx_i", function (c) { return !mark.variables.hasOwnProperty(c) && !mark.input.hasOwnProperty(c); });
+    var emitIndexName = utils_1.attemptName("s3emitidx", function (c) { return !mark.variables.hasOwnProperty(c) && !mark.input.hasOwnProperty(c); });
+    var newMark = {
         input: {},
-        output: shape.output,
-        variables: shape.variables,
+        output: mark.output,
+        variables: mark.variables,
         statements: [],
-        repeatBegin: shape.repeatBegin,
-        repeatEnd: shape.repeatEnd
+        repeatBegin: mark.repeatBegin,
+        repeatEnd: mark.repeatEnd
     };
-    for (var i in shape.input) {
-        if (shape.input.hasOwnProperty(i)) {
-            newShape.input[i] = shape.input[i];
+    for (var i in mark.input) {
+        if (mark.input.hasOwnProperty(i)) {
+            newMark.input[i] = mark.input[i];
         }
     }
-    newShape.input[vertexIndexNameFloat] = {
+    newMark.input[vertexIndexNameFloat] = {
         type: "float",
         default: 0
     };
-    newShape.variables[vertexIndexName] = "int";
-    newShape.variables[emitIndexName] = "int";
-    newShape.statements.push({
+    newMark.variables[vertexIndexName] = "int";
+    newMark.variables[emitIndexName] = "int";
+    newMark.statements.push({
         type: "assign",
         variableName: vertexIndexName,
         expression: SC.cast(SC.variable(vertexIndexNameFloat, "float"), "int")
     });
-    newShape.statements.push({
+    newMark.statements.push({
         type: "assign",
         variableName: emitIndexName,
         expression: SC.constant(0, "int")
@@ -6787,42 +6726,22 @@ function FlattenEmits(shape) {
         }
         return [result, maxNumberEmits];
     };
-    var _a = generateStatements(shape.statements), generatedStatements = _a[0], maxNumberEmits = _a[1];
-    newShape.statements = newShape.statements.concat(generatedStatements);
+    var _a = generateStatements(mark.statements), generatedStatements = _a[0], maxNumberEmits = _a[1];
+    newMark.statements = newMark.statements.concat(generatedStatements);
     return {
-        specification: newShape,
+        specification: newMark,
         count: maxNumberEmits,
         indexVariable: vertexIndexNameFloat
     };
 }
-exports.FlattenEmits = FlattenEmits;
+exports.flattenEmits = flattenEmits;
 
-},{"../specConstruct":19,"../utils":23}],21:[function(require,module,exports){
+},{"../spec/construct":19,"../utils/utils":23}],22:[function(require,module,exports){
 "use strict";
 var flattener_1 = require("./flattener");
-exports.FlattenEmits = flattener_1.FlattenEmits;
+exports.flattenEmits = flattener_1.flattenEmits;
 
-},{"./flattener":20}],22:[function(require,module,exports){
-// Basic types.
-"use strict";
-function MakeType(name, size, primitive, primitiveCount) {
-    return {
-        name: name,
-        size: size,
-        primitive: primitive,
-        primitiveCount: primitiveCount
-    };
-}
-exports.types = {
-    "float": MakeType("float", 4, "float", 1),
-    "int": MakeType("int", 4, "int", 1),
-    "Vector2": MakeType("Vector2", 8, "float", 2),
-    "Vector3": MakeType("Vector3", 12, "float", 3),
-    "Quaternion": MakeType("Quaternion", 16, "float", 4),
-    "Color": MakeType("Color", 16, "float", 4)
-};
-
-},{}],23:[function(require,module,exports){
+},{"./flattener":21}],23:[function(require,module,exports){
 "use strict";
 var Dictionary = (function () {
     function Dictionary() {
@@ -6897,14 +6816,14 @@ function __export(m) {
 }
 exports.version = "0.0.1";
 // Math classes and utilities
-__export(require("./core/utils"));
-__export(require("./core/math"));
-// Shape class and shape specification
-__export(require("./core/shapeModule"));
-__export(require("./core/shape"));
-__export(require("./core/binding"));
-__export(require("./core/intrinsics"));
-__export(require("./core/types"));
+__export(require("./core/utils/utils"));
+__export(require("./core/math/math"));
+// Mark class and mark specification
+__export(require("./core/mark/mark"));
+__export(require("./core/mark/marks"));
+__export(require("./core/binding/binding"));
+__export(require("./core/spec/spec"));
+__export(require("./core/intrinsics/intrinsics"));
 __export(require("./core/exceptions"));
 // Parsing and compiling
 __export(require("./core/compiler/parser"));
@@ -6915,13 +6834,13 @@ __export(require("./core/transform/transforms"));
 // Javascript context
 __export(require("./core/evaluator/evaluator"));
 // Platform base class
-__export(require("./core/platform"));
+__export(require("./core/platform/platform"));
 // Scales
 __export(require("./core/scale/scale"));
 var scales_1 = require("./core/scale/scales");
 exports.scale = scales_1.scale;
 
-},{"./core/binding":2,"./core/compiler/compiler":3,"./core/compiler/declare":4,"./core/compiler/parser":5,"./core/evaluator/evaluator":7,"./core/exceptions":8,"./core/intrinsics":9,"./core/math":13,"./core/platform":14,"./core/scale/scale":15,"./core/scale/scales":16,"./core/shape":17,"./core/shapeModule":18,"./core/transform/transforms":21,"./core/types":22,"./core/utils":23}],25:[function(require,module,exports){
+},{"./core/binding/binding":2,"./core/compiler/compiler":3,"./core/compiler/declare":4,"./core/compiler/parser":5,"./core/evaluator/evaluator":7,"./core/exceptions":8,"./core/intrinsics/intrinsics":9,"./core/mark/mark":13,"./core/mark/marks":14,"./core/math/math":15,"./core/platform/platform":16,"./core/scale/scale":17,"./core/scale/scales":18,"./core/spec/spec":20,"./core/transform/transforms":22,"./core/utils/utils":23}],25:[function(require,module,exports){
 /// <reference path="./earcut.d.ts" />
 "use strict";
 var stardust_core_1 = require("stardust-core");
@@ -6981,7 +6900,7 @@ function parseSVGTriangles(svg) {
     };
 }
 function isotype(svg) {
-    var custom = stardust_core_1.shape.custom();
+    var custom = stardust_core_1.mark.custom();
     custom.input("position", "Vector2", "[ 0, 0 ]");
     custom.input("size", "float", "1");
     custom.input("color", "Color", "[ 0, 0, 0, 1 ]");
@@ -8116,8 +8035,8 @@ var generator_1 = require("./generator");
 var stardust_core_4 = require("stardust-core");
 var stardust_core_5 = require("stardust-core");
 var WebGLUtils = require("./webglutils");
-var WebGLPlatformShapeProgram = (function () {
-    function WebGLPlatformShapeProgram(GL, spec, asUniform, viewType, mode) {
+var WebGLPlatformMarkProgram = (function () {
+    function WebGLPlatformMarkProgram(GL, spec, asUniform, viewType, mode) {
         this._GL = GL;
         var generator = new generator_1.Generator(viewType, mode);
         generator.compileSpecification(spec, asUniform);
@@ -8125,10 +8044,10 @@ var WebGLPlatformShapeProgram = (function () {
         this._uniformLocations = new stardust_core_3.Dictionary();
         this._attribLocations = new stardust_core_3.Dictionary();
     }
-    WebGLPlatformShapeProgram.prototype.use = function () {
+    WebGLPlatformMarkProgram.prototype.use = function () {
         this._GL.useProgram(this._program);
     };
-    WebGLPlatformShapeProgram.prototype.setUniform = function (name, type, value) {
+    WebGLPlatformMarkProgram.prototype.setUniform = function (name, type, value) {
         var location = this.getUniformLocation(name);
         if (location == null)
             return;
@@ -8168,7 +8087,7 @@ var WebGLPlatformShapeProgram = (function () {
             }
         }
     };
-    WebGLPlatformShapeProgram.prototype.getUniformLocation = function (name) {
+    WebGLPlatformMarkProgram.prototype.getUniformLocation = function (name) {
         if (this._uniformLocations.has(name)) {
             return this._uniformLocations.get(name);
         }
@@ -8178,7 +8097,7 @@ var WebGLPlatformShapeProgram = (function () {
             return location_1;
         }
     };
-    WebGLPlatformShapeProgram.prototype.getAttribLocation = function (name) {
+    WebGLPlatformMarkProgram.prototype.getAttribLocation = function (name) {
         if (this._attribLocations.has(name)) {
             return this._attribLocations.get(name);
         }
@@ -8190,46 +8109,46 @@ var WebGLPlatformShapeProgram = (function () {
             return location_2;
         }
     };
-    return WebGLPlatformShapeProgram;
+    return WebGLPlatformMarkProgram;
 }());
-var WebGLPlatformShapeData = (function (_super) {
-    __extends(WebGLPlatformShapeData, _super);
-    function WebGLPlatformShapeData() {
+var WebGLPlatformMarkData = (function (_super) {
+    __extends(WebGLPlatformMarkData, _super);
+    function WebGLPlatformMarkData() {
         _super.apply(this, arguments);
     }
-    return WebGLPlatformShapeData;
-}(stardust_core_1.PlatformShapeData));
-exports.WebGLPlatformShapeData = WebGLPlatformShapeData;
-var WebGLPlatformShape = (function (_super) {
-    __extends(WebGLPlatformShape, _super);
-    function WebGLPlatformShape(platform, GL, shape, spec, bindings, shiftBindings) {
+    return WebGLPlatformMarkData;
+}(stardust_core_1.PlatformMarkData));
+exports.WebGLPlatformMarkData = WebGLPlatformMarkData;
+var WebGLPlatformMark = (function (_super) {
+    __extends(WebGLPlatformMark, _super);
+    function WebGLPlatformMark(platform, GL, mark, spec, bindings, shiftBindings) {
         var _this = this;
         _super.call(this);
         this._platform = platform;
         this._GL = GL;
-        this._shape = shape;
+        this._mark = mark;
         this._bindings = bindings;
         this._shiftBindings = shiftBindings;
         this._spec = spec;
-        var flattenedInfo = stardust_core_2.FlattenEmits(spec);
+        var flattenedInfo = stardust_core_2.flattenEmits(spec);
         this._specFlattened = flattenedInfo.specification;
         this._flattenedVertexIndexVariable = flattenedInfo.indexVariable;
         this._flattenedVertexCount = flattenedInfo.count;
-        this._program = new WebGLPlatformShapeProgram(GL, this._specFlattened, function (name) { return _this.isUniform(name); }, this._platform.viewInfo.type, generator_1.GenerateMode.NORMAL);
-        this._programPick = new WebGLPlatformShapeProgram(GL, this._specFlattened, function (name) { return _this.isUniform(name); }, this._platform.viewInfo.type, generator_1.GenerateMode.PICK);
+        this._program = new WebGLPlatformMarkProgram(GL, this._specFlattened, function (name) { return _this.isUniform(name); }, this._platform.viewInfo.type, generator_1.GenerateMode.NORMAL);
+        this._programPick = new WebGLPlatformMarkProgram(GL, this._specFlattened, function (name) { return _this.isUniform(name); }, this._platform.viewInfo.type, generator_1.GenerateMode.PICK);
         this.initializeUniforms();
     }
-    WebGLPlatformShape.prototype.initializeUniforms = function () {
+    WebGLPlatformMark.prototype.initializeUniforms = function () {
         for (var name_1 in this._specFlattened.input) {
             if (this.isUniform(name_1)) {
                 this.updateUniform(name_1, this._bindings.get(name_1).specValue);
             }
         }
     };
-    WebGLPlatformShape.prototype.initializeBuffers = function () {
+    WebGLPlatformMark.prototype.initializeBuffers = function () {
         var _this = this;
         var GL = this._GL;
-        var data = new WebGLPlatformShapeData();
+        var data = new WebGLPlatformMarkData();
         data.buffers = new stardust_core_3.Dictionary();
         ;
         this._bindings.forEach(function (binding, name) {
@@ -8248,7 +8167,7 @@ var WebGLPlatformShape = (function (_super) {
         return data;
     };
     // Is the input attribute compiled as uniform?
-    WebGLPlatformShape.prototype.isUniform = function (name) {
+    WebGLPlatformMark.prototype.isUniform = function (name) {
         // Extra variables we add are always not uniforms.
         if (name == this._flattenedVertexIndexVariable)
             return false;
@@ -8265,7 +8184,7 @@ var WebGLPlatformShape = (function (_super) {
             return !this._bindings.get(name).isFunction;
         }
     };
-    WebGLPlatformShape.prototype.updateUniform = function (name, value) {
+    WebGLPlatformMark.prototype.updateUniform = function (name, value) {
         var binding = this._bindings.get(name);
         var type = binding.type;
         this._program.use();
@@ -8275,7 +8194,7 @@ var WebGLPlatformShape = (function (_super) {
             this._programPick.setUniform(name, type, value);
         }
     };
-    WebGLPlatformShape.prototype.uploadData = function (datas) {
+    WebGLPlatformMark.prototype.uploadData = function (datas) {
         var buffers = this.initializeBuffers();
         buffers.ranges = [];
         var repeatBegin = this._spec.repeatBegin || 0;
@@ -8345,7 +8264,7 @@ var WebGLPlatformShape = (function (_super) {
         return buffers;
     };
     // Render the graphics.
-    WebGLPlatformShape.prototype.renderBase = function (buffers, mode, onRender) {
+    WebGLPlatformMark.prototype.renderBase = function (buffers, mode, onRender) {
         var _this = this;
         if (buffers.ranges.length > 0) {
             var GL_1 = this._GL;
@@ -8435,7 +8354,7 @@ var WebGLPlatformShape = (function (_super) {
                     }
                     break;
             }
-            // For pick, set the shape index
+            // For pick, set the mark index
             if (mode == generator_1.GenerateMode.PICK) {
                 GL_1.uniform1f(program_1.getUniformLocation("s3_pick_index_alpha"), this._pickIndex / 255.0);
             }
@@ -8463,18 +8382,18 @@ var WebGLPlatformShape = (function (_super) {
             }
         }
     };
-    WebGLPlatformShape.prototype.setPickIndex = function (index) {
+    WebGLPlatformMark.prototype.setPickIndex = function (index) {
         this._pickIndex = index;
     };
-    WebGLPlatformShape.prototype.render = function (buffers, onRender) {
+    WebGLPlatformMark.prototype.render = function (buffers, onRender) {
         if (this._platform.renderMode == generator_1.GenerateMode.PICK) {
-            this.setPickIndex(this._platform.assignPickIndex(this._shape));
+            this.setPickIndex(this._platform.assignPickIndex(this._mark));
         }
         this.renderBase(buffers, this._platform.renderMode, onRender);
     };
-    return WebGLPlatformShape;
-}(stardust_core_1.PlatformShape));
-exports.WebGLPlatformShape = WebGLPlatformShape;
+    return WebGLPlatformMark;
+}(stardust_core_1.PlatformMark));
+exports.WebGLPlatformMark = WebGLPlatformMark;
 var WebGLPlatform = (function (_super) {
     __extends(WebGLPlatform, _super);
     function WebGLPlatform(GL) {
@@ -8528,16 +8447,16 @@ var WebGLPlatform = (function (_super) {
         GL.clearColor(1, 1, 1, 1);
         GL.clear(GL.COLOR_BUFFER_BIT);
         GL.disable(GL.BLEND);
-        this._pickShapes = [];
+        this._pickMarks = [];
     };
-    WebGLPlatform.prototype.assignPickIndex = function (shape) {
-        var idx = this._pickShapes.indexOf(shape);
+    WebGLPlatform.prototype.assignPickIndex = function (mark) {
+        var idx = this._pickMarks.indexOf(mark);
         if (idx >= 0) {
             return idx;
         }
         else {
-            var num = this._pickShapes.length;
-            this._pickShapes.push(shape);
+            var num = this._pickMarks.length;
+            this._pickMarks.push(mark);
             return num;
         }
     };
@@ -8560,7 +8479,7 @@ var WebGLPlatform = (function (_super) {
         var offset = (data[0]) + (data[1] << 8) + (data[2] << 16);
         if (offset >= 16777215)
             return null;
-        return [this._pickShapes[data[3]], offset];
+        return [this._pickMarks[data[3]], offset];
     };
     WebGLPlatform.prototype.set2DView = function (width, height) {
         this._viewInfo = {
@@ -8590,8 +8509,8 @@ var WebGLPlatform = (function (_super) {
     WebGLPlatform.prototype.setPose = function (pose) {
         this._pose = pose;
     };
-    WebGLPlatform.prototype.compile = function (shape, spec, bindings, shiftBindings) {
-        return new WebGLPlatformShape(this, this._GL, shape, spec, bindings, shiftBindings);
+    WebGLPlatform.prototype.compile = function (mark, spec, bindings, shiftBindings) {
+        return new WebGLPlatformMark(this, this._GL, mark, spec, bindings, shiftBindings);
     };
     return WebGLPlatform;
 }(stardust_core_1.Platform));
