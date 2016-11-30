@@ -112,7 +112,8 @@ title: "Stardust Example: Daily Activities of Creative People"
             let cP1 = center + Vector2(cos(thetaA), sin(thetaA)) * radius;
             let k = 1.5;
             if(t1 + t2 &lt; 12) k = -0.5;
-            let ti = t * 1.95 - 0.95 + index * 0.95;
+            let ss = 2;
+            let ti = t * (1 + ss) - ss + (1 - index) * ss;
             if(ti &lt; 0) ti = 0;
             if(ti &gt; 1) ti = 1;
             Wedge(
