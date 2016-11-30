@@ -14,4 +14,5 @@ Stardust Examples
     <li><a href="{{base}}/examples/isotype"><img src="{{base}}/examples/isotype/preview_small.png" /><div class="overlay"><span>Isotype</span></div></a></li>
     <li><a href="{{base}}/examples/graph"><img src="{{base}}/examples/graph/preview_small.png" /><div class="overlay"><span>Force-directed Graph</span></div></a></li>
     <li><a href="{{base}}/examples/daily-activities"><img src="{{base}}/examples/daily-activities/preview_small.png" /><div class="overlay"><span>Daily Activities</span></div></a></li>
+    <li><a href="{{base}}/examples/scatterplot"><img src="{{base}}/examples/scatterplot/preview_small.png" /><div class="overlay"><span>Scatterplot</span></div></a></li>
 </ul>

@@ -17,7 +17,7 @@ Stardust: GPU-based Visualization Library
 
 
 **Stardust** is a library for rendering information visualizations with GPU (WebGL). Stardust provides an easy-to-use
-and familiar API for defining shapes and binding data to them. With Stardust, you can render tenth of thousands
+and familiar API for defining marks and binding data to them. With Stardust, you can render tenth of thousands
 of markers and animate them in real time without the hassle of managing WebGL shaders and buffers.
 
 Play with the library in the online playground:
@@ -80,16 +80,16 @@ For the tutorial, let's make some data. You can load data from JSON or CSV files
 var data = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
 ```
 
-Create a Stardust shape specification:
+Create a Stardust mark specification:
 
 ```javascript
-var circleSpec = Stardust.shape.circle();
+var circleSpec = Stardust.mark.circle();
 ```
 
-Create a shape object using the spec on our WebGL platform:
+Create a mark object using the spec on our WebGL platform:
 
 ```javascript
-var circles = Stardust.shape.create(circleSpec, platform);
+var circles = Stardust.mark.create(circleSpec, platform);
 ```
 
 Bind data attributes to the circles:
