@@ -9,6 +9,7 @@ function beginTransition(func, maxTime) {
     maxTime = maxTime || 1;
     var t0 = new Date().getTime();
     var req = null;
+    var totalFrames = 0;
     var rerender = () => {
         req = null;
         var t1 = new Date().getTime();
@@ -19,8 +20,14 @@ function beginTransition(func, maxTime) {
             shouldStop = true;
         }
         func(t);
+        totalFrames += 1;
         if(!shouldStop) {
             req = requestAnimationFrame(rerender);
+        } else {
+            requestAnimationFrame(function() {
+                var t1 = new Date().getTime();
+                d3.select(".fps").text("FPS: " + (totalFrames / ((t1 - t0) / 1000)).toFixed(1));
+            });
         }
     }
     req = requestAnimationFrame(rerender);
@@ -30,6 +37,24 @@ function beginTransition(func, maxTime) {
         }
     }
     return _previousTransition;
+}
+
+function measureFPS(renderFunction) {
+    var count = 10;
+    var totalFrames = 0;
+    var t0 = new Date().getTime();
+    var doFrame = function() {
+        if(totalFrames >= count) {
+            var t1 = new Date().getTime();
+            var fps = totalFrames / ((t1 - t0) / 1000);
+            d3.select(".fps").text("FPS: " + fps.toFixed(1));
+            return;
+        }
+        renderFunction();
+        totalFrames += 1;
+        requestAnimationFrame(doFrame);
+    };
+    requestAnimationFrame(doFrame);
 }
 
 var switches = {};
