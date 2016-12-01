@@ -1,18 +1,19 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
-<style>
-    body { margin: 0; padding: 0; }
-    p { margin: 0; padding: 0; }
-</style>
-<p>
-    <canvas id="main-canvas" />
-</p>
+<link rel="stylesheet" href="//stardust-vis.github.io/examples/assets/style.css" type="text/css" />
+<canvas id="main-canvas" /></canvas>
+<div data-switch="mode">
+    <button class="active" data-value="mode1">Multi-column</button>
+    <button data-value="mode2">Single-column</button>
+    <div class="fps"></div>
+</div>
 <script src="//d3js.org/d3.v3.min.js" type="text/javascript"></script>
 <script type="text/javascript" src="//stardust-vis.github.io/stardust/stardust.bundle.min.js"></script>
+<script src="//stardust-vis.github.io/examples/assets/utils.js" type="text/javascript"></script>
 <script type="text/javascript">
     let canvas = document.getElementById("main-canvas");
     let width = 960;
-    let height = 500;
+    let height = 470;
     let platform = Stardust.platform("webgl-2d", canvas, width, height);
 
     // SVG file created from Adobe Illustrator:
@@ -26,6 +27,22 @@
         </svg>
     `;
 
+    var data = [];
+    [ 27, 53, 91, 52, 112, 42, 107, 91, 68, 56, 115, 86, 26, 102, 28, 23, 119, 110 ].forEach((x, index) => {
+        for(let i = 0; i < x; i++) {
+            data.push({
+                type: index % 3,
+                column: Math.floor(index / 3)
+            });
+        }
+    });
+    var typeCounter = [ 0, 0, 0 ];
+    var typeColumnCounter = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+    data.forEach((d) => {
+        d.typeIndex = typeCounter[d.type]++;
+        d.typeColumnIndex = typeColumnCounter[3 * d.column + d.type]++;
+    });
+
     // Convert the SVG file to Stardust mark spec.
     let isotype = new Stardust.mark.isotype(svgFile);
 
@@ -34,39 +51,35 @@
 
     let isotypeHeight = 18;
 
-    let xScale = Stardust.scale.linear()
-        .domain([ 0, 1 ])
-        .range([ 20, 28 ]);
-    let yScale = Stardust.scale.linear()
-        .domain([ 0, 1 ])
-        .range([ 480, 460 ]);
-
     let colors = [[31,119,180],[255,127,14],[44,160,44]];
     colors = colors.map((x) => [ x[0] / 255, x[1] / 255, x[2] / 255, 1 ]);
 
-    isotypes.instance((d, index) => {
-        let data = [];
-        for(let i = 0; i < d; i++) data.push(i);
-        return {
-            data: data,
-            attrs: {
-                color: colors[index % colors.length]
-            },
-            onRender: () => {
-                let offset = 20 + 160 * Math.floor(index / colors.length) + (index % colors.length) * 45;
-                xScale.range([ offset, 8 + offset ]);
-            }
-        };
-    });
+    let pScale = Stardust.scale.custom("Vector2(20 + column * 160 + type * 45 + typeColumnIndex % 5 * 8, 460 - floor(typeColumnIndex / 5) * 18) * (1 - t) + Vector2(65 + type * 300 + typeIndex % 30 * 8, 460 - floor(typeIndex / 30) * 18) * t")
+    pScale.attr("typeColumnIndex", d => d.typeColumnIndex);
+    pScale.attr("column", d => d.column);
+    pScale.attr("typeIndex", d => d.typeIndex);
+    pScale.attr("type", d => d.type);
+    pScale.attr("t", 0);
 
-
-    isotypes.attr("position", Stardust.scale.Vector2(
-        xScale(d => d % 5),
-        yScale(d => Math.floor(d / 5))
-    ));
+    isotypes.attr("position", pScale());
+    isotypes.attr("color", d => colors[d.type]);
     isotypes.attr("size", 1.0);
-    isotypes.data([
-        27, 53, 91, 52, 112, 42, 107, 91, 68, 56, 115, 86, 26, 102, 28, 23, 119, 110
-    ]);
-    isotypes.render();
+    isotypes.data(data);
+
+    function render() {
+        platform.clear();
+        isotypes.render();
+    }
+
+    render();
+
+    switches.mode_changed = function(newValue) {
+        beginTransition((t) => {
+            if(newValue == "mode1")
+                pScale.attr("t", 1 - t);
+            if(newValue == "mode2")
+                pScale.attr("t", t);
+            render();
+        });
+    };
 </script>

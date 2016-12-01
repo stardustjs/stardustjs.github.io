@@ -8,19 +8,20 @@ title: "Stardust Example: Isotypes"
     <h2>index.html</h2>
     <pre><code class="highlight html">&lt;!DOCTYPE html&gt;
 &lt;meta charset=&quot;utf-8&quot;&gt;
-&lt;style&gt;
-    body { margin: 0; padding: 0; }
-    p { margin: 0; padding: 0; }
-&lt;/style&gt;
-&lt;p&gt;
-    &lt;canvas id=&quot;main-canvas&quot; /&gt;
-&lt;/p&gt;
+&lt;link rel=&quot;stylesheet&quot; href=&quot;//stardust-vis.github.io/examples/assets/style.css&quot; type=&quot;text/css&quot; /&gt;
+&lt;canvas id=&quot;main-canvas&quot; /&gt;&lt;/canvas&gt;
+&lt;div data-switch=&quot;mode&quot;&gt;
+    &lt;button class=&quot;active&quot; data-value=&quot;mode1&quot;&gt;Multi-column&lt;/button&gt;
+    &lt;button data-value=&quot;mode2&quot;&gt;Single-column&lt;/button&gt;
+    &lt;div class=&quot;fps&quot;&gt;&lt;/div&gt;
+&lt;/div&gt;
 &lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
 &lt;script type=&quot;text/javascript&quot; src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;//stardust-vis.github.io/examples/assets/utils.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
 &lt;script type=&quot;text/javascript&quot;&gt;
     let canvas = document.getElementById(&quot;main-canvas&quot;);
     let width = 960;
-    let height = 500;
+    let height = 470;
     let platform = Stardust.platform(&quot;webgl-2d&quot;, canvas, width, height);
 
     // SVG file created from Adobe Illustrator:
@@ -34,6 +35,22 @@ title: "Stardust Example: Isotypes"
         &lt;/svg&gt;
     `;
 
+    var data = [];
+    [ 27, 53, 91, 52, 112, 42, 107, 91, 68, 56, 115, 86, 26, 102, 28, 23, 119, 110 ].forEach((x, index) =&gt; {
+        for(let i = 0; i &lt; x; i++) {
+            data.push({
+                type: index % 3,
+                column: Math.floor(index / 3)
+            });
+        }
+    });
+    var typeCounter = [ 0, 0, 0 ];
+    var typeColumnCounter = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+    data.forEach((d) =&gt; {
+        d.typeIndex = typeCounter[d.type]++;
+        d.typeColumnIndex = typeColumnCounter[3 * d.column + d.type]++;
+    });
+
     // Convert the SVG file to Stardust mark spec.
     let isotype = new Stardust.mark.isotype(svgFile);
 
@@ -42,39 +59,35 @@ title: "Stardust Example: Isotypes"
 
     let isotypeHeight = 18;
 
-    let xScale = Stardust.scale.linear()
-        .domain([ 0, 1 ])
-        .range([ 20, 28 ]);
-    let yScale = Stardust.scale.linear()
-        .domain([ 0, 1 ])
-        .range([ 480, 460 ]);
-
     let colors = [[31,119,180],[255,127,14],[44,160,44]];
     colors = colors.map((x) =&gt; [ x[0] / 255, x[1] / 255, x[2] / 255, 1 ]);
 
-    isotypes.instance((d, index) =&gt; {
-        let data = [];
-        for(let i = 0; i &lt; d; i++) data.push(i);
-        return {
-            data: data,
-            attrs: {
-                color: colors[index % colors.length]
-            },
-            onRender: () =&gt; {
-                let offset = 20 + 160 * Math.floor(index / colors.length) + (index % colors.length) * 45;
-                xScale.range([ offset, 8 + offset ]);
-            }
-        };
-    });
+    let pScale = Stardust.scale.custom(&quot;Vector2(20 + column * 160 + type * 45 + typeColumnIndex % 5 * 8, 460 - floor(typeColumnIndex / 5) * 18) * (1 - t) + Vector2(65 + type * 300 + typeIndex % 30 * 8, 460 - floor(typeIndex / 30) * 18) * t&quot;)
+    pScale.attr(&quot;typeColumnIndex&quot;, d =&gt; d.typeColumnIndex);
+    pScale.attr(&quot;column&quot;, d =&gt; d.column);
+    pScale.attr(&quot;typeIndex&quot;, d =&gt; d.typeIndex);
+    pScale.attr(&quot;type&quot;, d =&gt; d.type);
+    pScale.attr(&quot;t&quot;, 0);
 
-
-    isotypes.attr(&quot;position&quot;, Stardust.scale.Vector2(
-        xScale(d =&gt; d % 5),
-        yScale(d =&gt; Math.floor(d / 5))
-    ));
+    isotypes.attr(&quot;position&quot;, pScale());
+    isotypes.attr(&quot;color&quot;, d =&gt; colors[d.type]);
     isotypes.attr(&quot;size&quot;, 1.0);
-    isotypes.data([
-        27, 53, 91, 52, 112, 42, 107, 91, 68, 56, 115, 86, 26, 102, 28, 23, 119, 110
-    ]);
-    isotypes.render();
+    isotypes.data(data);
+
+    function render() {
+        platform.clear();
+        isotypes.render();
+    }
+
+    render();
+
+    switches.mode_changed = function(newValue) {
+        beginTransition((t) =&gt; {
+            if(newValue == &quot;mode1&quot;)
+                pScale.attr(&quot;t&quot;, 1 - t);
+            if(newValue == &quot;mode2&quot;)
+                pScale.attr(&quot;t&quot;, t);
+            render();
+        });
+    };
 &lt;/script&gt;</code></pre>
