@@ -8,64 +8,56 @@ title: "Stardust Example: Squares"
 <p>Data shown here is a 10-class classifier trained on the MNIST dataset.</p>
     <h2>index.html</h2>
     <pre><code class="highlight html">&lt;!DOCTYPE html&gt;
-&lt;html&gt;
-    &lt;head&gt;
-        &lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
-        &lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
-        &lt;style&gt;
-        body {
-            margin: 0;
-            padding: 0;
-        }
-        .squares-container {
-            position: relative;
-        }
-        .squares-container canvas, .squares-container svg {
-            position: absolute;
-            left: 0; top: 0;
-        }
-        .squares-container svg {
-            pointer-events: none;
-        }
-        .axis path,
-        .axis line {
-            fill: none;
-            stroke: black;
-            shape-rendering: crispEdges;
-        }
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;link rel=&quot;stylesheet&quot; href=&quot;//stardust-vis.github.io/examples/assets/style.css&quot; type=&quot;text/css&quot; /&gt;
+&lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;//stardust-vis.github.io/examples/assets/utils.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;style&gt;
+    .squares-container {
+        position: relative;
+    }
+    .squares-container canvas, .squares-container svg {
+        position: absolute;
+        left: 0; top: 0;
+    }
+    .squares-container svg {
+        pointer-events: none;
+    }
+    .axis path,
+    .axis line {
+        fill: none;
+        stroke: black;
+        shape-rendering: crispEdges;
+    }
 
-        .axis text {
-            font-family: sans-serif;
-            font-size: 11px;
-        }
-        &lt;/style&gt;
-    &lt;/head&gt;
-    &lt;body&gt;
-        &lt;div class=&quot;squares-container&quot;&gt;
-            &lt;canvas id=&quot;main-canvas&quot;&gt;&lt;/canvas&gt;
-            &lt;svg id=&quot;main-svg&quot;&gt;&lt;/svg&gt;
-        &lt;/div&gt;
-
-        &lt;script src=&quot;squares.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
-        &lt;script type=&quot;text/javascript&quot;&gt;
-            var container = d3.select(&quot;.squares-container&quot;);
-            var vis = new SquaresVisualization(container.node());
-            d3.csv(&quot;mnist.csv&quot;, (DATA) =&gt; {
-                vis.layout();
-                vis.setInstances(DATA.slice(0, 4000));
-                vis.setLayoutParameter({
-                    y0: 10,
-                    numberBins: 10,
-                    squaresPerBin: 11,
-                    squareSize: 3,
-                    squareSpacing: 4,
-                    xSpacing: 88
-                });
-            });
-        &lt;/script&gt;
-    &lt;/body&gt;
-&lt;/html&gt;
-</code></pre>
+    .axis text {
+        font-family: sans-serif;
+        font-size: 11px;
+    }
+&lt;/style&gt;
+&lt;div class=&quot;squares-container&quot;&gt;
+    &lt;canvas id=&quot;main-canvas&quot;&gt;&lt;/canvas&gt;
+    &lt;svg id=&quot;main-svg&quot;&gt;&lt;/svg&gt;
+&lt;/div&gt;
+&lt;div class=&quot;initializing&quot;&gt;&lt;p&gt;Initializing...&lt;/p&gt;&lt;/div&gt;
+&lt;script src=&quot;squares.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script type=&quot;text/javascript&quot;&gt;
+    var container = d3.select(&quot;.squares-container&quot;);
+    var vis = new SquaresVisualization(container.node());
+    loadData(&quot;mnist.csv&quot;, (DATA) =&gt; {
+        vis.layout();
+        vis.setInstances(DATA.slice(0, 4000));
+        vis.setLayoutParameter({
+            y0: 10,
+            numberBins: 10,
+            squaresPerBin: 11,
+            squareSize: 3,
+            squareSpacing: 4,
+            xSpacing: 88
+        });
+    });
+&lt;/script&gt;</code></pre>
     <h2>squares.js</h2>
     <pre><code class="highlight javascript">class SquaresVisualization {
 

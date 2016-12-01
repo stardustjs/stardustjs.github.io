@@ -8,13 +8,13 @@ title: "Stardust Example: Force-directed Graph"
     <h2>index.html</h2>
     <pre><code class="highlight html">&lt;!DOCTYPE html&gt;
 &lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;link rel=&quot;stylesheet&quot; href=&quot;//stardust-vis.github.io/examples/assets/style.css&quot; type=&quot;text/css&quot; /&gt;
 &lt;style type=&quot;text/css&quot;&gt;
-    body { margin: 0; padding: 0; font-family: &quot;Helvetica Neue&quot;, &quot;Helvetica&quot;, &quot;Arial&quot;, sans-serif; }
-    #main-canvas { margin: 0; padding: 0; }
-    .fps { position: fixed; top: 0; right: 0; padding: 10px; font-size: 15px; }
+    .fps { position: fixed; top: 0; right: 0; padding: 10px; margin: 0; font-size: 15px; }
 &lt;/style&gt;
 &lt;canvas id=&quot;main-canvas&quot;&gt;&lt;/canvas&gt;
 &lt;div class=&quot;fps&quot;&gt;&lt;/div&gt;
+&lt;div class=&quot;initializing&quot;&gt;&lt;p&gt;Initializing...&lt;/p&gt;&lt;/div&gt;
 &lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
 &lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
 &lt;script src=&quot;//stardust-vis.github.io/examples/assets/utils.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
@@ -28,7 +28,7 @@ title: "Stardust Example: Force-directed Graph"
     var snodesSelected = Stardust.mark.create(Stardust.mark.circle(8), platform);
     var sedges = Stardust.mark.create(Stardust.mark.line(), platform);
 
-    d3.json(&quot;facebook_1912.json&quot;, (err, data) =&gt; {
+    loadData(&quot;facebook_1912.json&quot;, (data) =&gt; {
         var nodes = data.nodes;
         var edges = data.edges;
         var N = nodes.length;

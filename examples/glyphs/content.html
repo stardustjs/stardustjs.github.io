@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
+<link rel="stylesheet" href="//stardust-vis.github.io/examples/assets/style.css" type="text/css" />
 <style type="text/css">
-    body { margin: 0; padding: 0; font-size: 12px; }
     #main-canvas { margin: 0; padding: 0; position: absolute; left: 0; top: 0 }
     #main-svg { margin: 0; padding: 0; position: absolute; left: 0; top: 0 }
     .axis path,
@@ -13,12 +13,18 @@
 </style>
 <canvas id="main-canvas"></canvas>
 <svg id="main-svg"></svg>
+<div data-switch="mode" style="margin-top: 470px">
+    <button class="active" data-value="mode1">Mode 1</button><button data-value="mode2">Mode 2</button>
+    <div class="fps"></div>
+</div>
+<div class="initializing"><p>Initializing...</p></div>
 <script src="//d3js.org/d3.v3.min.js" type="text/javascript"></script>
 <script src="//stardust-vis.github.io/stardust/stardust.bundle.min.js" type="text/javascript"></script>
+<script src="//stardust-vis.github.io/examples/assets/utils.js" type="text/javascript"></script>
 <script type="text/javascript">
     var canvas = document.getElementById("main-canvas");
     var width = 960;
-    var height = 500;
+    var height = 470;
     var margin = 10;
     var marginLeft = 35;
     var marginBottom = 20;
@@ -55,48 +61,84 @@
         0, 0, 0, 0, 0, 1, 1, 2, 2
     ]
 
-    d3.csv("car.csv", (err, data) => {
+    loadData("car.csv", (data) => {
         var scale1 = Stardust.scale.linear()
             .domain(d3.extent(data, d => d.Horsepower)).range([ 0, glyphSize ]);
-
         var scale2 = Stardust.scale.linear()
             .domain(d3.extent(data, d => d.Weight)).range([ 0, glyphSize ]);
-
         var scale3 = Stardust.scale.linear()
             .domain(d3.extent(data, d => d.Acceleration)).range([ 0, glyphSize ]);
-
         var scale4 = Stardust.scale.linear()
             .domain(d3.extent(data, d => d.ModelYear)).range([ 0, glyphSize ]);
-
-        var scaleX = Stardust.scale.linear()
+        var scaleX1 = Stardust.scale.linear()
             .domain(d3.extent(data, d => d.MPG)).range([ marginLeft, width - margin ]);
-
-        var scaleY = Stardust.scale.linear()
+        var scaleY1 = Stardust.scale.linear()
             .domain(d3.extent(data, d => d.Displacement)).range([ margin, height - marginBottom ]);
 
+        var scaleX2 = Stardust.scale.linear()
+            .domain(d3.extent(data, d => d.Weight)).range([ marginLeft, width - margin ]);
+        var scaleY2 = Stardust.scale.linear()
+            .domain(d3.extent(data, d => d.Acceleration)).range([ margin, height - marginBottom ]);
+
+        var interp = Stardust.scale.interpolate()
+        interp.t(0);
+
         glyphs
-            .attr("x", scaleX(d => d.MPG))
-            .attr("y", scaleY(d => d.Displacement))
-            .attr("v1", scale1(d => d.Horsepower))
-            .attr("v2", scale2(d => d.Weight))
-            .attr("v3", scale3(d => d.Acceleration))
-            .attr("v4", scale4(d => d.ModelYear))
+            .attr("x", interp(scaleX1(d => d.MPG), scaleX2(d => d.Weight)))
+            .attr("y", interp(scaleY1(d => d.Displacement), scaleY2(d => d.Acceleration)))
+            .attr("v1", interp(scale1(d => d.Horsepower), scale1(d => d.Horsepower)))
+            .attr("v2", interp(scale2(d => d.Weight), scale1(d => d.Horsepower)))
+            .attr("v3", interp(scale3(d => d.Acceleration), scale1(d => d.Horsepower)))
+            .attr("v4", interp(scale4(d => d.ModelYear), scale1(d => d.Horsepower)))
             .attr("color", d => colors[cylinders2Color[d.Cylinders]]);
 
         glyphs.data(data);
 
-        glyphs.render();
+        function render() {
+            platform.clear();
+            glyphs.render();
+            gMode1.style("opacity", interp.t());
+            gMode2.style("opacity", 1 - interp.t());
+        }
 
         // Draw axes with d3.
         var svg = d3.select("#main-svg")
             .attr("width", width)
             .attr("height", height)
 
-        svg.append("g").classed("axis", true)
+        var gMode1 = svg.append("g");
+        var gMode2 = svg.append("g");
+
+        render();
+
+        gMode1.append("g").classed("axis", true)
             .attr("transform", `translate(0, ${height - marginBottom})`)
-            .call(d3.svg.axis().scale(d3.scale.linear().domain(scaleX.domain()).range(scaleX.range())).orient("bottom"));
-        svg.append("g").classed("axis", true)
+            .call(d3.svg.axis().scale(d3.scale.linear().domain(scaleX1.domain()).range(scaleX1.range())).orient("bottom"))
+            .append("text").text("MPG").attr("x", width - margin).attr("y", -4).style("text-anchor", "end");
+
+        gMode1.append("g").classed("axis", true)
             .attr("transform", `translate(${marginLeft}, 0)`)
-            .call(d3.svg.axis().scale(d3.scale.linear().domain(scaleY.domain()).range(scaleY.range())).orient("left"));
+            .call(d3.svg.axis().scale(d3.scale.linear().domain(scaleY1.domain()).range(scaleY1.range())).orient("left"))
+            .append("text").text("Displacement").attr("x", 5).attr("y", 20);
+
+        gMode2.append("g").classed("axis", true)
+            .attr("transform", `translate(0, ${height - marginBottom})`)
+            .call(d3.svg.axis().scale(d3.scale.linear().domain(scaleX2.domain()).range(scaleX2.range())).orient("bottom"))
+            .append("text").text("Weight").attr("x", width - margin).attr("y", -4).style("text-anchor", "end");
+
+        gMode2.append("g").classed("axis", true)
+            .attr("transform", `translate(${marginLeft}, 0)`)
+            .call(d3.svg.axis().scale(d3.scale.linear().domain(scaleY2.domain()).range(scaleY2.range())).orient("left"))
+            .append("text").text("Acceleration").attr("x", 5).attr("y", 20);
+
+        switches.mode_changed = function(newMode) {
+            beginTransition((t) => {
+                if(newMode == "mode1")
+                    interp.t(1 - t);
+                if(newMode == "mode2")
+                    interp.t(t);
+                render();
+            });
+        }
     });
 </script>

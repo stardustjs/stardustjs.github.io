@@ -15,6 +15,7 @@ title: "Stardust Example: SandDance"
     &lt;button class=&quot;active&quot; data-value=&quot;mode1&quot;&gt;Map&lt;/button&gt;&lt;button data-value=&quot;mode3&quot;&gt;Map Bins&lt;/button&gt;&lt;button data-value=&quot;mode2&quot;&gt;State&lt;/button&gt;
     &lt;div class=&quot;fps&quot;&gt;&lt;/div&gt;
 &lt;/div&gt;
+&lt;div class=&quot;initializing&quot;&gt;&lt;p&gt;Initializing...&lt;/p&gt;&lt;/div&gt;
 &lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
 &lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
 &lt;script src=&quot;//stardust-vis.github.io/examples/assets/utils.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
@@ -29,7 +30,7 @@ title: "Stardust Example: SandDance"
         new Stardust.Quaternion(0, 0, 0, 1)
     ));
     platform.clear([ 1, 1, 1, 1 ]);
-    d3.tsv(&quot;demovoteclean.tsv&quot;, (err, data) =&gt; {
+    loadData(&quot;demovoteclean.tsv&quot;, (data) =&gt; {
         let demovote = data;
         let mark = Stardust.mark.compile(`
             import Cube from P3D;

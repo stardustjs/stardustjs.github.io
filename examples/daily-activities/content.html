@@ -6,6 +6,7 @@
     <button class="active" data-value="mode1">Circular</button><button data-value="mode2">Linear</button>
     <div class="fps"></div>
 </div>
+<div class="initializing"><p>Initializing...</p></div>
 <script src="//d3js.org/d3.v3.min.js" type="text/javascript"></script>
 <script src="//stardust-vis.github.io/stardust/stardust.bundle.min.js" type="text/javascript"></script>
 <script src="//stardust-vis.github.io/examples/assets/utils.js" type="text/javascript"></script>
@@ -101,7 +102,7 @@
         return [ m.r / 255, m.g / 255, m.b / 255, 1.0 ];
     };
 
-    d3.json("data.json", (err, data) => {
+    loadData("data.json", (data) => {
         bar.attr("center", [ 480, 250 ] );
         bar.attr("vcenter", [ 480, 250 ]);
         bar.attr("radius", 40);
