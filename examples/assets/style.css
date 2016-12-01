@@ -1,5 +1,6 @@
 body { margin: 0; padding: 0; font-size: 14px; box-sizing: border-box; }
 div, p { margin: 0; padding: 0; font-size: 14px; line-height: 1em; }
+canvas { margin: 0; padding: 0; }
 .fps {
     float: right;
     display: block;
@@ -14,7 +15,6 @@ div, p { margin: 0; padding: 0; font-size: 14px; line-height: 1em; }
     line-height: 30px;
     height: 30px;
     width: 940px;
-    background: #F0F0F0;
 }
 [data-switch] [data-value] {
     font-size: 14px;
