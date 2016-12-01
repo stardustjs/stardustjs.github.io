@@ -51,6 +51,7 @@ title: "Stardust Example: Force-directed Graph"
         sedges
             .attr(&quot;p1&quot;, (d) =&gt; [ d.source.x, d.source.y ])
             .attr(&quot;p2&quot;, (d) =&gt; [ d.target.x, d.target.y ])
+            .attr(&quot;width&quot;, 0.5)
             .attr(&quot;color&quot;, [ 93/255, 157/255, 218/255, 0.06 ]);
 
         var force = d3.layout.force()
@@ -60,10 +61,11 @@ title: "Stardust Example: Force-directed Graph"
 
         force.linkStrength(0.05);
         force.gravity(0.2);
-        force.linkDistance(100);
+        force.linkDistance(60);
         force.start();
 
         force.on(&quot;tick&quot;, () =&gt; {
+            force.alpha(0.1);
             snodes.data(nodes);
             sedges.data(edges);
             requestRender();
@@ -116,7 +118,6 @@ title: "Stardust Example: Force-directed Graph"
                     var ny = e.clientY - canvas.getBoundingClientRect().top;
                     nodes[p[1]].x = nx;
                     nodes[p[1]].y = ny;
-                    if(force.alpha() == 0) force.resume();
                     requestRender();
                 };
                 var onUp = function() {

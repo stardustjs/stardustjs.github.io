@@ -43,6 +43,7 @@
         sedges
             .attr("p1", (d) => [ d.source.x, d.source.y ])
             .attr("p2", (d) => [ d.target.x, d.target.y ])
+            .attr("width", 0.5)
             .attr("color", [ 93/255, 157/255, 218/255, 0.06 ]);
 
         var force = d3.layout.force()
@@ -52,10 +53,11 @@
 
         force.linkStrength(0.05);
         force.gravity(0.2);
-        force.linkDistance(100);
+        force.linkDistance(60);
         force.start();
 
         force.on("tick", () => {
+            force.alpha(0.1);
             snodes.data(nodes);
             sedges.data(edges);
             requestRender();
@@ -108,7 +110,6 @@
                     var ny = e.clientY - canvas.getBoundingClientRect().top;
                     nodes[p[1]].x = nx;
                     nodes[p[1]].y = ny;
-                    if(force.alpha() == 0) force.resume();
                     requestRender();
                 };
                 var onUp = function() {
