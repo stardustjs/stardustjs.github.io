@@ -10,13 +10,14 @@ div, p { margin: 0; padding: 0; font-size: 14px; line-height: 1em; }
     font-family: "Helvetica Neue", "Helvetica", "Arial", sans-serif;
 }
 [data-switch] {
-    margin: 0; padding: 0 10px;
+    margin: 0; padding: 0 0px;
     line-height: 30px;
     height: 30px;
     width: 940px;
+    background: #F0F0F0;
 }
 [data-switch] [data-value] {
-    font-size: 15px;
+    font-size: 14px;
     font-family: "Helvetica Neue", "Helvetica", "Arial", sans-serif;
     display: inline-block;
     margin: 0; padding: 0; border: none;
@@ -24,7 +25,9 @@ div, p { margin: 0; padding: 0; font-size: 14px; line-height: 1em; }
     border-radius: 2px;
     padding-left: 10px; padding-right: 10px;
     padding-top: 2px; padding-bottom: 2px;
-    line-height: 20px;
+    line-height: 18px;
+    margin: 3px;
+    margin-right: 0;
     vertical-align: top;
     cursor: pointer;
     background: #EEE;

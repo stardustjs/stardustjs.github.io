@@ -11,8 +11,7 @@ title: "Stardust Example: Isotypes"
 &lt;link rel=&quot;stylesheet&quot; href=&quot;//stardust-vis.github.io/examples/assets/style.css&quot; type=&quot;text/css&quot; /&gt;
 &lt;canvas id=&quot;main-canvas&quot; /&gt;&lt;/canvas&gt;
 &lt;div data-switch=&quot;mode&quot;&gt;
-    &lt;button class=&quot;active&quot; data-value=&quot;mode1&quot;&gt;Multi-column&lt;/button&gt;
-    &lt;button data-value=&quot;mode2&quot;&gt;Single-column&lt;/button&gt;
+    &lt;button class=&quot;active&quot; data-value=&quot;mode1&quot;&gt;Multi-column&lt;/button&gt;&lt;button data-value=&quot;mode2&quot;&gt;Single-column&lt;/button&gt;
     &lt;div class=&quot;fps&quot;&gt;&lt;/div&gt;
 &lt;/div&gt;
 &lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
@@ -62,14 +61,30 @@ title: "Stardust Example: Isotypes"
     let colors = [[31,119,180],[255,127,14],[44,160,44]];
     colors = colors.map((x) =&gt; [ x[0] / 255, x[1] / 255, x[2] / 255, 1 ]);
 
-    let pScale = Stardust.scale.custom(&quot;Vector2(20 + column * 160 + type * 45 + typeColumnIndex % 5 * 8, 460 - floor(typeColumnIndex / 5) * 18) * (1 - t) + Vector2(65 + type * 300 + typeIndex % 30 * 8, 460 - floor(typeIndex / 30) * 18) * t&quot;)
+    let pScale = Stardust.scale.custom(`
+        Vector2(
+            20 + column * 160 + type * 45 + typeColumnIndex % 5 * 8,
+            460 - floor(typeColumnIndex / 5) * 18
+        )
+    `)
     pScale.attr(&quot;typeColumnIndex&quot;, d =&gt; d.typeColumnIndex);
     pScale.attr(&quot;column&quot;, d =&gt; d.column);
     pScale.attr(&quot;typeIndex&quot;, d =&gt; d.typeIndex);
     pScale.attr(&quot;type&quot;, d =&gt; d.type);
-    pScale.attr(&quot;t&quot;, 0);
 
-    isotypes.attr(&quot;position&quot;, pScale());
+    let qScale = Stardust.scale.custom(`
+        Vector2(
+            65 + type * 300 + typeIndex % 30 * 8,
+            460 - floor(typeIndex / 30) * 18
+        )
+    `)
+    qScale.attr(&quot;typeIndex&quot;, d =&gt; d.typeIndex);
+    qScale.attr(&quot;type&quot;, d =&gt; d.type);
+
+    let interpolateScale = Stardust.scale.interpolate(&quot;Vector2&quot;)
+    interpolateScale.t(0);
+
+    isotypes.attr(&quot;position&quot;, interpolateScale(pScale(), qScale()));
     isotypes.attr(&quot;color&quot;, d =&gt; colors[d.type]);
     isotypes.attr(&quot;size&quot;, 1.0);
     isotypes.data(data);
@@ -84,9 +99,9 @@ title: "Stardust Example: Isotypes"
     switches.mode_changed = function(newValue) {
         beginTransition((t) =&gt; {
             if(newValue == &quot;mode1&quot;)
-                pScale.attr(&quot;t&quot;, 1 - t);
+                interpolateScale.t(1 - t);
             if(newValue == &quot;mode2&quot;)
-                pScale.attr(&quot;t&quot;, t);
+                interpolateScale.t(t);
             render();
         });
     };
