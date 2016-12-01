@@ -94,3 +94,29 @@ d3.select("[data-switch]").each(function(s) {
         }
     });
 });
+
+function loadData(path, callback) {
+    var loadingDiv = d3.select("body").append("div").classed("loading", true);
+    loadingDiv.append("p").text("Loading data...");
+    var cb = function(err, data) {
+        if(err) {
+            loadingDiv.append("p").text("Could not load data. Please check your network connection.");
+        } else {
+            loadingDiv.remove();
+            callback(data);
+        }
+    };
+    if(path.match(/\.csv$/i)) {
+        d3.csv(path, cb);
+    }
+    if(path.match(/\.tsv$/i)) {
+        d3.tsv(path, cb);
+    }
+    if(path.match(/\.json$/i)) {
+        d3.json(path, cb);
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function(e) {
+    d3.select(".initializing").remove();
+});

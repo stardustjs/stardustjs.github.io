@@ -14,7 +14,7 @@ canvas, svg { margin: 0; padding: 0; display: block }
     margin: 0; padding: 0 0px;
     line-height: 30px;
     height: 30px;
-    width: 940px;
+    width: 960px;
 }
 [data-switch] [data-value] {
     font-size: 14px;
@@ -43,4 +43,22 @@ canvas, svg { margin: 0; padding: 0; display: block }
     background: #1565C0;
     color: #FFF;
     border: 1px solid #0D47A1;
+}
+
+.initializing, .loading {
+    position: fixed;
+    left: 0; right: 0;
+    top: 0;
+    bottom: 0;
+    padding-top: 220px;
+    text-align: center;
+    font-size: 20px;
+    background: rgba(192, 192, 192, 0.8);
+    color: #555;
+}
+
+.initializing p, .loading p {
+    font-size: 20px;
+    line-height: 40px;
+    height: 40px;
 }
