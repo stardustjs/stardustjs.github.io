@@ -5511,6 +5511,11 @@ RegisterFunction("max", ["float", "float"], "float", function (a, b) { return Ma
 RegisterFunction("ceil", ["float"], "float", function (a, b) { return Math.ceil(a); });
 RegisterFunction("floor", ["float"], "float", function (a, b) { return Math.floor(a); });
 RegisterFunction("mix", ["float", "float", "float"], "float", function (a, b, t) { return a + (b - a) * t; });
+RegisterFunction("mix", ["Vector2", "Vector2", "float"], "Vector2", null); // TODO
+RegisterFunction("mix", ["Vector3", "Vector3", "float"], "Vector3", null);
+RegisterFunction("mix", ["Vector4", "Vector4", "float"], "Vector4", null);
+RegisterFunction("mix", ["Color", "Color", "float"], "Color", null);
+RegisterFunction("clamp", ["float"], "float", function (a) { return Math.max(0, Math.min(1, a)); });
 // Vector functions.
 RegisterFunction("dot", ["Vector2", "Vector2"], "float", function (a, b) { return a[0] * b[0] + a[1] * b[1]; });
 RegisterFunction("dot", ["Vector3", "Vector3"], "float", function (a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; });
@@ -8009,6 +8014,11 @@ ImplementSimpleFunction("max", ["float", "float"], "float", "max");
 ImplementSimpleFunction("ceil", ["float"], "float", "ceil");
 ImplementSimpleFunction("floor", ["float"], "float", "floor");
 ImplementSimpleFunction("mix", ["float", "float", "float"], "float", "mix");
+ImplementSimpleFunction("mix", ["Vector2", "Vector2", "float"], "Vector2", "mix");
+ImplementSimpleFunction("mix", ["Vector3", "Vector3", "float"], "Vector3", "mix");
+ImplementSimpleFunction("mix", ["Vector4", "Vector4", "float"], "Vector4", "mix");
+ImplementSimpleFunction("mix", ["Color", "Color", "float"], "Color", "mix");
+ImplementFunction("clamp", ["float"], "float", function (a) { return ("clamp(" + a + ", 0, 1)"); });
 ImplementTypeConversion("float", "int", function (a) { return ("int(" + a + ")"); });
 ImplementTypeConversion("int", "float", function (a) { return ("float(" + a + ")"); });
 function generateIntrinsicFunction(name, args) {
