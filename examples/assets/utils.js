@@ -66,7 +66,7 @@ FPS.prototype.update = function() {
     this.updateIndex += 1;
     this.updates.push(new Date().getTime());
     if(this.updates.length > 100) {
-        this.updates = this.updates.splice(0, this.updates.length - 100);
+        this.updates.splice(0, this.updates.length - 100);
     }
     if(this.updateIndex % 20 == 0) {
         var dt = (this.updates[this.updates.length - 1] - this.updates[0]) / (this.updates.length - 1);
