@@ -8,41 +8,16 @@ title: "Stardust Example: Daily Activities of Creative People"
     <h2>index.html</h2>
     <pre><code class="highlight html">&lt;!DOCTYPE html&gt;
 &lt;meta charset=&quot;utf-8&quot;&gt;
-&lt;style type=&quot;text/css&quot;&gt;
-    body { margin: 0; padding: 0; font-size: 12px; }
-    .chart {
-        margin: 0;
-        padding: 0;
-        width: 960px;
-        height: 470px;
-    }
-    p {
-        margin: 0; padding: 0 10px;
-        line-height: 30px;
-        height: 30px;
-    }
-    .switch-mode {
-        display: inline-block;
-        margin: 0; padding: 0; border: none;
-        padding: 2px 5px;
-        cursro: pointer;
-        background: none;
-        border: 1px solid black;
-        color: black;
-    }
-    .switch-mode.active {
-        background: #CCC;
-    }
-&lt;/style&gt;
-&lt;div class=&quot;chart&quot;&gt;
-    &lt;canvas id=&quot;main-canvas&quot;&gt;&lt;/canvas&gt;
+&lt;link rel=&quot;stylesheet&quot; href=&quot;../../stardust-vis.github.io/examples/assets/style.css&quot; type=&quot;text/css&quot; /&gt;
+&lt;canvas id=&quot;main-canvas&quot;&gt;&lt;/canvas&gt;
+&lt;div data-switch=&quot;mode&quot;&gt;
+    &lt;button class=&quot;active&quot; data-value=&quot;mode1&quot;&gt;Circular&lt;/button&gt;
+    &lt;button data-value=&quot;mode2&quot;&gt;Linear&lt;/button&gt;
+    &lt;div class=&quot;fps&quot;&gt;&lt;/div&gt;
 &lt;/div&gt;
-&lt;p&gt;
-    &lt;button class=&quot;switch-mode active&quot; id=&quot;switch-mode1&quot;&gt;Circular&lt;/button&gt;
-    &lt;button class=&quot;switch-mode&quot; id=&quot;switch-mode2&quot;&gt;Linear&lt;/button&gt;
-&lt;/p&gt;
 &lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
 &lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;//stardust-vis.github.io/examples/assets/utils.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
 &lt;script type=&quot;text/javascript&quot;&gt;
     var canvas = document.getElementById(&quot;main-canvas&quot;);
     var width = 960;
@@ -182,56 +157,14 @@ title: "Stardust Example: Daily Activities of Creative People"
 
         render();
 
-        function beginTransition(func) {
-            let t0 = new Date().getTime();
-            let req = null;
-            let rerender = () =&gt; {
-                req = null;
-                let t1 = new Date().getTime();
-                let t = (t1 - t0) / 1000;
-                let shouldStop = false;
-                if(t &gt; 1) {
-                    t = 1;
-                    shouldStop = true;
-                }
-                func(t);
-                render();
-                if(!shouldStop) {
-                    req = requestAnimationFrame(rerender);
-                }
-            }
-            req = requestAnimationFrame(rerender);
-            return {
-                stop: () =&gt; {
-                    if(req != null) cancelAnimationFrame(rerender);
-                }
-            }
-        }
-
-        let previousMode = &quot;mode1&quot;;
-        d3.select(&quot;#switch-mode1&quot;).on(&quot;click&quot;, () =&gt; {
-            d3.selectAll(&quot;.switch-mode&quot;).classed(&quot;active&quot;, false);
-            d3.select(&quot;#switch-mode1&quot;).classed(&quot;active&quot;, true);
-            let pm = previousMode;
-            previousMode = &quot;mode1&quot;;
+        switches.mode_changed = function(newValue) {
             beginTransition((t) =&gt; {
-                if(pm == &quot;mode2&quot;) {
+                if(newValue == &quot;mode1&quot;)
                     bar.attr(&quot;t&quot;, 1 - t);
-                    render();
-                }
-            });
-        });
-        d3.select(&quot;#switch-mode2&quot;).on(&quot;click&quot;, () =&gt; {
-            d3.selectAll(&quot;.switch-mode&quot;).classed(&quot;active&quot;, false);
-            d3.select(&quot;#switch-mode2&quot;).classed(&quot;active&quot;, true);
-            let pm = previousMode;
-            previousMode = &quot;mode2&quot;;
-            beginTransition((t) =&gt; {
-                if(pm == &quot;mode1&quot;) {
+                if(newValue == &quot;mode2&quot;)
                     bar.attr(&quot;t&quot;, t);
-                    render();
-                }
+                render();
             });
-        });
+        };
     });
 &lt;/script&gt;</code></pre>

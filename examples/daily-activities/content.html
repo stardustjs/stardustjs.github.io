@@ -1,40 +1,15 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
-<style type="text/css">
-    body { margin: 0; padding: 0; font-size: 12px; }
-    .chart {
-        margin: 0;
-        padding: 0;
-        width: 960px;
-        height: 470px;
-    }
-    p {
-        margin: 0; padding: 0 10px;
-        line-height: 30px;
-        height: 30px;
-    }
-    .switch-mode {
-        display: inline-block;
-        margin: 0; padding: 0; border: none;
-        padding: 2px 5px;
-        cursro: pointer;
-        background: none;
-        border: 1px solid black;
-        color: black;
-    }
-    .switch-mode.active {
-        background: #CCC;
-    }
-</style>
-<div class="chart">
-    <canvas id="main-canvas"></canvas>
+<link rel="stylesheet" href="../../stardust-vis.github.io/examples/assets/style.css" type="text/css" />
+<canvas id="main-canvas"></canvas>
+<div data-switch="mode">
+    <button class="active" data-value="mode1">Circular</button>
+    <button data-value="mode2">Linear</button>
+    <div class="fps"></div>
 </div>
-<p>
-    <button class="switch-mode active" id="switch-mode1">Circular</button>
-    <button class="switch-mode" id="switch-mode2">Linear</button>
-</p>
 <script src="//d3js.org/d3.v3.min.js" type="text/javascript"></script>
 <script src="//stardust-vis.github.io/stardust/stardust.bundle.min.js" type="text/javascript"></script>
+<script src="//stardust-vis.github.io/examples/assets/utils.js" type="text/javascript"></script>
 <script type="text/javascript">
     var canvas = document.getElementById("main-canvas");
     var width = 960;
@@ -174,56 +149,14 @@
 
         render();
 
-        function beginTransition(func) {
-            let t0 = new Date().getTime();
-            let req = null;
-            let rerender = () => {
-                req = null;
-                let t1 = new Date().getTime();
-                let t = (t1 - t0) / 1000;
-                let shouldStop = false;
-                if(t > 1) {
-                    t = 1;
-                    shouldStop = true;
-                }
-                func(t);
-                render();
-                if(!shouldStop) {
-                    req = requestAnimationFrame(rerender);
-                }
-            }
-            req = requestAnimationFrame(rerender);
-            return {
-                stop: () => {
-                    if(req != null) cancelAnimationFrame(rerender);
-                }
-            }
-        }
-
-        let previousMode = "mode1";
-        d3.select("#switch-mode1").on("click", () => {
-            d3.selectAll(".switch-mode").classed("active", false);
-            d3.select("#switch-mode1").classed("active", true);
-            let pm = previousMode;
-            previousMode = "mode1";
+        switches.mode_changed = function(newValue) {
             beginTransition((t) => {
-                if(pm == "mode2") {
+                if(newValue == "mode1")
                     bar.attr("t", 1 - t);
-                    render();
-                }
-            });
-        });
-        d3.select("#switch-mode2").on("click", () => {
-            d3.selectAll(".switch-mode").classed("active", false);
-            d3.select("#switch-mode2").classed("active", true);
-            let pm = previousMode;
-            previousMode = "mode2";
-            beginTransition((t) => {
-                if(pm == "mode1") {
+                if(newValue == "mode2")
                     bar.attr("t", t);
-                    render();
-                }
+                render();
             });
-        });
+        };
     });
 </script>

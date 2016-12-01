@@ -1,9 +1,11 @@
 body { margin: 0; padding: 0; font-size: 14px; box-sizing: border-box; }
 div, p { margin: 0; padding: 0; font-size: 14px; line-height: 1em; }
 .fps {
-    position: fixed;
-    left: 0; top: 0;
-    padding: 10px;
+    float: right;
+    display: block;
+    height: 30px;
+    padding-right: 10px;
+    line-height: 30px;
     font-size: 15px;
     font-family: "Helvetica Neue", "Helvetica", "Arial", sans-serif;
 }
@@ -11,6 +13,7 @@ div, p { margin: 0; padding: 0; font-size: 14px; line-height: 1em; }
     margin: 0; padding: 0 10px;
     line-height: 30px;
     height: 30px;
+    width: 940px;
 }
 [data-switch] [data-value] {
     font-size: 16px;

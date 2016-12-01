@@ -9,48 +9,19 @@ title: "Stardust Example: SandDance"
     <h2>index.html</h2>
     <pre><code class="highlight html">&lt;!DOCTYPE html&gt;
 &lt;title&gt;Stardust Example: Scatterplot&lt;/title&gt;
-&lt;style type=&quot;text/css&quot;&gt;
-    body {
-        font-size: 13px;
-        font-family: &quot;Helvetica&quot;, &quot;Arial&quot;, sans-serif;
-        margin: 0;
-        padding: 0;
-    }
-    .chart {
-        margin: 0;
-        padding: 0;
-        width: 960px;
-        height: 470px;
-    }
-    p {
-        margin: 0; padding: 0 10px;
-        line-height: 30px;
-        height: 30px;
-    }
-    .switch-mode {
-        display: inline-block;
-        margin: 0; padding: 0; border: none;
-        padding: 2px 5px;
-        cursro: pointer;
-        background: none;
-        border: 1px solid black;
-        color: black;
-    }
-    .switch-mode.active {
-        background: #CCC;
-    }
-&lt;/style&gt;
+&lt;link rel=&quot;stylesheet&quot; href=&quot;//stardust-vis.github.io/examples/assets/style.css&quot; type=&quot;text/css&quot; /&gt;
 &lt;div class=&quot;chart&quot;&gt;
     &lt;canvas id=&quot;main-canvas&quot;&gt;&lt;/canvas&gt;
 &lt;/div&gt;
-&lt;p&gt;
-    &lt;button class=&quot;switch-mode active&quot; id=&quot;switch-mode1&quot;&gt;Map&lt;/button&gt;
-    &lt;button class=&quot;switch-mode&quot; id=&quot;switch-mode3&quot;&gt;Map Bins&lt;/button&gt;
-    &lt;button class=&quot;switch-mode&quot; id=&quot;switch-mode2&quot;&gt;State&lt;/button&gt;
-&lt;/p&gt;
+&lt;div data-switch=&quot;mode&quot;&gt;
+    &lt;button class=&quot;active&quot; data-value=&quot;mode1&quot;&gt;Map&lt;/button&gt;
+    &lt;button data-value=&quot;mode3&quot;&gt;Map Bins&lt;/button&gt;
+    &lt;button data-value=&quot;mode2&quot;&gt;State&lt;/button&gt;
+    &lt;div class=&quot;fps&quot;&gt;&lt;/div&gt;
+&lt;/div&gt;
 &lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
-&lt;!--&lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;--&gt;
 &lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;//stardust-vis.github.io/examples/assets/utils.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
 &lt;script type=&quot;text/javascript&quot;&gt;
     let width = 960;
     let height = 470;
@@ -219,74 +190,23 @@ title: "Stardust Example: SandDance"
             marks.render();
         }
 
-        function beginTransition(func) {
-            let t0 = new Date().getTime();
-            let req = null;
-            let rerender = () =&gt; {
-                req = null;
-                let t1 = new Date().getTime();
-                let t = (t1 - t0) / 1000;
-                let shouldStop = false;
-                if(t &gt; 1) {
-                    t = 1;
-                    shouldStop = true;
-                }
-                func(t);
-                render();
-                if(!shouldStop) {
-                    req = requestAnimationFrame(rerender);
-                }
-            }
-            req = requestAnimationFrame(rerender);
-            return {
-                stop: () =&gt; {
-                    if(req != null) cancelAnimationFrame(rerender);
-                }
-            }
-        }
-
-        let previousMode = &quot;mode1&quot;;
         transition12(0);
         render();
 
-        d3.select(&quot;#switch-mode1&quot;).on(&quot;click&quot;, () =&gt; {
-            d3.selectAll(&quot;.switch-mode&quot;).classed(&quot;active&quot;, false);
-            d3.select(&quot;#switch-mode1&quot;).classed(&quot;active&quot;, true);
-            let pm = previousMode;
-            previousMode = &quot;mode1&quot;;
+        var transitions = {
+            &quot;mode1mode2&quot;: (t) =&gt; transition12(t),
+            &quot;mode2mode1&quot;: (t) =&gt; transition12(1 - t),
+            &quot;mode2mode3&quot;: (t) =&gt; transition23(t),
+            &quot;mode3mode2&quot;: (t) =&gt; transition23(1 - t),
+            &quot;mode3mode1&quot;: (t) =&gt; transition31(t),
+            &quot;mode1mode3&quot;: (t) =&gt; transition31(1 - t),
+        }
+
+        switches.mode_changed = (newMode, previousMode) =&gt; {
             beginTransition((t) =&gt; {
-                if(pm == &quot;mode2&quot;) {
-                    transition12(1 - t);
-                } else if(pm == &quot;mode3&quot;) {
-                    transition31(t);
-                }
+                transitions[previousMode + newMode](t);
+                render();
             });
-        });
-        d3.select(&quot;#switch-mode2&quot;).on(&quot;click&quot;, () =&gt; {
-            d3.selectAll(&quot;.switch-mode&quot;).classed(&quot;active&quot;, false);
-            d3.select(&quot;#switch-mode2&quot;).classed(&quot;active&quot;, true);
-            let pm = previousMode;
-            previousMode = &quot;mode2&quot;;
-            beginTransition((t) =&gt; {
-                if(pm == &quot;mode1&quot;) {
-                    transition12(t);
-                } else if(pm == &quot;mode3&quot;) {
-                    transition23(1 - t);
-                }
-            });
-        });
-        d3.select(&quot;#switch-mode3&quot;).on(&quot;click&quot;, () =&gt; {
-            d3.selectAll(&quot;.switch-mode&quot;).classed(&quot;active&quot;, false);
-            d3.select(&quot;#switch-mode3&quot;).classed(&quot;active&quot;, true);
-            let pm = previousMode;
-            previousMode = &quot;mode3&quot;;
-            beginTransition((t) =&gt; {
-                if(pm == &quot;mode1&quot;) {
-                    transition31(1 - t);
-                } else if(pm == &quot;mode2&quot;) {
-                    transition23(t);
-                }
-            });
-        });
+        };
     });
 &lt;/script&gt;</code></pre>

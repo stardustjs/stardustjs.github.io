@@ -57,6 +57,23 @@ function measureFPS(renderFunction) {
     requestAnimationFrame(doFrame);
 }
 
+function FPS() {
+    this.updates = [];
+    this.updateIndex = 0;
+}
+
+FPS.prototype.update = function() {
+    this.updateIndex += 1;
+    this.updates.push(new Date().getTime());
+    if(this.updates.length > 100) {
+        this.updates = this.updates.splice(0, this.updates.length - 100);
+    }
+    if(this.updateIndex % 20 == 0) {
+        var dt = (this.updates[this.updates.length - 1] - this.updates[0]) / (this.updates.length - 1);
+        d3.select(".fps").text("FPS: " + (1000 / dt).toFixed(1));
+    }
+}
+
 var switches = {};
 
 d3.select("[data-switch]").each(function(s) {
