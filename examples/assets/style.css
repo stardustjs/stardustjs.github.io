@@ -1,6 +1,6 @@
 body { margin: 0; padding: 0; font-size: 14px; box-sizing: border-box; }
 div, p { margin: 0; padding: 0; font-size: 14px; line-height: 1em; }
-canvas { margin: 0; padding: 0; }
+canvas, svg { margin: 0; padding: 0; display: block }
 .fps {
     float: right;
     display: block;
