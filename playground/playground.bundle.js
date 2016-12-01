@@ -354,10 +354,10 @@ exports.examples = [
         ]
     },
     {
-        "name": "Sincos 2D Plot",
+        "name": "Sin 2D",
         "viewType": "2D",
         "dataFile": "",
-        "jsCode": "var mark = Stardust.mark.custom()\n    .input(\"x\", \"float\")\n    .input(\"k\", \"float\")\n    .input(\"k2\", \"float\")\n    .input(\"k3\", \"float\")\n    .input(\"size\", \"float\", \"0.3\");\nmark.add(\"P2D.Hexagon\")\n    .attr(\"center\", \"Vector2(cos(k2 * x) * 5 + cos(x * k) * size, sin(x * k) * size + sin(x * k3) * 5) * 30 + Vector2(250, 250)\")\n    .attr(\"radius\", 1)\n    .attr(\"color\", \"Color(0, 0, 0, 0.1)\");\n\nmark = Stardust.mark.create(mark, platform);\n\nmark.attr(\"x\", (d) => d);\naddSlider(\"k\", mark, \"k\", 101, 1, 200);\naddSlider(\"k2\", mark, \"k2\", 3, 0, 20);\naddSlider(\"k3\", mark, \"k3\", 13, 0, 20);\n\nvar data = [];\nvar N = 100000;\nfor(var k = 0; k < N; k++) {\n    var x = k / N * Math.PI * 2 * 20;\n    data.push(x);\n}\nmark.data(data);\n\nfunction render() {\n    mark.render();\n}\nfunction animate(t) {\n    mark.attr(\"size\", Math.sin(t) * 0.5);\n}\n",
+        "jsCode": "var mark = Stardust.mark.create(Stardust.mark.circle(6), platform);\n\nvar scale = Stardust.scale.custom(`Vector2(cos(k2 * value) * 5 + cos(value * k) * size, sin(value * k) * size + sin(value * k3) * 5) * 30 + Vector2(250, 250)`);\n\nscale.attr(\"k\", 10);\nscale.attr(\"k2\", 3);\nscale.attr(\"k3\", 13.2);\nscale.attr(\"size\", 1);\nmark.attr(\"center\", scale(d => d));\nmark.attr(\"color\", [ 0, 0, 0, 0.1 ]);\nmark.attr(\"radius\", 1);\n\nvar data = [];\nvar N = 100000;\nfor(var k = 0; k < N; k++) {\n    var x = k / N * Math.PI * 10;\n    data.push(x);\n}\nmark.data(data);\n\nfunction render() {\n    mark.render();\n}\nfunction animate(t) {\n    scale.attr(\"k2\", 10 + Math.sin(t / 12) * 5);\n    scale.attr(\"k3\", 10 + Math.sin(t / 10) * 5);\n    scale.attr(\"size\", Math.sin(t));\n}\n",
         "background": [
             1,
             1,

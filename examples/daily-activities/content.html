@@ -38,10 +38,10 @@
                 let thetaCenterB = theta1 + dThetaB / 2;
                 let dlA = dL * i;
                 let dlB = dL * (i + 1);
-                if(dTheta > 1e-5) {
+                if(dThetaA > 1e-5 || dThetaA < -1e-5) {
                     dlA = dlA / dThetaA * 2 * sin(dThetaA / 2);
                 }
-                if(dTheta > 1e-5) {
+                if(dThetaB > 1e-5 || dThetaB < -1e-5) {
                     dlB = dlB / dThetaB * 2 * sin(dThetaB / 2);
                 }
                 let pAdvA = Vector2(-sin(thetaCenterA), cos(thetaCenterA)) * dlA;

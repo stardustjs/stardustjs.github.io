@@ -46,10 +46,10 @@ title: "Stardust Example: Daily Activities of Creative People"
                 let thetaCenterB = theta1 + dThetaB / 2;
                 let dlA = dL * i;
                 let dlB = dL * (i + 1);
-                if(dTheta &gt; 1e-5) {
+                if(dThetaA &gt; 1e-5 || dThetaA &lt; -1e-5) {
                     dlA = dlA / dThetaA * 2 * sin(dThetaA / 2);
                 }
-                if(dTheta &gt; 1e-5) {
+                if(dThetaB &gt; 1e-5 || dThetaB &lt; -1e-5) {
                     dlB = dlB / dThetaB * 2 * sin(dThetaB / 2);
                 }
                 let pAdvA = Vector2(-sin(thetaCenterA), cos(thetaCenterA)) * dlA;
