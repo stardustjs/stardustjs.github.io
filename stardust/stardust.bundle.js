@@ -14,53 +14,122 @@ var mark;
 })(mark = exports.mark || (exports.mark = {}));
 require("stardust-webgl");
 
-},{"stardust-core":24,"stardust-isotype":25,"stardust-webgl":27}],2:[function(require,module,exports){
+},{"stardust-core":26,"stardust-isotype":27,"stardust-webgl":29}],2:[function(require,module,exports){
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var types_1 = require("./types");
+var TextureBinding = (function () {
+    function TextureBinding() {
+    }
+    return TextureBinding;
+}());
+exports.TextureBinding = TextureBinding;
+var Array = (function (_super) {
+    __extends(Array, _super);
+    function Array() {
+        _super.apply(this, arguments);
+        this._data = null;
+        this._valueFunction = null;
+        this._dirty = false;
+        this._textureData = null;
+    }
+    Array.prototype.getTextureData = function () {
+        if (this._dirty) {
+            var values = this._data.map(this._valueFunction).map(types_1.getBindingValue);
+            if (values.length == 0) {
+                this._textureData = null;
+            }
+            else {
+                var array_1;
+                var numberComponents = void 0;
+                if (typeof (values[0]) == "number") {
+                    numberComponents = 1;
+                    array_1 = new Float32Array(values.length * 4);
+                    for (var i = 0; i < values.length; i++) {
+                        array_1[i * 4] = values[i];
+                    }
+                }
+                else {
+                    numberComponents = values[0].length;
+                    array_1 = new Float32Array(values.length * 4);
+                    var offset = 0;
+                    for (var i = 0; i < values.length; i++) {
+                        var v = values[i];
+                        for (var j = 0; j < numberComponents; j++) {
+                            array_1[offset++] = v[j];
+                        }
+                        offset += 4 - numberComponents;
+                    }
+                }
+                this._textureData = {
+                    width: this._data.length,
+                    height: 1,
+                    numberComponents: numberComponents,
+                    data: array_1
+                };
+            }
+        }
+        return this._textureData;
+    };
+    Array.prototype.data = function (data) {
+        if (data != null) {
+            this._data = data;
+            this._dirty = true;
+            return this;
+        }
+        else {
+            return this._data;
+        }
+    };
+    Array.prototype.value = function (func) {
+        if (func != null) {
+            this._valueFunction = func;
+            this._dirty = true;
+            return this;
+        }
+        else {
+            return this._valueFunction;
+        }
+    };
+    return Array;
+}(TextureBinding));
+exports.Array = Array;
+// export class Grid extends TextureBinding  {
+// }
+function array() {
+    return new Array();
+}
+exports.array = array;
+// export function grid(): Grid {
+//     return new Grid();
+// } 
+
+},{"./types":4}],3:[function(require,module,exports){
 // binding.js:
 // Take care of data binding.
 "use strict";
-var spec_1 = require("../spec/spec");
-var math_1 = require("../math/math");
-// Resolve binding primitives to Value (Value = number or number[]).
-function getBindingValue(value) {
-    if (value instanceof math_1.MathType) {
-        return value.toArray();
-    }
-    else {
-        return value;
-    }
+function __export(m) {
+    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
 }
-exports.getBindingValue = getBindingValue;
-var ShiftBinding = (function () {
-    function ShiftBinding(name, offset) {
-        this.name = name;
-        this.offset = offset;
-    }
-    return ShiftBinding;
-}());
-exports.ShiftBinding = ShiftBinding;
+var spec_1 = require("../spec/spec");
+var array_1 = require("./array");
+var exceptions_1 = require("../exceptions");
+var types_1 = require("./types");
+__export(require("./types"));
+__export(require("./array"));
 // The main binding class.
 var Binding = (function () {
     function Binding(typeName, value) {
         this._type = spec_1.types[typeName];
         this._value = value;
     }
-    Object.defineProperty(Binding.prototype, "typeName", {
-        get: function () {
-            return this._type.name;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Binding.prototype, "type", {
+    Object.defineProperty(Binding.prototype, "valueType", {
         get: function () {
             return this._type;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(Binding.prototype, "size", {
-        get: function () {
-            return this._type.size;
         },
         enumerable: true,
         configurable: true
@@ -72,88 +141,124 @@ var Binding = (function () {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(Binding.prototype, "isFunction", {
+    Object.defineProperty(Binding.prototype, "bindingType", {
         get: function () {
-            return typeof (this._value) == "function";
+            if (this._value instanceof array_1.TextureBinding) {
+                return types_1.BindingType.TEXTURE;
+            }
+            if (typeof (this._value) == "function") {
+                return types_1.BindingType.FUNCTION;
+            }
+            return types_1.BindingType.VALUE;
         },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(Binding.prototype, "specValue", {
         get: function () {
-            return getBindingValue(this._value);
+            return types_1.getBindingValue(this._value);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Binding.prototype, "textureValue", {
+        get: function () {
+            return this._value;
         },
         enumerable: true,
         configurable: true
     });
     Binding.prototype.forEach = function (data, callback) {
-        if (this.isFunction) {
-            var f = this._value;
-            for (var i = 0; i < data.length; i++) {
-                callback(getBindingValue(f(data[i], i)), i);
-            }
-        }
-        else {
-            var value = getBindingValue(this._value);
-            for (var i = 0; i < data.length; i++) {
-                callback(value, i);
+        switch (this.bindingType) {
+            case types_1.BindingType.FUNCTION:
+                {
+                    var f = this._value;
+                    for (var i = 0; i < data.length; i++) {
+                        callback(types_1.getBindingValue(f(data[i], i)), i);
+                    }
+                }
+                break;
+            case types_1.BindingType.VALUE:
+                {
+                    var value = types_1.getBindingValue(this._value);
+                    for (var i = 0; i < data.length; i++) {
+                        callback(value, i);
+                    }
+                }
+                break;
+            case types_1.BindingType.TEXTURE: {
+                throw new exceptions_1.RuntimeError("Texture binding does not support for each");
             }
         }
     };
     Binding.prototype.map = function (data) {
-        if (this.isFunction) {
-            var f_1 = this._value;
-            return data.map(function (d, i) { return getBindingValue(f_1(d, i)); });
-        }
-        else {
-            var value_1 = getBindingValue(this._value);
-            return data.map(function () { return value_1; });
+        switch (this.bindingType) {
+            case types_1.BindingType.FUNCTION: {
+                var f_1 = this._value;
+                return data.map(function (d, i) { return types_1.getBindingValue(f_1(d, i)); });
+            }
+            case types_1.BindingType.VALUE: {
+                var value_1 = types_1.getBindingValue(this._value);
+                return data.map(function () { return value_1; });
+            }
+            case types_1.BindingType.TEXTURE: {
+                throw new exceptions_1.RuntimeError("Texture binding does not support for map");
+            }
         }
     };
     Binding.prototype.fillBinary = function (data, rep, array) {
         var n = data.length;
         var p = this._type.primitiveCount;
         var ptr = 0;
-        if (this.isFunction) {
-            var f = this._value;
-            if (p == 1) {
-                for (var i = 0; i < n; i++) {
-                    var result = getBindingValue(f(data[i], i));
-                    for (var k = 0; k < rep; k++) {
-                        array[ptr++] = result;
+        switch (this.bindingType) {
+            case types_1.BindingType.FUNCTION:
+                {
+                    var f = this._value;
+                    if (p == 1) {
+                        for (var i = 0; i < n; i++) {
+                            var result = types_1.getBindingValue(f(data[i], i));
+                            for (var k = 0; k < rep; k++) {
+                                array[ptr++] = result;
+                            }
+                        }
                     }
-                }
-            }
-            else {
-                for (var i = 0; i < n; i++) {
-                    var result = getBindingValue(f(data[i], i));
-                    for (var k = 0; k < rep; k++) {
-                        for (var j = 0; j < p; j++) {
-                            array[ptr++] = result[j];
+                    else {
+                        for (var i = 0; i < n; i++) {
+                            var result = types_1.getBindingValue(f(data[i], i));
+                            for (var k = 0; k < rep; k++) {
+                                for (var j = 0; j < p; j++) {
+                                    array[ptr++] = result[j];
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
-        else {
-            var value = getBindingValue(this._value);
-            if (p == 1) {
-                var v = value;
-                for (var i = 0; i < n; i++) {
-                    for (var k = 0; k < rep; k++) {
-                        array[ptr++] = v;
+                break;
+            case types_1.BindingType.VALUE:
+                {
+                    var value = types_1.getBindingValue(this._value);
+                    if (p == 1) {
+                        var v = value;
+                        for (var i = 0; i < n; i++) {
+                            for (var k = 0; k < rep; k++) {
+                                array[ptr++] = v;
+                            }
+                        }
                     }
-                }
-            }
-            else {
-                var v = value;
-                for (var i = 0; i < n; i++) {
-                    for (var k = 0; k < rep; k++) {
-                        for (var j = 0; j < p; j++) {
-                            array[ptr++] = v[j];
+                    else {
+                        var v = value;
+                        for (var i = 0; i < n; i++) {
+                            for (var k = 0; k < rep; k++) {
+                                for (var j = 0; j < p; j++) {
+                                    array[ptr++] = v[j];
+                                }
+                            }
                         }
                     }
                 }
+                break;
+            case types_1.BindingType.TEXTURE: {
+                throw new exceptions_1.RuntimeError("Texture binding does not support for fillBinary");
             }
         }
     };
@@ -161,7 +266,35 @@ var Binding = (function () {
 }());
 exports.Binding = Binding;
 
-},{"../math/math":15,"../spec/spec":20}],3:[function(require,module,exports){
+},{"../exceptions":10,"../spec/spec":22,"./array":2,"./types":4}],4:[function(require,module,exports){
+"use strict";
+var math_1 = require("../math/math");
+(function (BindingType) {
+    BindingType[BindingType["VALUE"] = 0] = "VALUE";
+    BindingType[BindingType["FUNCTION"] = 1] = "FUNCTION";
+    BindingType[BindingType["TEXTURE"] = 2] = "TEXTURE";
+})(exports.BindingType || (exports.BindingType = {}));
+var BindingType = exports.BindingType;
+var ShiftBinding = (function () {
+    function ShiftBinding(name, offset) {
+        this.name = name;
+        this.offset = offset;
+    }
+    return ShiftBinding;
+}());
+exports.ShiftBinding = ShiftBinding;
+// Resolve binding primitives to Value (Value = number or number[]).
+function getBindingValue(value) {
+    if (value instanceof math_1.MathType) {
+        return value.toArray();
+    }
+    else {
+        return value;
+    }
+}
+exports.getBindingValue = getBindingValue;
+
+},{"../math/math":17}],5:[function(require,module,exports){
 "use strict";
 var exceptions_1 = require("../exceptions");
 var parser_1 = require("./parser");
@@ -908,7 +1041,7 @@ function compileString(content) {
 }
 exports.compileString = compileString;
 
-},{"../exceptions":8,"../intrinsics/intrinsics":9,"../library/library":10,"../utils/utils":23,"./parser":5}],4:[function(require,module,exports){
+},{"../exceptions":10,"../intrinsics/intrinsics":11,"../library/library":12,"../utils/utils":25,"./parser":7}],6:[function(require,module,exports){
 // Declare mark code with Javascript calls.
 "use strict";
 var utils_1 = require("../utils/utils");
@@ -1004,7 +1137,7 @@ var CustomMark = (function () {
 }());
 exports.CustomMark = CustomMark;
 
-},{"../utils/utils":23,"./compiler":3}],5:[function(require,module,exports){
+},{"../utils/utils":25,"./compiler":5}],7:[function(require,module,exports){
 "use strict";
 var exceptions_1 = require("../exceptions");
 var parser_pegjs = require("./parser_pegjs");
@@ -1047,7 +1180,7 @@ function parseExpression(content) {
 }
 exports.parseExpression = parseExpression;
 
-},{"../exceptions":8,"./parser_pegjs":6}],6:[function(require,module,exports){
+},{"../exceptions":10,"./parser_pegjs":8}],8:[function(require,module,exports){
 module.exports = (function() {
   "use strict";
 
@@ -5197,7 +5330,7 @@ module.exports = (function() {
   };
 })();
 
-},{}],7:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 "use strict";
 var exceptions_1 = require("../exceptions");
 var utils_1 = require("../utils/utils");
@@ -5302,7 +5435,7 @@ var Context = (function () {
 }());
 exports.Context = Context;
 
-},{"../exceptions":8,"../intrinsics/intrinsics":9,"../utils/utils":23}],8:[function(require,module,exports){
+},{"../exceptions":10,"../intrinsics/intrinsics":11,"../utils/utils":25}],10:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -5359,7 +5492,7 @@ var RuntimeError = (function (_super) {
 }(BaseError));
 exports.RuntimeError = RuntimeError;
 
-},{}],9:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 "use strict";
 var utils_1 = require("../utils/utils");
 var math_1 = require("../math/math");
@@ -5570,8 +5703,12 @@ addConstant("PI", "float", Math.PI);
 addConstant("SQRT2", "float", Math.SQRT2);
 addConstant("SQRT1_2", "float", Math.SQRT1_2);
 addConstant("RED", "Color", [1, 0, 0, 1]);
+RegisterFunction("array", ["FloatArray", "float"], "float", function (color) { return color; });
+RegisterFunction("array", ["Vector2Array", "float"], "Vector2", function (color) { return color; });
+RegisterFunction("array", ["Vector3Array", "float"], "Vector3", function (color) { return color; });
+RegisterFunction("array", ["Vector4Array", "float"], "Vector4", function (color) { return color; });
 
-},{"../math/math":15,"../utils/utils":23}],10:[function(require,module,exports){
+},{"../math/math":17,"../utils/utils":25}],12:[function(require,module,exports){
 "use strict";
 var parser_1 = require("../compiler/parser");
 var utils_1 = require("../utils/utils");
@@ -5607,15 +5744,15 @@ function forEachModuleFunction(name, callback) {
 }
 exports.forEachModuleFunction = forEachModuleFunction;
 
-},{"../compiler/parser":5,"../utils/utils":23,"./primitives2d":11,"./primitives3d":12}],11:[function(require,module,exports){
+},{"../compiler/parser":7,"../utils/utils":25,"./primitives2d":13,"./primitives3d":14}],13:[function(require,module,exports){
 "use strict";
 exports.primitives = "\n    mark Triangle(\n        p1: Vector2,\n        p2: Vector2,\n        p3: Vector2,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: p1, color: color },\n            { position: p2, color: color },\n            { position: p3, color: color }\n        ];\n    }\n\n    mark Rectangle(\n        p1: Vector2,\n        p2: Vector2,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p2.x, p1.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p1.x, p2.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n    }\n\n    mark OutlinedRectangle(\n        p1: Vector2,\n        p2: Vector2,\n        width: float = 1,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        Rectangle(p1, Vector2(p1.x + width, p2.y - width), color);\n        Rectangle(Vector2(p1.x, p2.y - width), Vector2(p2.x - width, p2.y), color);\n        Rectangle(Vector2(p1.x + width, p1.y), Vector2(p2.x, p1.y + width), color);\n        Rectangle(Vector2(p2.x - width, p1.y + width), p2, color);\n    }\n\n    mark Hexagon(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..5) {\n            let a1 = i / 6.0 * PI * 2.0;\n            let a2 = (i + 1) / 6.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    mark Circle16(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..15) {\n            let a1 = i / 16.0 * PI * 2.0;\n            let a2 = (i + 1) / 16.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    mark Circle(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..31) {\n            let a1 = i / 32.0 * PI * 2.0;\n            let a2 = (i + 1) / 32.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    mark Line(\n        p1: Vector2,\n        p2: Vector2,\n        width: float = 1,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let d = normalize(p2 - p1);\n        let t = Vector2(d.y, -d.x) * (width / 2);\n        emit [\n            { position: p1 + t, color: color },\n            { position: p1 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n        emit [\n            { position: p1 - t, color: color },\n            { position: p2 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n    }\n\n    mark Sector2(\n        c: Vector2,\n        p1: Vector2,\n        p2: Vector2,\n        color: Color\n    ) {\n        let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n        Triangle(c, p1, pc, color);\n        Triangle(c, pc, p2, color);\n    }\n\n    mark Sector4(\n        c: Vector2,\n        p1: Vector2,\n        p2: Vector2,\n        color: Color\n    ) {\n        let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n        Sector2(c, p1, pc, color);\n        Sector2(c, pc, p2, color);\n    }\n\n    mark Polyline(\n        p: Vector2, p_p: Vector2, p_n: Vector2, p_nn: Vector2,\n        width: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let EPS = 1e-5;\n        let w = width / 2;\n        let d = normalize(p - p_n);\n        let n = Vector2(d.y, -d.x);\n        let m1: Vector2;\n        if(length(p - p_p) < EPS) {\n            m1 = n * w;\n        } else {\n            m1 = normalize(d + normalize(p - p_p)) * w;\n        }\n        let m2: Vector2;\n        if(length(p_n - p_nn) < EPS) {\n            m2 = -n * w;\n        } else {\n            m2 = normalize(normalize(p_n - p_nn) - d) * w;\n        }\n        let c1a: Vector2;\n        let c1b: Vector2;\n        let a1: Vector2;\n        let a2: Vector2;\n        if(dot(m1, n) > 0) {\n            c1a = p + m1;\n            c1b = p + n * w;\n            a2 = c1b;\n            a1 = p - m1 * (w / dot(m1, n));\n        } else {\n            c1a = p + m1;\n            c1b = p - n * w;\n            a2 = p + m1 * (w / dot(m1, n));\n            a1 = c1b;\n        }\n        let c2a: Vector2;\n        let c2b: Vector2;\n        let b1: Vector2;\n        let b2: Vector2;\n        if(dot(m2, n) < 0) {\n            c2a = p_n + m2;\n            c2b = p_n - n * w;\n            b1 = c2b;\n            b2 = p_n + m2 * (w / dot(m2, n));\n        } else {\n            c2a = p_n + m2;\n            c2b = p_n + n * w;\n            b2 = c2b;\n            b1 = p_n - m2 * (w / dot(m2, n));\n        }\n        emit [\n            { position: p, color: color },\n            { position: c1a, color: color },\n            { position: c1b, color: color }\n        ];\n        emit [\n            { position: p_n, color: color },\n            { position: c2a, color: color },\n            { position: c2b, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: a1, color: color },\n            { position: b1, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: b1, color: color },\n            { position: p_n, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: a2, color: color },\n            { position: b2, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: b2, color: color },\n            { position: p_n, color: color }\n        ];\n    }\n";
 
-},{}],12:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 "use strict";
 exports.primitives = "\n    mark Triangle(\n        p1: Vector3,\n        p2: Vector3,\n        p3: Vector3,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let normal = normalize(cross(p2 - p1, p3 - p1));\n        emit [\n            { position: p1, color: color, normal: normal },\n            { position: p2, color: color, normal: normal },\n            { position: p3, color: color, normal: normal }\n        ];\n    }\n\n    mark Tetrahedron(\n        p1: Vector3,\n        p2: Vector3,\n        p3: Vector3,\n        p4: Vector3\n    ) {\n        Triangle(p3, p4, p1);\n        Triangle(p1, p4, p2);\n        Triangle(p1, p2, p3);\n        Triangle(p2, p3, p4);\n    }\n\n    mark Cube(\n        center: Vector3,\n        radius: float,\n        color: Color\n    ) {\n        let p000 = Vector3(center.x - radius, center.y - radius, center.z - radius);\n        let p001 = Vector3(center.x - radius, center.y - radius, center.z + radius);\n        let p010 = Vector3(center.x - radius, center.y + radius, center.z - radius);\n        let p011 = Vector3(center.x - radius, center.y + radius, center.z + radius);\n        let p100 = Vector3(center.x + radius, center.y - radius, center.z - radius);\n        let p101 = Vector3(center.x + radius, center.y - radius, center.z + radius);\n        let p110 = Vector3(center.x + radius, center.y + radius, center.z - radius);\n        let p111 = Vector3(center.x + radius, center.y + radius, center.z + radius);\n        let nx = Vector3(1, 0, 0);\n        let ny = Vector3(0, 1, 0);\n        let nz = Vector3(0, 0, 1);\n        emit [ { position: p000, color: color, normal: nz }, { position: p110, color: color, normal: nz }, { position: p100, color: color, normal: nz } ];\n        emit [ { position: p000, color: color, normal: nz }, { position: p010, color: color, normal: nz }, { position: p110, color: color, normal: nz } ];\n        emit [ { position: p001, color: color, normal: nz }, { position: p101, color: color, normal: nz }, { position: p111, color: color, normal: nz } ];\n        emit [ { position: p001, color: color, normal: nz }, { position: p111, color: color, normal: nz }, { position: p011, color: color, normal: nz } ];\n        emit [ { position: p000, color: color, normal: ny }, { position: p100, color: color, normal: ny }, { position: p101, color: color, normal: ny } ];\n        emit [ { position: p000, color: color, normal: ny }, { position: p101, color: color, normal: ny }, { position: p001, color: color, normal: ny } ];\n        emit [ { position: p010, color: color, normal: ny }, { position: p111, color: color, normal: ny }, { position: p110, color: color, normal: ny } ];\n        emit [ { position: p010, color: color, normal: ny }, { position: p011, color: color, normal: ny }, { position: p111, color: color, normal: ny } ];\n        emit [ { position: p000, color: color, normal: nx }, { position: p001, color: color, normal: nx }, { position: p011, color: color, normal: nx } ];\n        emit [ { position: p000, color: color, normal: nx }, { position: p011, color: color, normal: nx }, { position: p010, color: color, normal: nx } ];\n        emit [ { position: p100, color: color, normal: nx }, { position: p101, color: color, normal: nx }, { position: p111, color: color, normal: nx } ];\n        emit [ { position: p100, color: color, normal: nx }, { position: p111, color: color, normal: nx }, { position: p110, color: color, normal: nx } ];\n    }\n";
 
-},{}],13:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 "use strict";
 var binding_1 = require("../binding/binding");
 var exceptions_1 = require("../exceptions");
@@ -5698,8 +5835,13 @@ var Mark = (function () {
                 if (this._platformMark) {
                     // Recompile if the input was compiled as input,
                     // and the new binding is not a function.
-                    if (this._platformMark.isUniform(name) && !newBinding.isFunction) {
-                        this._platformMark.updateUniform(name, newBinding.specValue);
+                    if (this._platformMark.isUniform(name) && newBinding.bindingType != binding_1.BindingType.FUNCTION) {
+                        if (newBinding.bindingType == binding_1.BindingType.VALUE) {
+                            this._platformMark.updateUniform(name, newBinding.specValue);
+                        }
+                        if (newBinding.bindingType == binding_1.BindingType.TEXTURE) {
+                            this._platformMark.updateTexture(name, newBinding.textureValue);
+                        }
                     }
                     else {
                         this._platformMark = null;
@@ -5771,7 +5913,7 @@ var Mark = (function () {
                         var shiftAttrs_1 = {};
                         attributes.forEach(function (attr) {
                             var bindedName = name + attr.bindedName;
-                            if (newBindings.get(bindedName).isFunction) {
+                            if (newBindings.get(bindedName).bindingType == binding_1.BindingType.FUNCTION) {
                                 var shiftBindedName = bindedName + suffix;
                                 shiftBindings.set(shiftBindedName, new binding_1.ShiftBinding(bindedName, shift));
                                 shiftAttrs_1[attr.bindedName] = {
@@ -5824,7 +5966,12 @@ var Mark = (function () {
                 var attributes = binding.getAttributes();
                 var attrs = {};
                 attributes.forEach(function (attr) {
-                    _this._platformMark.updateUniform(name + attr.bindedName, attr.binding);
+                    if (attr.binding instanceof binding_1.TextureBinding) {
+                        _this._platformMark.updateTexture(name + attr.bindedName, attr.binding);
+                    }
+                    else {
+                        _this._platformMark.updateUniform(name + attr.bindedName, attr.binding);
+                    }
                 });
             }
         });
@@ -5883,7 +6030,7 @@ var Mark = (function () {
 }());
 exports.Mark = Mark;
 
-},{"../binding/binding":2,"../exceptions":8,"../scale/scale":17,"../utils/utils":23}],14:[function(require,module,exports){
+},{"../binding/binding":3,"../exceptions":10,"../scale/scale":19,"../utils/utils":25}],16:[function(require,module,exports){
 "use strict";
 var compiler_1 = require("../compiler/compiler");
 var declare_1 = require("../compiler/declare");
@@ -5925,7 +6072,7 @@ var mark;
     mark.polyline = polyline;
 })(mark = exports.mark || (exports.mark = {}));
 
-},{"../compiler/compiler":3,"../compiler/declare":4,"./mark":13}],15:[function(require,module,exports){
+},{"../compiler/compiler":5,"../compiler/declare":6,"./mark":15}],17:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -6118,7 +6265,7 @@ var Pose = (function () {
 }());
 exports.Pose = Pose;
 
-},{}],16:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -6185,7 +6332,7 @@ function platform(name) {
 }
 exports.platform = platform;
 
-},{"../utils/utils":23}],17:[function(require,module,exports){
+},{"../utils/utils":25}],19:[function(require,module,exports){
 "use strict";
 var ScaleBinding = (function () {
     function ScaleBinding(scale, returnType, argTypes) {
@@ -6270,7 +6417,7 @@ var ScaleBinding = (function () {
 }());
 exports.ScaleBinding = ScaleBinding;
 
-},{}],18:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 "use strict";
 // Prebuilt scales.
 var utils_1 = require("../utils/utils");
@@ -6489,12 +6636,16 @@ var scale;
             return new (scale_1.ScaleBinding.bind.apply(scale_1.ScaleBinding, [void 0].concat([scale, e.valueType, ["float"]], args)))();
         });
         var attributes = new utils_1.Dictionary();
-        scale.attr = function (name, value) {
-            if (value == null) {
+        scale.attr = function (name, typeOrValue, value) {
+            if (typeOrValue == null && value == null) {
                 return attributes.get(name).value;
             }
+            else if (typeof (typeOrValue) == "string") {
+                attributes.set(name, { type: typeOrValue, value: value });
+                return scale;
+            }
             else {
-                attributes.set(name, { type: "float", value: value });
+                attributes.set(name, { type: "float", value: typeOrValue });
                 return scale;
             }
         };
@@ -6521,7 +6672,7 @@ var scale;
     scale_2.custom = custom;
 })(scale = exports.scale || (exports.scale = {}));
 
-},{"../compiler/compiler":3,"../compiler/parser":5,"../spec/construct":19,"../utils/utils":23,"./scale":17}],19:[function(require,module,exports){
+},{"../compiler/compiler":5,"../compiler/parser":7,"../spec/construct":21,"../utils/utils":25,"./scale":19}],21:[function(require,module,exports){
 "use strict";
 // Construct part of specification.
 var intrinsics_1 = require("../intrinsics/intrinsics");
@@ -6637,7 +6788,7 @@ function lessThanOrEquals(a1, a2) {
 }
 exports.lessThanOrEquals = lessThanOrEquals;
 
-},{"../intrinsics/intrinsics":9}],20:[function(require,module,exports){
+},{"../intrinsics/intrinsics":11}],22:[function(require,module,exports){
 "use strict";
 exports.types = {
     "float": { name: "float", size: 4, primitive: "float", primitiveCount: 1 },
@@ -6648,7 +6799,7 @@ exports.types = {
     "Color": { name: "Color", size: 16, primitive: "float", primitiveCount: 4 }
 };
 
-},{}],21:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 // Flattener: Resolve emit statements into individual render calls.
 "use strict";
 var SC = require("../spec/construct");
@@ -6789,12 +6940,12 @@ function flattenEmits(mark) {
 }
 exports.flattenEmits = flattenEmits;
 
-},{"../spec/construct":19,"../utils/utils":23}],22:[function(require,module,exports){
+},{"../spec/construct":21,"../utils/utils":25}],24:[function(require,module,exports){
 "use strict";
 var flattener_1 = require("./flattener");
 exports.flattenEmits = flattener_1.flattenEmits;
 
-},{"./flattener":21}],23:[function(require,module,exports){
+},{"./flattener":23}],25:[function(require,module,exports){
 "use strict";
 var Dictionary = (function () {
     function Dictionary() {
@@ -6862,7 +7013,7 @@ function timeTask(name, cb) {
 }
 exports.timeTask = timeTask;
 
-},{}],24:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 "use strict";
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
@@ -6893,7 +7044,7 @@ __export(require("./core/scale/scale"));
 var scales_1 = require("./core/scale/scales");
 exports.scale = scales_1.scale;
 
-},{"./core/binding/binding":2,"./core/compiler/compiler":3,"./core/compiler/declare":4,"./core/compiler/parser":5,"./core/evaluator/evaluator":7,"./core/exceptions":8,"./core/intrinsics/intrinsics":9,"./core/mark/mark":13,"./core/mark/marks":14,"./core/math/math":15,"./core/platform/platform":16,"./core/scale/scale":17,"./core/scale/scales":18,"./core/spec/spec":20,"./core/transform/transforms":22,"./core/utils/utils":23}],25:[function(require,module,exports){
+},{"./core/binding/binding":3,"./core/compiler/compiler":5,"./core/compiler/declare":6,"./core/compiler/parser":7,"./core/evaluator/evaluator":9,"./core/exceptions":10,"./core/intrinsics/intrinsics":11,"./core/mark/mark":15,"./core/mark/marks":16,"./core/math/math":17,"./core/platform/platform":18,"./core/scale/scale":19,"./core/scale/scales":20,"./core/spec/spec":22,"./core/transform/transforms":24,"./core/utils/utils":25}],27:[function(require,module,exports){
 /// <reference path="./earcut.d.ts" />
 "use strict";
 var stardust_core_1 = require("stardust-core");
@@ -6972,7 +7123,7 @@ function isotype(svg) {
 }
 exports.isotype = isotype;
 
-},{"earcut":26,"stardust-core":24}],26:[function(require,module,exports){
+},{"earcut":28,"stardust-core":26}],28:[function(require,module,exports){
 'use strict';
 
 module.exports = earcut;
@@ -7618,7 +7769,7 @@ earcut.flatten = function (data) {
     return result;
 };
 
-},{}],27:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 "use strict";
 exports.version = "0.0.1";
 var webgl_1 = require("./webgl/webgl");
@@ -7644,7 +7795,7 @@ stardust_core_1.registerPlatformConstructor("webgl-webvr", function (canvas, wid
     return new webgl_2.WebGLCanvasPlatformWebVR(canvas, width, height);
 });
 
-},{"./webgl/webgl":31,"stardust-core":24}],28:[function(require,module,exports){
+},{"./webgl/webgl":33,"stardust-core":26}],30:[function(require,module,exports){
 "use strict";
 var types_1 = require("./types");
 var intrinsics_1 = require("./intrinsics");
@@ -7688,6 +7839,9 @@ var Generator = (function () {
     };
     Generator.prototype.addUniform = function (name, type) {
         this.addLine("uniform " + types_1.convertTypeName(type) + " " + name + ";");
+        if (type == "Vector2Array" || type == "FloatArray" || type == "Vector3Array" || type == "Vector4Array") {
+            this.addLine("uniform int " + name + "_length;");
+        }
     };
     Generator.prototype.addAttribute = function (name, type) {
         this.addLine("attribute " + types_1.convertTypeName(type) + " " + name + ";");
@@ -7912,7 +8066,7 @@ var Generator = (function () {
 }());
 exports.Generator = Generator;
 
-},{"./intrinsics":29,"./types":30}],29:[function(require,module,exports){
+},{"./intrinsics":31,"./types":32}],31:[function(require,module,exports){
 "use strict";
 var stardust_core_1 = require("stardust-core");
 var stardust_core_2 = require("stardust-core");
@@ -8021,6 +8175,7 @@ ImplementSimpleFunction("mix", ["Color", "Color", "float"], "Color", "mix");
 ImplementFunction("clamp", ["float"], "float", function (a) { return ("clamp(" + a + ", 0, 1)"); });
 ImplementTypeConversion("float", "int", function (a) { return ("int(" + a + ")"); });
 ImplementTypeConversion("int", "float", function (a) { return ("float(" + a + ")"); });
+ImplementFunction("array", ["Vector2Array", "float"], "Vector2", function (a, b) { return ("texture2D(" + a + ", vec2((" + b + " + 0.5) / float(" + a + "_length), 0.5)).xy"); });
 function generateIntrinsicFunction(name, args) {
     if (intrinsicImplementations.has(name)) {
         if (intrinsicsCodeBase.has(name)) {
@@ -8036,7 +8191,7 @@ function generateIntrinsicFunction(name, args) {
 }
 exports.generateIntrinsicFunction = generateIntrinsicFunction;
 
-},{"stardust-core":24}],30:[function(require,module,exports){
+},{"stardust-core":26}],32:[function(require,module,exports){
 "use strict";
 var typeName2WebGLTypeName = {
     "float": "float",
@@ -8048,7 +8203,11 @@ var typeName2WebGLTypeName = {
     "Matrix3": "mat3",
     "Matrix4": "mat4",
     "Quaternion": "vec4",
-    "Color": "vec4"
+    "Color": "vec4",
+    "FloatArray": "sampler2D",
+    "Vector2Array": "sampler2D",
+    "Vector3Array": "sampler2D",
+    "Vector4Array": "sampler2D"
 };
 function convertTypeName(name) {
     return typeName2WebGLTypeName[name];
@@ -8079,7 +8238,7 @@ function convertConstant(type, value) {
 }
 exports.convertConstant = convertConstant;
 
-},{}],31:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -8093,6 +8252,7 @@ var generator_1 = require("./generator");
 var stardust_core_4 = require("stardust-core");
 var stardust_core_5 = require("stardust-core");
 var WebGLUtils = require("./webglutils");
+;
 var WebGLPlatformMarkProgram = (function () {
     function WebGLPlatformMarkProgram(GL, spec, asUniform, viewType, mode) {
         this._GL = GL;
@@ -8101,6 +8261,8 @@ var WebGLPlatformMarkProgram = (function () {
         this._program = WebGLUtils.compileProgram(this._GL, generator.getCode(), generator.getFragmentCode());
         this._uniformLocations = new stardust_core_3.Dictionary();
         this._attribLocations = new stardust_core_3.Dictionary();
+        this._textures = new stardust_core_3.Dictionary();
+        this._currentTextureUnit = 0;
     }
     WebGLPlatformMarkProgram.prototype.use = function () {
         this._GL.useProgram(this._program);
@@ -8144,6 +8306,54 @@ var WebGLPlatformMarkProgram = (function () {
                     break;
             }
         }
+    };
+    WebGLPlatformMarkProgram.prototype.setTexture = function (name, texture) {
+        var GL = this._GL;
+        if (!this._textures.has(name)) {
+            var newTexture = GL.createTexture();
+            var unit = this._currentTextureUnit++;
+            this._textures.set(name, {
+                data: null,
+                texture: newTexture,
+                unit: unit
+            });
+            GL.bindTexture(GL.TEXTURE_2D, newTexture);
+            GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
+            GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_MIN_FILTER, GL.LINEAR);
+            GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE);
+            GL.texParameteri(GL.TEXTURE_2D, GL.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE);
+            GL.bindTexture(GL.TEXTURE_2D, null);
+            this.use();
+            this.setUniform(name, stardust_core_1.types["int"], unit);
+        }
+        var cache = this._textures.get(name);
+        var newData = texture.getTextureData();
+        if (cache.data == newData) {
+            return;
+        }
+        else {
+            cache.data = newData;
+            // We need non-power-of-2 textures and floating point texture support.
+            GL.bindTexture(GL.TEXTURE_2D, cache.texture);
+            GL.texImage2D(GL.TEXTURE_2D, 0, GL.RGBA, newData.width, newData.height, 0, GL.RGBA, GL.FLOAT, newData.data);
+            GL.bindTexture(GL.TEXTURE_2D, null);
+            this.use();
+            this.setUniform(name + "_length", stardust_core_1.types["int"], newData.width);
+        }
+    };
+    WebGLPlatformMarkProgram.prototype.bindTextures = function () {
+        var GL = this._GL;
+        this._textures.forEach(function (cache) {
+            GL.activeTexture(GL.TEXTURE0 + cache.unit);
+            GL.bindTexture(GL.TEXTURE_2D, cache.texture);
+        });
+    };
+    WebGLPlatformMarkProgram.prototype.unbindTextures = function () {
+        var GL = this._GL;
+        this._textures.forEach(function (cache) {
+            GL.activeTexture(GL.TEXTURE0 + cache.unit);
+            GL.bindTexture(GL.TEXTURE_2D, null);
+        });
     };
     WebGLPlatformMarkProgram.prototype.getUniformLocation = function (name) {
         if (this._uniformLocations.has(name)) {
@@ -8199,7 +8409,13 @@ var WebGLPlatformMark = (function (_super) {
     WebGLPlatformMark.prototype.initializeUniforms = function () {
         for (var name_1 in this._specFlattened.input) {
             if (this.isUniform(name_1)) {
-                this.updateUniform(name_1, this._bindings.get(name_1).specValue);
+                var binding = this._bindings.get(name_1);
+                if (binding.bindingType == stardust_core_1.BindingType.VALUE) {
+                    this.updateUniform(name_1, binding.specValue);
+                }
+                if (binding.bindingType == stardust_core_1.BindingType.TEXTURE) {
+                    this.updateTexture(name_1, binding.textureValue);
+                }
             }
         }
     };
@@ -8234,22 +8450,28 @@ var WebGLPlatformMark = (function (_super) {
                 throw new stardust_core_4.RuntimeError("attribute " + name + " is not specified.");
             }
             else {
-                return !this._bindings.get(this._shiftBindings.get(name).name).isFunction;
+                return this._bindings.get(this._shiftBindings.get(name).name).bindingType != stardust_core_1.BindingType.FUNCTION;
             }
         }
         else {
             // Look at the binding to determine.
-            return !this._bindings.get(name).isFunction;
+            return this._bindings.get(name).bindingType != stardust_core_1.BindingType.FUNCTION;
         }
     };
     WebGLPlatformMark.prototype.updateUniform = function (name, value) {
         var binding = this._bindings.get(name);
-        var type = binding.type;
+        var type = binding.valueType;
         this._program.use();
         this._program.setUniform(name, type, value);
         if (this._programPick) {
             this._programPick.use();
             this._programPick.setUniform(name, type, value);
+        }
+    };
+    WebGLPlatformMark.prototype.updateTexture = function (name, value) {
+        this._program.setTexture(name, value);
+        if (this._programPick) {
+            this._programPick.setTexture(name, value);
         }
     };
     WebGLPlatformMark.prototype.uploadData = function (datas) {
@@ -8278,7 +8500,7 @@ var WebGLPlatformMark = (function (_super) {
             var buffer = buffers.buffers.get(name);
             if (buffer == null)
                 return;
-            var type = binding.type;
+            var type = binding.valueType;
             var array = new Float32Array(type.primitiveCount * totalCount * rep);
             var currentIndex = 0;
             var multiplier = type.primitiveCount * rep;
@@ -8351,7 +8573,7 @@ var WebGLPlatformMark = (function (_super) {
                     var shift = this._shiftBindings.get(name_2);
                     GL_1.bindBuffer(GL_1.ARRAY_BUFFER, buffers.buffers.get(shift.name));
                     GL_1.enableVertexAttribArray(attributeLocation);
-                    var type = bindings.get(shift.name).type;
+                    var type = bindings.get(shift.name).valueType;
                     GL_1.vertexAttribPointer(attributeLocation, type.primitiveCount, type.primitive == "float" ? GL_1.FLOAT : GL_1.INT, false, 0, type.size * (shift.offset - minOffset_1) * this._flattenedVertexCount);
                 }
                 else {
@@ -8361,7 +8583,7 @@ var WebGLPlatformMark = (function (_super) {
                         GL_1.vertexAttribPointer(attributeLocation, 1, GL_1.FLOAT, false, 0, 4 * (-minOffset_1) * this._flattenedVertexCount);
                     }
                     else {
-                        var type = bindings.get(name_2).type;
+                        var type = bindings.get(name_2).valueType;
                         GL_1.vertexAttribPointer(attributeLocation, type.primitiveCount, type.primitive == "float" ? GL_1.FLOAT : GL_1.INT, false, 0, type.size * (-minOffset_1) * this._flattenedVertexCount);
                     }
                 }
@@ -8416,6 +8638,7 @@ var WebGLPlatformMark = (function (_super) {
             if (mode == generator_1.GenerateMode.PICK) {
                 GL_1.uniform1f(program_1.getUniformLocation("s3_pick_index_alpha"), this._pickIndex / 255.0);
             }
+            program_1.bindTextures();
             // Draw arrays
             buffers.ranges.forEach(function (range, index) {
                 if (onRender) {
@@ -8423,9 +8646,11 @@ var WebGLPlatformMark = (function (_super) {
                 }
                 if (range != null) {
                     program_1.use();
+                    program_1.bindTextures();
                     GL_1.drawArrays(GL_1.TRIANGLES, range[0], range[1] - range[0] - (maxOffset_1 - minOffset_1) * _this._flattenedVertexCount);
                 }
             });
+            program_1.unbindTextures();
             // Unbind attributes
             for (var name_3 in spec.input) {
                 var attributeLocation = program_1.getAttribLocation(name_3);
@@ -8579,6 +8804,8 @@ var WebGLCanvasPlatform2D = (function (_super) {
         if (width === void 0) { width = 600; }
         if (height === void 0) { height = 400; }
         var GL = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+        GL.getExtension("OES_texture_float");
+        GL.getExtension("OES_texture_float_linear");
         _super.call(this, GL);
         this._canvas = canvas;
         GL.clearColor(1, 1, 1, 1);
@@ -8730,7 +8957,7 @@ var WebGLCanvasPlatformWebVR = (function (_super) {
 }(WebGLPlatform));
 exports.WebGLCanvasPlatformWebVR = WebGLCanvasPlatformWebVR;
 
-},{"./generator":28,"./webglutils":32,"stardust-core":24}],32:[function(require,module,exports){
+},{"./generator":30,"./webglutils":34,"stardust-core":26}],34:[function(require,module,exports){
 "use strict";
 var stardust_core_1 = require("stardust-core");
 function compileProgram(GL, vsCode, fsCode) {
@@ -8764,5 +8991,5 @@ function compileProgram(GL, vsCode, fsCode) {
 }
 exports.compileProgram = compileProgram;
 
-},{"stardust-core":24}]},{},[1])(1)
+},{"stardust-core":26}]},{},[1])(1)
 });
