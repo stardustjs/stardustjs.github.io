@@ -16,7 +16,7 @@ title: "Stardust Example: Force-directed Graph"
 &lt;div class=&quot;fps&quot;&gt;&lt;/div&gt;
 &lt;div class=&quot;initializing&quot;&gt;&lt;p&gt;Initializing...&lt;/p&gt;&lt;/div&gt;
 &lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
-&lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
 &lt;script src=&quot;//stardust-vis.github.io/examples/assets/utils.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
 &lt;script type=&quot;text/javascript&quot;&gt;
     var canvas = document.getElementById(&quot;main-canvas&quot;);
@@ -34,6 +34,7 @@ title: "Stardust Example: Force-directed Graph"
         var N = nodes.length;
 
         for(var i = 0; i &lt; N; i++) {
+            nodes[i].index = i;
             nodes[i].x = Math.random() * width;
             nodes[i].y = Math.random() * height;
         }
@@ -51,7 +52,7 @@ title: "Stardust Example: Force-directed Graph"
         sedges
             .attr(&quot;p1&quot;, (d) =&gt; [ d.source.x, d.source.y ])
             .attr(&quot;p2&quot;, (d) =&gt; [ d.target.x, d.target.y ])
-            .attr(&quot;width&quot;, 0.5)
+            .attr(&quot;width&quot;, 1)
             .attr(&quot;color&quot;, [ 93/255, 157/255, 218/255, 0.06 ]);
 
         var force = d3.layout.force()
@@ -64,12 +65,26 @@ title: "Stardust Example: Force-directed Graph"
         force.linkDistance(60);
         force.start();
 
+        var positions = Stardust.array(&quot;Vector2&quot;)
+            .value(d =&gt; [ d.x, d.y ])
+            .data(nodes);
+
+        var positionScale = Stardust.scale.custom(&quot;array(pos, value)&quot;)
+            .attr(&quot;pos&quot;, &quot;Vector2Array&quot;, positions)
+        snodes.attr(&quot;center&quot;, positionScale((d, i) =&gt; i));
+        sedges.attr(&quot;p1&quot;, positionScale(d =&gt; d.source.index));
+        sedges.attr(&quot;p2&quot;, positionScale(d =&gt; d.target.index));
+
+        snodes.data(nodes);
+        sedges.data(edges);
+
         force.on(&quot;tick&quot;, () =&gt; {
             force.alpha(0.1);
-            snodes.data(nodes);
-            sedges.data(edges);
+            positions.data(nodes);
             requestRender();
         });
+
+        // Handle dragging
 
         let selectedNode = null;
 
@@ -105,6 +120,7 @@ title: "Stardust Example: Force-directed Graph"
             fps.update();
         }
 
+        var isDragging = false;
         // Handle dragging.
         canvas.onmousedown = function(e) {
             var x = e.clientX - canvas.getBoundingClientRect().left;
@@ -113,17 +129,19 @@ title: "Stardust Example: Force-directed Graph"
             if(p) {
                 selectedNode = nodes[p[1]];
                 requestRender();
+                isDragging = true;
                 var onMove = function(e) {
                     var nx = e.clientX - canvas.getBoundingClientRect().left;
                     var ny = e.clientY - canvas.getBoundingClientRect().top;
                     nodes[p[1]].x = nx;
                     nodes[p[1]].y = ny;
-                    requestRender();
+                    // requestRender();
                 };
                 var onUp = function() {
                     window.removeEventListener(&quot;mousemove&quot;, onMove);
                     window.removeEventListener(&quot;mouseup&quot;, onUp);
                     selectedNode = null;
+                    isDragging = false;
                 };
                 window.addEventListener(&quot;mousemove&quot;, onMove);
                 window.addEventListener(&quot;mouseup&quot;, onUp);
@@ -131,6 +149,7 @@ title: "Stardust Example: Force-directed Graph"
         };
 
         canvas.onmousemove = function(e) {
+            if(isDragging) return;
             var x = e.clientX - canvas.getBoundingClientRect().left;
             var y = e.clientY - canvas.getBoundingClientRect().top;
             var p = platform.getPickingPixel(x * 2, y * 2);

@@ -8,7 +8,7 @@
 <div class="fps"></div>
 <div class="initializing"><p>Initializing...</p></div>
 <script src="//d3js.org/d3.v3.min.js" type="text/javascript"></script>
-<script src="//stardust-vis.github.io/stardust/stardust.bundle.min.js" type="text/javascript"></script>
+<script src="//stardust-vis.github.io/stardust/stardust.bundle.js" type="text/javascript"></script>
 <script src="//stardust-vis.github.io/examples/assets/utils.js" type="text/javascript"></script>
 <script type="text/javascript">
     var canvas = document.getElementById("main-canvas");
@@ -26,6 +26,7 @@
         var N = nodes.length;
 
         for(var i = 0; i < N; i++) {
+            nodes[i].index = i;
             nodes[i].x = Math.random() * width;
             nodes[i].y = Math.random() * height;
         }
@@ -43,7 +44,7 @@
         sedges
             .attr("p1", (d) => [ d.source.x, d.source.y ])
             .attr("p2", (d) => [ d.target.x, d.target.y ])
-            .attr("width", 0.5)
+            .attr("width", 1)
             .attr("color", [ 93/255, 157/255, 218/255, 0.06 ]);
 
         var force = d3.layout.force()
@@ -56,12 +57,26 @@
         force.linkDistance(60);
         force.start();
 
+        var positions = Stardust.array("Vector2")
+            .value(d => [ d.x, d.y ])
+            .data(nodes);
+
+        var positionScale = Stardust.scale.custom("array(pos, value)")
+            .attr("pos", "Vector2Array", positions)
+        snodes.attr("center", positionScale((d, i) => i));
+        sedges.attr("p1", positionScale(d => d.source.index));
+        sedges.attr("p2", positionScale(d => d.target.index));
+
+        snodes.data(nodes);
+        sedges.data(edges);
+
         force.on("tick", () => {
             force.alpha(0.1);
-            snodes.data(nodes);
-            sedges.data(edges);
+            positions.data(nodes);
             requestRender();
         });
+
+        // Handle dragging
 
         let selectedNode = null;
 
@@ -97,6 +112,7 @@
             fps.update();
         }
 
+        var isDragging = false;
         // Handle dragging.
         canvas.onmousedown = function(e) {
             var x = e.clientX - canvas.getBoundingClientRect().left;
@@ -105,17 +121,19 @@
             if(p) {
                 selectedNode = nodes[p[1]];
                 requestRender();
+                isDragging = true;
                 var onMove = function(e) {
                     var nx = e.clientX - canvas.getBoundingClientRect().left;
                     var ny = e.clientY - canvas.getBoundingClientRect().top;
                     nodes[p[1]].x = nx;
                     nodes[p[1]].y = ny;
-                    requestRender();
+                    // requestRender();
                 };
                 var onUp = function() {
                     window.removeEventListener("mousemove", onMove);
                     window.removeEventListener("mouseup", onUp);
                     selectedNode = null;
+                    isDragging = false;
                 };
                 window.addEventListener("mousemove", onMove);
                 window.addEventListener("mouseup", onUp);
@@ -123,6 +141,7 @@
         };
 
         canvas.onmousemove = function(e) {
+            if(isDragging) return;
             var x = e.clientX - canvas.getBoundingClientRect().left;
             var y = e.clientY - canvas.getBoundingClientRect().top;
             var p = platform.getPickingPixel(x * 2, y * 2);
