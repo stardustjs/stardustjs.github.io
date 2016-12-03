@@ -11,8 +11,17 @@ title: "Stardust Example: Force-directed Graph"
 &lt;link rel=&quot;stylesheet&quot; href=&quot;//stardust-vis.github.io/examples/assets/style.css&quot; type=&quot;text/css&quot; /&gt;
 &lt;style type=&quot;text/css&quot;&gt;
     .fps { position: fixed; top: 0; right: 0; padding: 10px; margin: 0; font-size: 15px; }
+    .sliders {
+        position: absolute;
+        left: 710px;
+        width: 220px;
+        top: 50px; bottom: 0;
+    }
+    .sliders label { display: block; font-weight: bold; }
+    .sliders input { display: block; width: 100%; margin: 5px 0; }
 &lt;/style&gt;
 &lt;canvas id=&quot;main-canvas&quot;&gt;&lt;/canvas&gt;
+&lt;div class=&quot;sliders&quot;&gt;&lt;/div&gt;
 &lt;div class=&quot;fps&quot;&gt;&lt;/div&gt;
 &lt;div class=&quot;initializing&quot;&gt;&lt;p&gt;Initializing...&lt;/p&gt;&lt;/div&gt;
 &lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
@@ -20,15 +29,16 @@ title: "Stardust Example: Force-directed Graph"
 &lt;script src=&quot;//stardust-vis.github.io/examples/assets/utils.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
 &lt;script type=&quot;text/javascript&quot;&gt;
     var canvas = document.getElementById(&quot;main-canvas&quot;);
-    var width = 960;
+    var width = 700;
     var height = 500;
     var platform = Stardust.platform(&quot;webgl-2d&quot;, canvas, width, height);
 
     var snodes = Stardust.mark.create(Stardust.mark.circle(8), platform);
+    var snodesBG = Stardust.mark.create(Stardust.mark.circle(8), platform);
     var snodesSelected = Stardust.mark.create(Stardust.mark.circle(8), platform);
     var sedges = Stardust.mark.create(Stardust.mark.line(), platform);
 
-    loadData(&quot;facebook_1912.json&quot;, (data) =&gt; {
+    loadData(&quot;facebook_1912_clusters.json&quot;, (data) =&gt; {
         var nodes = data.nodes;
         var edges = data.edges;
         var N = nodes.length;
@@ -39,13 +49,17 @@ title: "Stardust Example: Force-directed Graph"
             nodes[i].y = Math.random() * height;
         }
 
+        let colors = [[31,119,180],[255,127,14],[44,160,44],[214,39,40],[148,103,189],[140,86,75],[227,119,194],[127,127,127],[188,189,34],[23,190,207]];
+        colors = colors.map((x) =&gt; [ x[0] / 255, x[1] / 255, x[2] / 255, 1 ]);
+
         snodes
-            .attr(&quot;center&quot;, (d) =&gt; [ d.x, d.y ])
             .attr(&quot;radius&quot;, 3)
-            .attr(&quot;color&quot;, [ 55/255, 126/255, 184/255, 1 ]);
+            .attr(&quot;color&quot;, d =&gt; colors[d.cluster]);
+        snodesBG
+            .attr(&quot;radius&quot;, 3.5)
+            .attr(&quot;color&quot;, [ 1, 1, 1, 1 ]);
 
         snodesSelected
-            .attr(&quot;center&quot;, (d) =&gt; [ d.x, d.y ])
             .attr(&quot;radius&quot;, 4)
             .attr(&quot;color&quot;, [ 228/255, 26/255, 28/255, 1 ]);
 
@@ -53,7 +67,10 @@ title: "Stardust Example: Force-directed Graph"
             .attr(&quot;p1&quot;, (d) =&gt; [ d.source.x, d.source.y ])
             .attr(&quot;p2&quot;, (d) =&gt; [ d.target.x, d.target.y ])
             .attr(&quot;width&quot;, 1)
-            .attr(&quot;color&quot;, [ 93/255, 157/255, 218/255, 0.06 ]);
+            .attr(&quot;color&quot;, d =&gt; {
+                if(d.source.cluster == d.target.cluster) return colors[d.source.cluster].slice(0, 3).concat([ 0.1 ]);
+                return [ 0.5, 0.5, 0.5, 0.1 ]
+            });
 
         var force = d3.layout.force()
             .size([ width, height ])
@@ -61,9 +78,33 @@ title: "Stardust Example: Force-directed Graph"
             .links(edges);
 
         force.linkStrength(0.05);
+        force.friction(0.5);
         force.gravity(0.2);
-        force.linkDistance(60);
+        force.charge(-40);
+        force.linkDistance(50);
         force.start();
+
+        function makeSlider(name, attr, min, max, defaultValue) {
+            d3.select(&quot;.sliders&quot;).append(&quot;label&quot;).text(name);
+            var slider = d3.select(&quot;.sliders&quot;).append(&quot;input&quot;).attr({
+                type: &quot;range&quot;,
+                min: 0,
+                max: 1000,
+                value: (defaultValue - min) / (max - min) * 1000
+            });
+            slider.on(&quot;input&quot;, () =&gt; {
+                var val = +slider.property(&quot;value&quot;);
+                var d = val / 1000 * (max - min) + min;
+                force[attr](d);
+                force.start();
+            });
+        }
+
+        makeSlider(&quot;Friction&quot;, &quot;friction&quot;, 0.01, 1, 0.5);
+        makeSlider(&quot;Gravity&quot;, &quot;gravity&quot;, 0.01, 1, 0.5);
+        makeSlider(&quot;Charge&quot;, &quot;charge&quot;, -200, 0, -40);
+        makeSlider(&quot;Link Distance&quot;, &quot;linkDistance&quot;, 0, 200, 50);
+        makeSlider(&quot;Link Strength&quot;, &quot;linkStrength&quot;, 0, 0.2, 0.05);
 
         var positions = Stardust.array(&quot;Vector2&quot;)
             .value(d =&gt; [ d.x, d.y ])
@@ -71,10 +112,13 @@ title: "Stardust Example: Force-directed Graph"
 
         var positionScale = Stardust.scale.custom(&quot;array(pos, value)&quot;)
             .attr(&quot;pos&quot;, &quot;Vector2Array&quot;, positions)
-        snodes.attr(&quot;center&quot;, positionScale((d, i) =&gt; i));
+        snodesSelected.attr(&quot;center&quot;, positionScale(d =&gt; d.index));
+        snodes.attr(&quot;center&quot;, positionScale(d =&gt; d.index));
+        snodesBG.attr(&quot;center&quot;, positionScale(d =&gt; d.index));
         sedges.attr(&quot;p1&quot;, positionScale(d =&gt; d.source.index));
         sedges.attr(&quot;p2&quot;, positionScale(d =&gt; d.target.index));
 
+        snodesBG.data(nodes);
         snodes.data(nodes);
         sedges.data(edges);
 
@@ -100,13 +144,8 @@ title: "Stardust Example: Force-directed Graph"
             // Cleanup and re-render.
             platform.clear([ 1, 1, 1, 1 ]);
             sedges.render();
-            snodes
-                .attr(&quot;radius&quot;, 3)
-                .attr(&quot;color&quot;, [ 1, 1, 1, 0.5 ]);
-            snodes.render();
-            snodes
-                .attr(&quot;radius&quot;, 2)
-                .attr(&quot;color&quot;, [ 55/255, 126/255, 184/255, 1 ]);
+            snodesBG.render();
+            snodes.attr(&quot;radius&quot;, 3);
             snodes.render();
 
             snodesSelected.render();

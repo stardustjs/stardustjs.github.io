@@ -120,12 +120,6 @@ title: "Stardust Example: Daily Activities of Creative People"
         bar.attr(&quot;color&quot;, d =&gt; convertD3Color(colorScale(d.type)));
         bar.attr(&quot;index&quot;, 0);
 
-        // let d0 = data.slice();
-        // // Have more stuff on the screen, let's repeat the data 4 times.
-        // for(let i = 0; i &lt; 3; i++) {
-        //     data = data.concat(d0);
-        // }
-
         let yScale = d3.scale.linear().domain([ 0, data.length - 1 ]).range([ 15, height - 15 ]);
         let h = (yScale(1) - yScale(0)) * 0.8;
         bar.attr(&quot;width&quot;, h);
