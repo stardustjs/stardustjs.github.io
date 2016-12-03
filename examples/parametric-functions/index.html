@@ -1,0 +1,67 @@
+---
+layout: default
+title: "Stardust Example: Parametric Functions"
+---
+<h1>Stardust Example: Parametric Functions</h1>
+<iframe class="example-container" src="content.html" width="960px" height="500px" scrolling="no" sandbox="allow-popups allow-scripts allow-forms allow-same-origin"></iframe>
+
+    <h2>index.html</h2>
+    <pre><code class="highlight html">&lt;!DOCTYPE html&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;link rel=&quot;stylesheet&quot; href=&quot;//stardust-vis.github.io/examples/assets/style.css&quot; type=&quot;text/css&quot; /&gt;
+&lt;style type=&quot;text/css&quot;&gt;
+    #main-canvas { margin: 0; padding: 0; position: absolute; left: 0; top: 0 }
+&lt;/style&gt;
+&lt;canvas id=&quot;main-canvas&quot;&gt;&lt;/canvas&gt;
+&lt;div class=&quot;initializing&quot;&gt;&lt;p&gt;Initializing...&lt;/p&gt;&lt;/div&gt;
+&lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;//stardust-vis.github.io/examples/assets/utils.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script type=&quot;text/javascript&quot;&gt;
+    var canvas = document.getElementById(&quot;main-canvas&quot;);
+    var width = 960;
+    var height = 500;
+    var margin = 10;
+    var marginLeft = 35;
+    var marginBottom = 20;
+    var platform = Stardust.platform(&quot;webgl-2d&quot;, canvas, width, height);
+
+    var circleMark = Stardust.mark.circle(8);
+
+    var data = [];
+    var N = 123456;
+    for(var i = 0; i &lt; N; i++) {
+        data.push(i / N * Math.PI * 2);
+    }
+
+    // Color based on phase
+    var scaleColor = Stardust.scale.custom(`hcl2rgb(Color(value, 0.5, 0.5, 0.1))`);
+
+    var left = Stardust.mark.create(circleMark, platform);
+    var scaleLeft = Stardust.scale.custom(`
+        Vector2(
+            (R - r) * cos(value) + d * cos((R / r - 1) * value),
+            (R - r) * sin(value) - d * sin((R / r - 1) * value)
+        ) * size + center
+    `).attr(&quot;d&quot;, 2.19).attr(&quot;R&quot;, 5).attr(&quot;r&quot;, 5 * (18 / 41)).attr(&quot;size&quot;, 45).attr(&quot;center&quot;, &quot;Vector2&quot;, [ -13.33 + 250, 250 ]);
+    left.attr(&quot;center&quot;, scaleLeft(d =&gt; d * 41));
+    left.attr(&quot;radius&quot;, 1);
+    left.attr(&quot;color&quot;, scaleColor(d =&gt; d * 41));
+    left.data(data);
+
+    left.render();
+
+    var right = Stardust.mark.create(circleMark, platform);
+    var scaleRight = Stardust.scale.custom(`
+        Vector2(
+            cos(a * value) - cos(b * value) * cos(b * value) * cos(b * value),
+            sin(c * value) - sin(d * value) * sin(d * value) * sin(d * value)
+        ) * size + center
+    `).attr(&quot;a&quot;, 80).attr(&quot;b&quot;, 1).attr(&quot;c&quot;, 1).attr(&quot;d&quot;, 80).attr(&quot;size&quot;, 110).attr(&quot;center&quot;, &quot;Vector2&quot;, [ -13.33 * 2 + 1000 - 250, 250 ]);
+    right.attr(&quot;center&quot;, scaleRight(d =&gt; d));
+    right.attr(&quot;radius&quot;, 1);
+    right.attr(&quot;color&quot;, scaleColor(d =&gt; d));
+    right.data(data);
+
+    right.render();
+&lt;/script&gt;</code></pre>
