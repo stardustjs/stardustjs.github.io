@@ -45,11 +45,11 @@
         colors = colors.map((x) => [ x[0] / 255, x[1] / 255, x[2] / 255, 1 ]);
 
         snodes
-            .attr("radius", 3)
+            .attr("radius", 2)
             .attr("color", d => colors[d.cluster]);
         snodesBG
-            .attr("radius", 3.5)
-            .attr("color", [ 1, 1, 1, 1 ]);
+            .attr("radius", 3)
+            .attr("color", [ 1, 1, 1, 0.5 ]);
 
         snodesSelected
             .attr("radius", 4)
@@ -58,7 +58,7 @@
         sedges
             .attr("p1", (d) => [ d.source.x, d.source.y ])
             .attr("p2", (d) => [ d.target.x, d.target.y ])
-            .attr("width", 1)
+            .attr("width", 0.5)
             .attr("color", d => {
                 if(d.source.cluster == d.target.cluster) return colors[d.source.cluster].slice(0, 3).concat([ 0.1 ]);
                 return [ 0.5, 0.5, 0.5, 0.1 ]
@@ -115,7 +115,7 @@
         sedges.data(edges);
 
         force.on("tick", () => {
-            force.alpha(0.1);
+            force.start();
             positions.data(nodes);
             requestRender();
         });
@@ -137,7 +137,7 @@
             platform.clear([ 1, 1, 1, 1 ]);
             sedges.render();
             snodesBG.render();
-            snodes.attr("radius", 3);
+            snodes.attr("radius", 2);
             snodes.render();
 
             snodesSelected.render();

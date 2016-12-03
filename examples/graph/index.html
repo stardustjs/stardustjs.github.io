@@ -53,11 +53,11 @@ title: "Stardust Example: Force-directed Graph"
         colors = colors.map((x) =&gt; [ x[0] / 255, x[1] / 255, x[2] / 255, 1 ]);
 
         snodes
-            .attr(&quot;radius&quot;, 3)
+            .attr(&quot;radius&quot;, 2)
             .attr(&quot;color&quot;, d =&gt; colors[d.cluster]);
         snodesBG
-            .attr(&quot;radius&quot;, 3.5)
-            .attr(&quot;color&quot;, [ 1, 1, 1, 1 ]);
+            .attr(&quot;radius&quot;, 3)
+            .attr(&quot;color&quot;, [ 1, 1, 1, 0.5 ]);
 
         snodesSelected
             .attr(&quot;radius&quot;, 4)
@@ -66,7 +66,7 @@ title: "Stardust Example: Force-directed Graph"
         sedges
             .attr(&quot;p1&quot;, (d) =&gt; [ d.source.x, d.source.y ])
             .attr(&quot;p2&quot;, (d) =&gt; [ d.target.x, d.target.y ])
-            .attr(&quot;width&quot;, 1)
+            .attr(&quot;width&quot;, 0.5)
             .attr(&quot;color&quot;, d =&gt; {
                 if(d.source.cluster == d.target.cluster) return colors[d.source.cluster].slice(0, 3).concat([ 0.1 ]);
                 return [ 0.5, 0.5, 0.5, 0.1 ]
@@ -123,7 +123,7 @@ title: "Stardust Example: Force-directed Graph"
         sedges.data(edges);
 
         force.on(&quot;tick&quot;, () =&gt; {
-            force.alpha(0.1);
+            force.start();
             positions.data(nodes);
             requestRender();
         });
@@ -145,7 +145,7 @@ title: "Stardust Example: Force-directed Graph"
             platform.clear([ 1, 1, 1, 1 ]);
             sedges.render();
             snodesBG.render();
-            snodes.attr(&quot;radius&quot;, 3);
+            snodes.attr(&quot;radius&quot;, 2);
             snodes.render();
 
             snodesSelected.render();
