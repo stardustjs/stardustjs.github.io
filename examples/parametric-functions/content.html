@@ -5,6 +5,7 @@
     #main-canvas { margin: 0; padding: 0; position: absolute; left: 0; top: 0 }
 </style>
 <canvas id="main-canvas"></canvas>
+<div class="fps"></div>
 <div class="initializing"><p>Initializing...</p></div>
 <script src="//d3js.org/d3.v3.min.js" type="text/javascript"></script>
 <script src="//stardust-vis.github.io/stardust/stardust.bundle.min.js" type="text/javascript"></script>
@@ -21,13 +22,14 @@
     var circleMark = Stardust.mark.circle(8);
 
     var data = [];
-    var N = 123456;
+    var N = 100000;
     for(var i = 0; i < N; i++) {
         data.push(i / N * Math.PI * 2);
     }
 
     // Color based on phase
-    var scaleColor = Stardust.scale.custom(`hcl2rgb(Color(value, 0.5, 0.5, 0.1))`);
+    var scaleColor = Stardust.scale.custom(`hcl2rgb(Color(value + shift, 0.5, 0.5, 0.1))`);
+    scaleColor.attr("shift", 0);
 
     var left = Stardust.mark.create(circleMark, platform);
     var scaleLeft = Stardust.scale.custom(`
@@ -41,7 +43,7 @@
     left.attr("color", scaleColor(d => d * 41));
     left.data(data);
 
-    left.render();
+
 
     var right = Stardust.mark.create(circleMark, platform);
     var scaleRight = Stardust.scale.custom(`
@@ -55,5 +57,18 @@
     right.attr("color", scaleColor(d => d));
     right.data(data);
 
-    right.render();
+    function render() {
+        left.render();
+        right.render();
+    }
+
+    var t0 = new Date().getTime();
+    var fps = new FPS();
+    d3.timer(function() {
+        var t = new Date().getTime() - t0;
+        scaleLeft.attr("d", 1.95 + Math.sin(t / 500) * 0.4);
+        scaleColor.attr("shift", t / 250 % (Math.PI * 2));
+        render();
+        fps.update();
+    });
 </script>

@@ -4,7 +4,8 @@ title: "Stardust Example: Parametric Functions"
 ---
 <h1>Stardust Example: Parametric Functions</h1>
 <iframe class="example-container" src="content.html" width="960px" height="500px" scrolling="no" sandbox="allow-popups allow-scripts allow-forms allow-same-origin"></iframe>
-
+<p>Rendering two interesting <a href="https://en.wikipedia.org/wiki/Parametric_equation">parametric functions</a>. Left: a <a href="https://en.wikipedia.org/wiki/Hypotrochoid">Hypotrochoid</a>; right: a more complex function.
+Both functions are rendered using 100k circles.</p>
     <h2>index.html</h2>
     <pre><code class="highlight html">&lt;!DOCTYPE html&gt;
 &lt;meta charset=&quot;utf-8&quot;&gt;
@@ -13,6 +14,7 @@ title: "Stardust Example: Parametric Functions"
     #main-canvas { margin: 0; padding: 0; position: absolute; left: 0; top: 0 }
 &lt;/style&gt;
 &lt;canvas id=&quot;main-canvas&quot;&gt;&lt;/canvas&gt;
+&lt;div class=&quot;fps&quot;&gt;&lt;/div&gt;
 &lt;div class=&quot;initializing&quot;&gt;&lt;p&gt;Initializing...&lt;/p&gt;&lt;/div&gt;
 &lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
 &lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
@@ -29,13 +31,14 @@ title: "Stardust Example: Parametric Functions"
     var circleMark = Stardust.mark.circle(8);
 
     var data = [];
-    var N = 123456;
+    var N = 100000;
     for(var i = 0; i &lt; N; i++) {
         data.push(i / N * Math.PI * 2);
     }
 
     // Color based on phase
-    var scaleColor = Stardust.scale.custom(`hcl2rgb(Color(value, 0.5, 0.5, 0.1))`);
+    var scaleColor = Stardust.scale.custom(`hcl2rgb(Color(value + shift, 0.5, 0.5, 0.1))`);
+    scaleColor.attr(&quot;shift&quot;, 0);
 
     var left = Stardust.mark.create(circleMark, platform);
     var scaleLeft = Stardust.scale.custom(`
@@ -49,7 +52,7 @@ title: "Stardust Example: Parametric Functions"
     left.attr(&quot;color&quot;, scaleColor(d =&gt; d * 41));
     left.data(data);
 
-    left.render();
+
 
     var right = Stardust.mark.create(circleMark, platform);
     var scaleRight = Stardust.scale.custom(`
@@ -63,5 +66,18 @@ title: "Stardust Example: Parametric Functions"
     right.attr(&quot;color&quot;, scaleColor(d =&gt; d));
     right.data(data);
 
-    right.render();
+    function render() {
+        left.render();
+        right.render();
+    }
+
+    var t0 = new Date().getTime();
+    var fps = new FPS();
+    d3.timer(function() {
+        var t = new Date().getTime() - t0;
+        scaleLeft.attr(&quot;d&quot;, 1.95 + Math.sin(t / 500) * 0.4);
+        scaleColor.attr(&quot;shift&quot;, t / 250 % (Math.PI * 2));
+        render();
+        fps.update();
+    });
 &lt;/script&gt;</code></pre>
