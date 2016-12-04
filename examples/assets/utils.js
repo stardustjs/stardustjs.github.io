@@ -10,7 +10,7 @@ function beginTransition(func, maxTime) {
     var t0 = new Date().getTime();
     var req = null;
     var totalFrames = 0;
-    var rerender = () => {
+    var rerender = function() {
         req = null;
         var t1 = new Date().getTime();
         var t = (t1 - t0) / 1000;
@@ -29,10 +29,10 @@ function beginTransition(func, maxTime) {
                 d3.select(".fps").text("FPS: " + (totalFrames / ((t1 - t0) / 1000)).toFixed(1));
             });
         }
-    }
+    };
     req = requestAnimationFrame(rerender);
     _previousTransition = {
-        stop: () => {
+        stop: function() {
             if(req != null) cancelAnimationFrame(rerender);
         }
     }
