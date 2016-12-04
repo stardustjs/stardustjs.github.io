@@ -8804,8 +8804,12 @@ var WebGLCanvasPlatform2D = (function (_super) {
         if (width === void 0) { width = 600; }
         if (height === void 0) { height = 400; }
         var GL = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-        GL.getExtension("OES_texture_float");
-        GL.getExtension("OES_texture_float_linear");
+        try {
+            GL.getExtension("OES_texture_float");
+            GL.getExtension("OES_texture_float_linear");
+        }
+        catch (e) {
+        }
         _super.call(this, GL);
         this._canvas = canvas;
         GL.clearColor(1, 1, 1, 1);
