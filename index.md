@@ -13,6 +13,7 @@ Stardust: GPU-based Visualization Library
     <li><a href="{{base}}/examples/squares"><img src="{{base}}/examples/squares/preview_small.png" /><div class="overlay"><span>Squares</span></div></a></li>
     <li><a href="{{base}}/examples/isotype"><img src="{{base}}/examples/isotype/preview_small.png" /><div class="overlay"><span>Isotype</span></div></a></li>
     <li><a href="{{base}}/examples/graph"><img src="{{base}}/examples/graph/preview_small.png" /><div class="overlay"><span>Force-directed Graph</span></div></a></li>
+    <li><a href="{{base}}/examples/p5js-integration"><img src="{{base}}/examples/p5js-integration/preview_small.png" /><div class="overlay"><span>Integrating into p5.js</span></div></a></li>
 </ul>
 
 
