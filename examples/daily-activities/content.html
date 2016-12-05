@@ -56,12 +56,6 @@
                 Triangle(pA + dpA, pB - dpB, pA - dpA, color);
             }
         }
-        function mix(a: float, b: float, t: float) {
-            return a + (b - a) * t;
-        }
-        function mix(a: Vector2, b: Vector2, t: float) {
-            return a + (b - a) * t;
-        }
         mark Bar(
             index: float,
             center: Vector2,
@@ -103,6 +97,11 @@
     };
 
     loadData("data.json", (data) => {
+        // var data0 = data.slice();
+        // for(var k = 0; k < 49; k++) {
+        //     data = data.concat(data0);
+        // }
+
         bar.attr("center", [ 480, 250 ] );
         bar.attr("vcenter", [ 480, 250 ]);
         bar.attr("radius", 40);
@@ -135,6 +134,12 @@
         });
 
         bar.data(data);
+
+        var N = 0;
+        data.forEach(d => N += d.activities.length);
+        console.log(N);
+
+
 
         function render() {
             platform.clear();
