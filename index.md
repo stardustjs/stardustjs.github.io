@@ -13,13 +13,14 @@ Stardust: GPU-based Visualization Library
     <li><a href="{{base}}/examples/squares"><img src="{{base}}/examples/squares/preview_small.png" /><div class="overlay"><span>Squares</span></div></a></li>
     <li><a href="{{base}}/examples/isotype"><img src="{{base}}/examples/isotype/preview_small.png" /><div class="overlay"><span>Isotype</span></div></a></li>
     <li><a href="{{base}}/examples/graph"><img src="{{base}}/examples/graph/preview_small.png" /><div class="overlay"><span>Force-directed Graph</span></div></a></li>
-    <li><a href="{{base}}/examples/p5js-integration"><img src="{{base}}/examples/p5js-integration/preview_small.png" /><div class="overlay"><span>Integrating into p5.js</span></div></a></li>
 </ul>
 
 
+<p class="lead" markdown="1">
 **Stardust** is a library for rendering information visualizations with GPU (WebGL). Stardust provides an easy-to-use
 and familiar API for defining marks and binding data to them. With Stardust, you can render tenth of thousands
 of markers and animate them in real time without the hassle of managing WebGL shaders and buffers.
+</p>
 
 Play with the library in the online playground:
 
@@ -125,3 +126,10 @@ platform.clear();
 // Re-render the circles
 circles.render();
 ```
+
+## Next Steps
+
+- See the [examples]({{base}}/examples)
+- Play with existing code in the [online playground]({{base}}/playground)
+- Browse the [documentation]({{base}}/documentation)
+- Checkout the source code at <https://github.com/stardust-vis/>
