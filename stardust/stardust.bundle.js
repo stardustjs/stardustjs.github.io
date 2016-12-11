@@ -14,7 +14,7 @@ var mark;
 })(mark = exports.mark || (exports.mark = {}));
 require("stardust-webgl");
 
-},{"stardust-core":26,"stardust-isotype":27,"stardust-webgl":29}],2:[function(require,module,exports){
+},{"stardust-core":27,"stardust-isotype":28,"stardust-webgl":30}],2:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -266,7 +266,7 @@ var Binding = (function () {
 }());
 exports.Binding = Binding;
 
-},{"../exceptions":10,"../spec/spec":22,"./array":2,"./types":4}],4:[function(require,module,exports){
+},{"../exceptions":11,"../spec/spec":23,"./array":2,"./types":4}],4:[function(require,module,exports){
 "use strict";
 var math_1 = require("../math/math");
 (function (BindingType) {
@@ -294,13 +294,151 @@ function getBindingValue(value) {
 }
 exports.getBindingValue = getBindingValue;
 
-},{"../math/math":17}],5:[function(require,module,exports){
+},{"../math/math":18}],5:[function(require,module,exports){
+"use strict";
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var math_1 = require("../math/math");
+// Stardust use colors with range 0-1 instead of 0-255, different from HTML!
+var Color = (function (_super) {
+    __extends(Color, _super);
+    function Color(r, g, b, a) {
+        if (r === void 0) { r = 0; }
+        if (g === void 0) { g = 0; }
+        if (b === void 0) { b = 0; }
+        if (a === void 0) { a = 1; }
+        _super.call(this);
+        this.r = r;
+        this.g = g;
+        this.b = b;
+        this.a = a;
+    }
+    Color.prototype.toArray = function () {
+        return [this.r, this.g, this.b, this.a];
+    };
+    Color.prototype.clone = function () {
+        return new Color(this.r, this.g, this.b, this.a);
+    };
+    Color.FromArray = function (_a) {
+        var r = _a[0], g = _a[1], b = _a[2], a = _a[3];
+        return new Color(r, g, b, a);
+    };
+    Color.FromHTML = function (html) {
+        return Color.FromArray(color.fromHTML(html));
+    };
+    return Color;
+}(math_1.MathType));
+exports.Color = Color;
+var color;
+(function (color) {
+    function fromHTML(html, alpha) {
+        if (html === void 0) { html = "#000000"; }
+        var m;
+        m = html.match(/^ *rgb *\( *([0-9\.\-e]+) *, *([0-9\.\-e]+) *, *([0-9\.\-e]+) *\) *$/);
+        if (m) {
+            return [+m[1] / 255.0, +m[2] / 255.0, +m[3] / 255.0, alpha != null ? alpha : 1];
+        }
+        m = html.match(/^ *rgba *\( *([0-9\.\-e]+) *, *([0-9\.\-e]+) *, *([0-9\.\-e]+) *, *([0-9\.\-e]+) *\) *$/);
+        if (m) {
+            return [+m[1] / 255.0, +m[2] / 255.0, +m[3] / 255.0, alpha != null ? alpha * +m[4] : +m[4]];
+        }
+        m = html.match(/^ *\#([0-9a-fA-F]{3}) *$/);
+        if (m) {
+            var r = parseInt(m[1][0], 16) * 17;
+            var g = parseInt(m[1][1], 16) * 17;
+            var b = parseInt(m[1][2], 16) * 17;
+            return [r / 255.0, g / 255.0, b / 255.0, alpha != null ? alpha : 1];
+        }
+        m = html.match(/^ *\#([0-9a-fA-F]{6}) *$/);
+        if (m) {
+            var r = parseInt(m[1].slice(0, 2), 16);
+            var g = parseInt(m[1].slice(2, 4), 16);
+            var b = parseInt(m[1].slice(4, 6), 16);
+            return [r / 255.0, g / 255.0, b / 255.0, alpha != null ? alpha : 1];
+        }
+        return [0, 0, 0, 1];
+    }
+    color.fromHTML = fromHTML;
+})(color = exports.color || (exports.color = {}));
+
+},{"../math/math":18}],6:[function(require,module,exports){
 "use strict";
 var exceptions_1 = require("../exceptions");
 var parser_1 = require("./parser");
 var utils_1 = require("../utils/utils");
 var Intrinsics = require("../intrinsics/intrinsics");
 var Library = require("../library/library");
+var ModuleResolver = (function () {
+    function ModuleResolver() {
+        var _this = this;
+        this._functions = new utils_1.Dictionary();
+        this._functionModule = new utils_1.Dictionary();
+        this._currentMoudles = [];
+        Intrinsics.forEachIntrinsicFunction(function (info) {
+            _this.addIntrinsicFunction(info.name, {
+                type: "function",
+                isMark: false,
+                name: info.internalName,
+                returnType: info.returnType,
+                arguments: info.argTypes.map(function (x, idx) { return { name: "a" + idx, type: x }; }),
+                statements: null
+            });
+        });
+    }
+    ModuleResolver.prototype.addIntrinsicFunction = function (name, func) {
+        if (!this._functions.has(name)) {
+            var resolver = new FunctionOverloadResolver(name);
+            this._functions.set(name, resolver);
+            resolver.addFunction(func);
+        }
+        else {
+            var resolver = this._functions.get(name);
+            resolver.addFunction(func);
+        }
+    };
+    ModuleResolver.prototype.addFunction = function (name, func) {
+        if (!this._functions.has(name)) {
+            var resolver = new FunctionOverloadResolver(name);
+            this._functions.set(name, resolver);
+            resolver.addFunction(func);
+        }
+        else {
+            var resolver = this._functions.get(name);
+            resolver.addFunction(func);
+        }
+    };
+    ModuleResolver.prototype.importFunction = function (module, name) {
+        this.addFunction(name, module.get(name));
+        this._functionModule.set(name, module);
+    };
+    ModuleResolver.prototype.getFunction = function (name) {
+        for (var i = this._currentMoudles.length - 1; i >= 0; i--) {
+            var cm = this._currentMoudles[i];
+            if (cm && cm.has(name)) {
+                var resolver = new FunctionOverloadResolver(name);
+                resolver.addFunction(cm.get(name));
+                return resolver;
+            }
+        }
+        if (this._functions.has(name)) {
+            return this._functions.get(name);
+        }
+        else {
+            return null;
+        }
+    };
+    ModuleResolver.prototype.enterFunctionImplementation = function (name) {
+        this._currentMoudles.push(this._functionModule.get(name));
+    };
+    ModuleResolver.prototype.leaveFunctionImplementation = function (name) {
+        this._currentMoudles.pop();
+    };
+    return ModuleResolver;
+}());
+exports.ModuleResolver = ModuleResolver;
 var ScopeVariables = (function () {
     function ScopeVariables(owner, parentScope, argMap) {
         if (parentScope === void 0) { parentScope = null; }
@@ -529,12 +667,12 @@ exports.FunctionOverloadResolver = FunctionOverloadResolver;
 var Compiler = (function () {
     function Compiler() {
         this._scope = new ScopeStack();
-        this._functions = new utils_1.Dictionary();
-        this._intrinsicFunctions = new utils_1.Dictionary();
+        // this._functions = new Dictionary<FunctionOverloadResolver>();
+        // this._intrinsicFunctions = new Dictionary<FunctionOverloadResolver>();
         this._constants = new utils_1.Dictionary();
+        this._moduleResolver = new ModuleResolver();
         this._statements = [];
         this._lastIndex = 1;
-        this.prepareIntrinsicFunctions();
         this.prepareFieldTypeRegistry();
         this.prepareConstants();
     }
@@ -564,30 +702,8 @@ var Compiler = (function () {
             _this._constants.set(info.name, info);
         });
     };
-    Compiler.prototype.addFunction = function (name, func) {
-        if (!this._functions.has(name)) {
-            var resolver = new FunctionOverloadResolver(name);
-            this._functions.set(name, resolver);
-            resolver.addFunction(func);
-        }
-        else {
-            var resolver = this._functions.get(name);
-            resolver.addFunction(func);
-        }
-    };
-    Compiler.prototype.addIntrinsicFunction = function (name, func) {
-        if (!this._intrinsicFunctions.has(name)) {
-            var resolver = new FunctionOverloadResolver(name);
-            this._intrinsicFunctions.set(name, resolver);
-            resolver.addFunction(func);
-        }
-        else {
-            var resolver = this._intrinsicFunctions.get(name);
-            resolver.addFunction(func);
-        }
-    };
     Compiler.prototype.resolveFunction = function (name, args, kwargs) {
-        var resolver = this._functions.get(name) || this._intrinsicFunctions.get(name);
+        var resolver = this._moduleResolver.getFunction(name);
         if (resolver) {
             return resolver.resolveArguments(args, kwargs);
         }
@@ -595,37 +711,24 @@ var Compiler = (function () {
             throw new exceptions_1.CompileError("function '" + name + " is undefined.");
         }
     };
-    Compiler.prototype.prepareIntrinsicFunctions = function () {
-        var _this = this;
-        Intrinsics.forEachIntrinsicFunction(function (info) {
-            _this.addIntrinsicFunction(info.name, {
-                type: "function",
-                isMark: false,
-                name: info.internalName,
-                returnType: info.returnType,
-                arguments: info.argTypes.map(function (x, idx) { return { name: "a" + idx, type: x }; }),
-                statements: null
-            });
-        });
-    };
     Compiler.prototype.loadFile = function (file) {
         var _this = this;
         var _loop_1 = function(block) {
             if (block.type == "function") {
                 var blockFunction = block;
-                this_1.addFunction(blockFunction.name, blockFunction);
+                this_1._moduleResolver.addFunction(blockFunction.name, blockFunction);
             }
             if (block.type == "import") {
                 var blockImport_1 = block;
                 if (blockImport_1.functionNames != null) {
                     blockImport_1.functionNames.forEach(function (name) {
-                        var f = Library.getModuleFunction(blockImport_1.moduleName, name);
-                        _this.addFunction(name, f);
+                        _this._moduleResolver.importFunction(Library.getModule(blockImport_1.moduleName), name);
                     });
                 }
                 else {
-                    Library.forEachModuleFunction(blockImport_1.moduleName, function (f, name) {
-                        _this.addFunction(name, f);
+                    var module_1 = Library.getModule(blockImport_1.moduleName);
+                    module_1.forEach(function (func, name) {
+                        _this._moduleResolver.importFunction(module_1, name);
                     });
                 }
             }
@@ -635,6 +738,21 @@ var Compiler = (function () {
             var block = _a[_i];
             _loop_1(block);
         }
+    };
+    Compiler.prototype.getDefaultValueForType = function (type) {
+        if (type == "float")
+            return 0;
+        if (type == "Vector2")
+            return [0, 0];
+        if (type == "Vector3")
+            return [0, 0, 0];
+        if (type == "Vector4")
+            return [0, 0, 0, 0];
+        if (type == "Color")
+            return [0, 0, 0, 1];
+        if (type == "Quaternion")
+            return [0, 0, 0, 1];
+        return 0;
     };
     Compiler.prototype.compileFunctionToMark = function (globals, block) {
         // Re-init state.
@@ -649,7 +767,7 @@ var Compiler = (function () {
             this._scope.addVariable(global.name, global.valueType, "global");
             markInput[global.name] = {
                 type: global.valueType,
-                default: global.default
+                default: global.default || this.getDefaultValueForType(global.valueType)
             };
         }
         for (var _a = 0, _b = block.arguments; _a < _b.length; _a++) {
@@ -657,7 +775,7 @@ var Compiler = (function () {
             this._scope.addVariable(arg.name, arg.type, "local");
             markInput[arg.name] = {
                 type: arg.type,
-                default: arg.default
+                default: arg.default || this.getDefaultValueForType(arg.valueType)
             };
         }
         // Flatten statements.
@@ -793,6 +911,7 @@ var Compiler = (function () {
                         });
                     }
                     this._scope.pushScope(argMap);
+                    this._moduleResolver.enterFunctionImplementation(expr.name);
                     for (var _c = 0, _d = func.statements; _c < _d.length; _c++) {
                         var statement = _d[_c];
                         if (statement.type == "return") {
@@ -804,6 +923,7 @@ var Compiler = (function () {
                             this.compileStatement(statement);
                         }
                     }
+                    this._moduleResolver.leaveFunctionImplementation(expr.name);
                     this._scope.popScope();
                 }
                 return returnValueExpression;
@@ -1041,7 +1161,7 @@ function compileString(content) {
 }
 exports.compileString = compileString;
 
-},{"../exceptions":10,"../intrinsics/intrinsics":11,"../library/library":12,"../utils/utils":25,"./parser":7}],6:[function(require,module,exports){
+},{"../exceptions":11,"../intrinsics/intrinsics":12,"../library/library":13,"../utils/utils":26,"./parser":8}],7:[function(require,module,exports){
 // Declare mark code with Javascript calls.
 "use strict";
 var utils_1 = require("../utils/utils");
@@ -1100,7 +1220,7 @@ var CustomMark = (function () {
         var lines = [];
         for (var _i = 0, _a = this._imports; _i < _a.length; _i++) {
             var _b = _a[_i], library = _b[0], name_1 = _b[1];
-            lines.push("import " + name_1 + " from " + library + ";");
+            lines.push("import { " + name_1 + " } from " + library + ";");
         }
         // Input attributes:
         var inputDefs = [];
@@ -1137,7 +1257,7 @@ var CustomMark = (function () {
 }());
 exports.CustomMark = CustomMark;
 
-},{"../utils/utils":25,"./compiler":5}],7:[function(require,module,exports){
+},{"../utils/utils":26,"./compiler":6}],8:[function(require,module,exports){
 "use strict";
 var exceptions_1 = require("../exceptions");
 var parser_pegjs = require("./parser_pegjs");
@@ -1180,7 +1300,7 @@ function parseExpression(content) {
 }
 exports.parseExpression = parseExpression;
 
-},{"../exceptions":10,"./parser_pegjs":8}],8:[function(require,module,exports){
+},{"../exceptions":11,"./parser_pegjs":9}],9:[function(require,module,exports){
 module.exports = (function() {
   "use strict";
 
@@ -1970,7 +2090,7 @@ module.exports = (function() {
     }
 
     function peg$parseImportStatement() {
-      var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10;
+      var s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14;
 
       s0 = peg$currPos;
       if (input.substr(peg$currPos, 6) === peg$c24) {
@@ -2064,108 +2184,144 @@ module.exports = (function() {
           if (peg$silentFails === 0) { peg$fail(peg$c25); }
         }
         if (s1 !== peg$FAILED) {
-          s2 = peg$parse__();
+          s2 = peg$parse_();
           if (s2 !== peg$FAILED) {
-            s3 = peg$parseName();
+            if (input.charCodeAt(peg$currPos) === 123) {
+              s3 = peg$c12;
+              peg$currPos++;
+            } else {
+              s3 = peg$FAILED;
+              if (peg$silentFails === 0) { peg$fail(peg$c13); }
+            }
             if (s3 !== peg$FAILED) {
-              s4 = [];
-              s5 = peg$currPos;
-              s6 = peg$parse_();
-              if (s6 !== peg$FAILED) {
-                if (input.charCodeAt(peg$currPos) === 44) {
-                  s7 = peg$c31;
-                  peg$currPos++;
-                } else {
-                  s7 = peg$FAILED;
-                  if (peg$silentFails === 0) { peg$fail(peg$c32); }
-                }
-                if (s7 !== peg$FAILED) {
+              s4 = peg$parse_();
+              if (s4 !== peg$FAILED) {
+                s5 = peg$parseName();
+                if (s5 !== peg$FAILED) {
+                  s6 = [];
+                  s7 = peg$currPos;
                   s8 = peg$parse_();
                   if (s8 !== peg$FAILED) {
-                    s9 = peg$parseName();
-                    if (s9 !== peg$FAILED) {
-                      s6 = [s6, s7, s8, s9];
-                      s5 = s6;
+                    if (input.charCodeAt(peg$currPos) === 44) {
+                      s9 = peg$c31;
+                      peg$currPos++;
                     } else {
-                      peg$currPos = s5;
-                      s5 = peg$FAILED;
+                      s9 = peg$FAILED;
+                      if (peg$silentFails === 0) { peg$fail(peg$c32); }
                     }
-                  } else {
-                    peg$currPos = s5;
-                    s5 = peg$FAILED;
-                  }
-                } else {
-                  peg$currPos = s5;
-                  s5 = peg$FAILED;
-                }
-              } else {
-                peg$currPos = s5;
-                s5 = peg$FAILED;
-              }
-              while (s5 !== peg$FAILED) {
-                s4.push(s5);
-                s5 = peg$currPos;
-                s6 = peg$parse_();
-                if (s6 !== peg$FAILED) {
-                  if (input.charCodeAt(peg$currPos) === 44) {
-                    s7 = peg$c31;
-                    peg$currPos++;
-                  } else {
-                    s7 = peg$FAILED;
-                    if (peg$silentFails === 0) { peg$fail(peg$c32); }
-                  }
-                  if (s7 !== peg$FAILED) {
-                    s8 = peg$parse_();
-                    if (s8 !== peg$FAILED) {
-                      s9 = peg$parseName();
-                      if (s9 !== peg$FAILED) {
-                        s6 = [s6, s7, s8, s9];
-                        s5 = s6;
+                    if (s9 !== peg$FAILED) {
+                      s10 = peg$parse_();
+                      if (s10 !== peg$FAILED) {
+                        s11 = peg$parseName();
+                        if (s11 !== peg$FAILED) {
+                          s8 = [s8, s9, s10, s11];
+                          s7 = s8;
+                        } else {
+                          peg$currPos = s7;
+                          s7 = peg$FAILED;
+                        }
                       } else {
-                        peg$currPos = s5;
-                        s5 = peg$FAILED;
+                        peg$currPos = s7;
+                        s7 = peg$FAILED;
                       }
                     } else {
-                      peg$currPos = s5;
-                      s5 = peg$FAILED;
+                      peg$currPos = s7;
+                      s7 = peg$FAILED;
                     }
                   } else {
-                    peg$currPos = s5;
-                    s5 = peg$FAILED;
+                    peg$currPos = s7;
+                    s7 = peg$FAILED;
                   }
-                } else {
-                  peg$currPos = s5;
-                  s5 = peg$FAILED;
-                }
-              }
-              if (s4 !== peg$FAILED) {
-                s5 = peg$parse__();
-                if (s5 !== peg$FAILED) {
-                  if (input.substr(peg$currPos, 4) === peg$c28) {
-                    s6 = peg$c28;
-                    peg$currPos += 4;
-                  } else {
-                    s6 = peg$FAILED;
-                    if (peg$silentFails === 0) { peg$fail(peg$c29); }
+                  while (s7 !== peg$FAILED) {
+                    s6.push(s7);
+                    s7 = peg$currPos;
+                    s8 = peg$parse_();
+                    if (s8 !== peg$FAILED) {
+                      if (input.charCodeAt(peg$currPos) === 44) {
+                        s9 = peg$c31;
+                        peg$currPos++;
+                      } else {
+                        s9 = peg$FAILED;
+                        if (peg$silentFails === 0) { peg$fail(peg$c32); }
+                      }
+                      if (s9 !== peg$FAILED) {
+                        s10 = peg$parse_();
+                        if (s10 !== peg$FAILED) {
+                          s11 = peg$parseName();
+                          if (s11 !== peg$FAILED) {
+                            s8 = [s8, s9, s10, s11];
+                            s7 = s8;
+                          } else {
+                            peg$currPos = s7;
+                            s7 = peg$FAILED;
+                          }
+                        } else {
+                          peg$currPos = s7;
+                          s7 = peg$FAILED;
+                        }
+                      } else {
+                        peg$currPos = s7;
+                        s7 = peg$FAILED;
+                      }
+                    } else {
+                      peg$currPos = s7;
+                      s7 = peg$FAILED;
+                    }
                   }
                   if (s6 !== peg$FAILED) {
-                    s7 = peg$parse__();
+                    s7 = peg$parse_();
                     if (s7 !== peg$FAILED) {
-                      s8 = peg$parseName();
+                      if (input.charCodeAt(peg$currPos) === 125) {
+                        s8 = peg$c14;
+                        peg$currPos++;
+                      } else {
+                        s8 = peg$FAILED;
+                        if (peg$silentFails === 0) { peg$fail(peg$c15); }
+                      }
                       if (s8 !== peg$FAILED) {
                         s9 = peg$parse_();
                         if (s9 !== peg$FAILED) {
-                          if (input.charCodeAt(peg$currPos) === 59) {
-                            s10 = peg$c21;
-                            peg$currPos++;
+                          if (input.substr(peg$currPos, 4) === peg$c28) {
+                            s10 = peg$c28;
+                            peg$currPos += 4;
                           } else {
                             s10 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c22); }
+                            if (peg$silentFails === 0) { peg$fail(peg$c29); }
                           }
                           if (s10 !== peg$FAILED) {
-                            peg$savedPos = s0;
-                            s1 = peg$c33(s3, s4, s8);
-                            s0 = s1;
+                            s11 = peg$parse__();
+                            if (s11 !== peg$FAILED) {
+                              s12 = peg$parseName();
+                              if (s12 !== peg$FAILED) {
+                                s13 = peg$parse_();
+                                if (s13 !== peg$FAILED) {
+                                  if (input.charCodeAt(peg$currPos) === 59) {
+                                    s14 = peg$c21;
+                                    peg$currPos++;
+                                  } else {
+                                    s14 = peg$FAILED;
+                                    if (peg$silentFails === 0) { peg$fail(peg$c22); }
+                                  }
+                                  if (s14 !== peg$FAILED) {
+                                    peg$savedPos = s0;
+                                    s1 = peg$c33(s5, s6, s12);
+                                    s0 = s1;
+                                  } else {
+                                    peg$currPos = s0;
+                                    s0 = peg$FAILED;
+                                  }
+                                } else {
+                                  peg$currPos = s0;
+                                  s0 = peg$FAILED;
+                                }
+                              } else {
+                                peg$currPos = s0;
+                                s0 = peg$FAILED;
+                              }
+                            } else {
+                              peg$currPos = s0;
+                              s0 = peg$FAILED;
+                            }
                           } else {
                             peg$currPos = s0;
                             s0 = peg$FAILED;
@@ -5330,7 +5486,7 @@ module.exports = (function() {
   };
 })();
 
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 "use strict";
 var exceptions_1 = require("../exceptions");
 var utils_1 = require("../utils/utils");
@@ -5435,7 +5591,7 @@ var Context = (function () {
 }());
 exports.Context = Context;
 
-},{"../exceptions":10,"../intrinsics/intrinsics":11,"../utils/utils":25}],10:[function(require,module,exports){
+},{"../exceptions":11,"../intrinsics/intrinsics":12,"../utils/utils":26}],11:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -5492,7 +5648,7 @@ var RuntimeError = (function (_super) {
 }(BaseError));
 exports.RuntimeError = RuntimeError;
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 "use strict";
 var utils_1 = require("../utils/utils");
 var math_1 = require("../math/math");
@@ -5708,7 +5864,7 @@ RegisterFunction("array", ["Vector2Array", "float"], "Vector2", function (color)
 RegisterFunction("array", ["Vector3Array", "float"], "Vector3", function (color) { return color; });
 RegisterFunction("array", ["Vector4Array", "float"], "Vector4", function (color) { return color; });
 
-},{"../math/math":17,"../utils/utils":25}],12:[function(require,module,exports){
+},{"../math/math":18,"../utils/utils":26}],13:[function(require,module,exports){
 "use strict";
 var parser_1 = require("../compiler/parser");
 var utils_1 = require("../utils/utils");
@@ -5735,6 +5891,10 @@ var P2D = require("./primitives2d");
 importPrimitiveCode("P2D", P2D.primitives);
 var P3D = require("./primitives3d");
 importPrimitiveCode("P3D", P3D.primitives);
+function getModule(name) {
+    return modules.get(name);
+}
+exports.getModule = getModule;
 function getModuleFunction(name, functionName) {
     return modules.get(name).get(functionName);
 }
@@ -5744,21 +5904,20 @@ function forEachModuleFunction(name, callback) {
 }
 exports.forEachModuleFunction = forEachModuleFunction;
 
-},{"../compiler/parser":7,"../utils/utils":25,"./primitives2d":13,"./primitives3d":14}],13:[function(require,module,exports){
+},{"../compiler/parser":8,"../utils/utils":26,"./primitives2d":14,"./primitives3d":15}],14:[function(require,module,exports){
 "use strict";
-exports.primitives = "\n    mark Triangle(\n        p1: Vector2,\n        p2: Vector2,\n        p3: Vector2,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: p1, color: color },\n            { position: p2, color: color },\n            { position: p3, color: color }\n        ];\n    }\n\n    mark Rectangle(\n        p1: Vector2,\n        p2: Vector2,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p2.x, p1.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p1.x, p2.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n    }\n\n    mark OutlinedRectangle(\n        p1: Vector2,\n        p2: Vector2,\n        width: float = 1,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        Rectangle(p1, Vector2(p1.x + width, p2.y - width), color);\n        Rectangle(Vector2(p1.x, p2.y - width), Vector2(p2.x - width, p2.y), color);\n        Rectangle(Vector2(p1.x + width, p1.y), Vector2(p2.x, p1.y + width), color);\n        Rectangle(Vector2(p2.x - width, p1.y + width), p2, color);\n    }\n\n    mark Hexagon(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..5) {\n            let a1 = i / 6.0 * PI * 2.0;\n            let a2 = (i + 1) / 6.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    mark Circle16(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..15) {\n            let a1 = i / 16.0 * PI * 2.0;\n            let a2 = (i + 1) / 16.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    mark Circle(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..31) {\n            let a1 = i / 32.0 * PI * 2.0;\n            let a2 = (i + 1) / 32.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    mark Line(\n        p1: Vector2,\n        p2: Vector2,\n        width: float = 1,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let d = normalize(p2 - p1);\n        let t = Vector2(d.y, -d.x) * (width / 2);\n        emit [\n            { position: p1 + t, color: color },\n            { position: p1 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n        emit [\n            { position: p1 - t, color: color },\n            { position: p2 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n    }\n\n    mark Sector2(\n        c: Vector2,\n        p1: Vector2,\n        p2: Vector2,\n        color: Color\n    ) {\n        let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n        Triangle(c, p1, pc, color);\n        Triangle(c, pc, p2, color);\n    }\n\n    mark Sector4(\n        c: Vector2,\n        p1: Vector2,\n        p2: Vector2,\n        color: Color\n    ) {\n        let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n        Sector2(c, p1, pc, color);\n        Sector2(c, pc, p2, color);\n    }\n\n    mark Polyline(\n        p: Vector2, p_p: Vector2, p_n: Vector2, p_nn: Vector2,\n        width: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let EPS = 1e-5;\n        let w = width / 2;\n        let d = normalize(p - p_n);\n        let n = Vector2(d.y, -d.x);\n        let m1: Vector2;\n        if(length(p - p_p) < EPS) {\n            m1 = n * w;\n        } else {\n            m1 = normalize(d + normalize(p - p_p)) * w;\n        }\n        let m2: Vector2;\n        if(length(p_n - p_nn) < EPS) {\n            m2 = -n * w;\n        } else {\n            m2 = normalize(normalize(p_n - p_nn) - d) * w;\n        }\n        let c1a: Vector2;\n        let c1b: Vector2;\n        let a1: Vector2;\n        let a2: Vector2;\n        if(dot(m1, n) > 0) {\n            c1a = p + m1;\n            c1b = p + n * w;\n            a2 = c1b;\n            a1 = p - m1 * (w / dot(m1, n));\n        } else {\n            c1a = p + m1;\n            c1b = p - n * w;\n            a2 = p + m1 * (w / dot(m1, n));\n            a1 = c1b;\n        }\n        let c2a: Vector2;\n        let c2b: Vector2;\n        let b1: Vector2;\n        let b2: Vector2;\n        if(dot(m2, n) < 0) {\n            c2a = p_n + m2;\n            c2b = p_n - n * w;\n            b1 = c2b;\n            b2 = p_n + m2 * (w / dot(m2, n));\n        } else {\n            c2a = p_n + m2;\n            c2b = p_n + n * w;\n            b2 = c2b;\n            b1 = p_n - m2 * (w / dot(m2, n));\n        }\n        emit [\n            { position: p, color: color },\n            { position: c1a, color: color },\n            { position: c1b, color: color }\n        ];\n        emit [\n            { position: p_n, color: color },\n            { position: c2a, color: color },\n            { position: c2b, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: a1, color: color },\n            { position: b1, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: b1, color: color },\n            { position: p_n, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: a2, color: color },\n            { position: b2, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: b2, color: color },\n            { position: p_n, color: color }\n        ];\n    }\n";
+exports.primitives = "\n    mark Triangle(\n        p1: Vector2,\n        p2: Vector2,\n        p3: Vector2,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: p1, color: color },\n            { position: p2, color: color },\n            { position: p3, color: color }\n        ];\n    }\n\n    mark Rectangle(\n        p1: Vector2,\n        p2: Vector2,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p2.x, p1.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n        emit [\n            { position: Vector2(p1.x, p1.y), color: color },\n            { position: Vector2(p1.x, p2.y), color: color },\n            { position: Vector2(p2.x, p2.y), color: color }\n        ];\n    }\n\n    mark OutlinedRectangle(\n        p1: Vector2,\n        p2: Vector2,\n        width: float = 1,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        Rectangle(p1, Vector2(p1.x + width, p2.y - width), color);\n        Rectangle(Vector2(p1.x, p2.y - width), Vector2(p2.x - width, p2.y), color);\n        Rectangle(Vector2(p1.x + width, p1.y), Vector2(p2.x, p1.y + width), color);\n        Rectangle(Vector2(p2.x - width, p1.y + width), p2, color);\n    }\n\n    mark Hexagon(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..5) {\n            let a1 = i / 6.0 * PI * 2.0;\n            let a2 = (i + 1) / 6.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    mark Circle16(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..15) {\n            let a1 = i / 16.0 * PI * 2.0;\n            let a2 = (i + 1) / 16.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    mark Circle(\n        center: Vector2,\n        radius: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        for(i in 0..31) {\n            let a1 = i / 32.0 * PI * 2.0;\n            let a2 = (i + 1) / 32.0 * PI * 2.0;\n            let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n            let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n            emit [\n                { position: center + p1, color: color },\n                { position: center, color: color },\n                { position: center + p2, color: color }\n            ];\n        }\n    }\n\n    mark Line(\n        p1: Vector2,\n        p2: Vector2,\n        width: float = 1,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let d = normalize(p2 - p1);\n        let t = Vector2(d.y, -d.x) * (width / 2);\n        emit [\n            { position: p1 + t, color: color },\n            { position: p1 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n        emit [\n            { position: p1 - t, color: color },\n            { position: p2 - t, color: color },\n            { position: p2 + t, color: color }\n        ];\n    }\n\n    mark Sector2(\n        c: Vector2,\n        p1: Vector2,\n        p2: Vector2,\n        color: Color\n    ) {\n        let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n        Triangle(c, p1, pc, color);\n        Triangle(c, pc, p2, color);\n    }\n\n    mark Sector4(\n        c: Vector2,\n        p1: Vector2,\n        p2: Vector2,\n        color: Color\n    ) {\n        let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n        Sector2(c, p1, pc, color);\n        Sector2(c, pc, p2, color);\n    }\n\n    mark Polyline(\n        p: Vector2, p_p: Vector2, p_n: Vector2, p_nn: Vector2,\n        width: float,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let EPS = 1e-5;\n        let w = width / 2;\n        let d = normalize(p - p_n);\n        let n = Vector2(d.y, -d.x);\n        let m1: Vector2;\n        if(length(p - p_p) < EPS) {\n            m1 = n * w;\n        } else {\n            m1 = normalize(d + normalize(p - p_p)) * w;\n        }\n        let m2: Vector2;\n        if(length(p_n - p_nn) < EPS) {\n            m2 = -n * w;\n        } else {\n            m2 = normalize(normalize(p_n - p_nn) - d) * w;\n        }\n        let c1a: Vector2;\n        let c1b: Vector2;\n        let a1: Vector2;\n        let a2: Vector2;\n        if(dot(m1, n) > 0) {\n            c1a = p + m1;\n            c1b = p + n * w;\n            a2 = c1b;\n            a1 = p - m1 * (w / dot(m1, n));\n        } else {\n            c1a = p + m1;\n            c1b = p - n * w;\n            a2 = p + m1 * (w / dot(m1, n));\n            a1 = c1b;\n        }\n        let c2a: Vector2;\n        let c2b: Vector2;\n        let b1: Vector2;\n        let b2: Vector2;\n        if(dot(m2, n) < 0) {\n            c2a = p_n + m2;\n            c2b = p_n - n * w;\n            b1 = c2b;\n            b2 = p_n + m2 * (w / dot(m2, n));\n        } else {\n            c2a = p_n + m2;\n            c2b = p_n + n * w;\n            b2 = c2b;\n            b1 = p_n - m2 * (w / dot(m2, n));\n        }\n        emit [\n            { position: p, color: color },\n            { position: c1a, color: color },\n            { position: c1b, color: color }\n        ];\n        emit [\n            { position: p_n, color: color },\n            { position: c2a, color: color },\n            { position: c2b, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: a1, color: color },\n            { position: b1, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: b1, color: color },\n            { position: p_n, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: a2, color: color },\n            { position: b2, color: color }\n        ];\n        emit [\n            { position: p, color: color },\n            { position: b2, color: color },\n            { position: p_n, color: color }\n        ];\n    }\n\n    mark Wedge(\n        p1: Vector2 = [ 0, 0 ],\n        theta1: float = 0,\n        theta2: float = 0,\n        length: float = 10,\n        width: float = 1,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let dTheta = (theta2 - theta1) / 60;\n        let dL = length / 60;\n        for(i in 0..59) {\n            let dThetaA = i * dTheta;\n            let dThetaB = (i + 1) * dTheta;\n            let thetaA = theta1 + dThetaA;\n            let thetaB = theta1 + dThetaB;\n            let thetaCenterA = theta1 + dThetaA / 2;\n            let thetaCenterB = theta1 + dThetaB / 2;\n            let dlA = dL * i;\n            let dlB = dL * (i + 1);\n            if(dThetaA > 1e-5 || dThetaA < -1e-5) {\n                dlA = dlA / dThetaA * 2 * sin(dThetaA / 2);\n            }\n            if(dThetaB > 1e-5 || dThetaB < -1e-5) {\n                dlB = dlB / dThetaB * 2 * sin(dThetaB / 2);\n            }\n            let pAdvA = Vector2(-sin(thetaCenterA), cos(thetaCenterA)) * dlA;\n            let pAdvB = Vector2(-sin(thetaCenterB), cos(thetaCenterB)) * dlB;\n            let pA = p1 + pAdvA;\n            let pB = p1 + pAdvB;\n\n            let dpA = Vector2(cos(thetaA), sin(thetaA)) * width * 0.5;\n            let dpB = Vector2(cos(thetaB), sin(thetaB)) * width * 0.5;\n\n            Triangle(pA + dpA, pB + dpB, pB - dpB, color);\n            Triangle(pA + dpA, pB - dpB, pA - dpA, color);\n        }\n    }\n";
 
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 "use strict";
 exports.primitives = "\n    mark Triangle(\n        p1: Vector3,\n        p2: Vector3,\n        p3: Vector3,\n        color: Color = [ 0, 0, 0, 1 ]\n    ) {\n        let normal = normalize(cross(p2 - p1, p3 - p1));\n        emit [\n            { position: p1, color: color, normal: normal },\n            { position: p2, color: color, normal: normal },\n            { position: p3, color: color, normal: normal }\n        ];\n    }\n\n    mark Tetrahedron(\n        p1: Vector3,\n        p2: Vector3,\n        p3: Vector3,\n        p4: Vector3\n    ) {\n        Triangle(p3, p4, p1);\n        Triangle(p1, p4, p2);\n        Triangle(p1, p2, p3);\n        Triangle(p2, p3, p4);\n    }\n\n    mark Cube(\n        center: Vector3,\n        radius: float,\n        color: Color\n    ) {\n        let p000 = Vector3(center.x - radius, center.y - radius, center.z - radius);\n        let p001 = Vector3(center.x - radius, center.y - radius, center.z + radius);\n        let p010 = Vector3(center.x - radius, center.y + radius, center.z - radius);\n        let p011 = Vector3(center.x - radius, center.y + radius, center.z + radius);\n        let p100 = Vector3(center.x + radius, center.y - radius, center.z - radius);\n        let p101 = Vector3(center.x + radius, center.y - radius, center.z + radius);\n        let p110 = Vector3(center.x + radius, center.y + radius, center.z - radius);\n        let p111 = Vector3(center.x + radius, center.y + radius, center.z + radius);\n        let nx = Vector3(1, 0, 0);\n        let ny = Vector3(0, 1, 0);\n        let nz = Vector3(0, 0, 1);\n        emit [ { position: p000, color: color, normal: nz }, { position: p110, color: color, normal: nz }, { position: p100, color: color, normal: nz } ];\n        emit [ { position: p000, color: color, normal: nz }, { position: p010, color: color, normal: nz }, { position: p110, color: color, normal: nz } ];\n        emit [ { position: p001, color: color, normal: nz }, { position: p101, color: color, normal: nz }, { position: p111, color: color, normal: nz } ];\n        emit [ { position: p001, color: color, normal: nz }, { position: p111, color: color, normal: nz }, { position: p011, color: color, normal: nz } ];\n        emit [ { position: p000, color: color, normal: ny }, { position: p100, color: color, normal: ny }, { position: p101, color: color, normal: ny } ];\n        emit [ { position: p000, color: color, normal: ny }, { position: p101, color: color, normal: ny }, { position: p001, color: color, normal: ny } ];\n        emit [ { position: p010, color: color, normal: ny }, { position: p111, color: color, normal: ny }, { position: p110, color: color, normal: ny } ];\n        emit [ { position: p010, color: color, normal: ny }, { position: p011, color: color, normal: ny }, { position: p111, color: color, normal: ny } ];\n        emit [ { position: p000, color: color, normal: nx }, { position: p001, color: color, normal: nx }, { position: p011, color: color, normal: nx } ];\n        emit [ { position: p000, color: color, normal: nx }, { position: p011, color: color, normal: nx }, { position: p010, color: color, normal: nx } ];\n        emit [ { position: p100, color: color, normal: nx }, { position: p101, color: color, normal: nx }, { position: p111, color: color, normal: nx } ];\n        emit [ { position: p100, color: color, normal: nx }, { position: p111, color: color, normal: nx }, { position: p110, color: color, normal: nx } ];\n    }\n";
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 "use strict";
 var binding_1 = require("../binding/binding");
 var exceptions_1 = require("../exceptions");
 var utils_1 = require("../utils/utils");
 var scale_1 = require("../scale/scale");
-;
 var shiftBindingDescriptions = [
     { shift: -2, suffix: "_pp" },
     { shift: -1, suffix: "_p" },
@@ -5774,7 +5933,7 @@ var Mark = (function () {
         this._shiftBindings = new utils_1.Dictionary();
         this._platformMark = null;
         this._shouldUploadData = true;
-        this._instanceFunction = null;
+        this._instanceFunctions = null;
         // Set bindings to default value whenever exists.
         for (var name_1 in this._spec.input) {
             if (this._spec.input.hasOwnProperty(name_1)) {
@@ -5862,12 +6021,15 @@ var Mark = (function () {
             return this;
         }
     };
-    Mark.prototype.instance = function (func) {
-        if (func === undefined) {
-            return this._instanceFunction;
+    Mark.prototype.instance = function (datum, attrs) {
+        if (datum === undefined && attrs === undefined) {
+            return this._instanceFunctions;
         }
         else {
-            this._instanceFunction = func;
+            this._instanceFunctions = {
+                datum: datum,
+                attrs: attrs
+            };
         }
     };
     // Make alternative spec to include ScaleBinding values.
@@ -5984,14 +6146,14 @@ var Mark = (function () {
             this._shouldUploadData = true;
         }
         if (this._shouldUploadData) {
-            if (this._instanceFunction == null) {
+            if (this._instanceFunctions == null) {
                 this._platformMarkData = this._platformMark.uploadData([this._data]);
             }
             else {
                 var allData_1 = [];
                 this._data.forEach(function (datum, index) {
-                    var info = _this._instanceFunction(datum, index, _this._data);
-                    allData_1.push(info.data);
+                    var data = _this._instanceFunctions.datum(datum, index, _this._data);
+                    allData_1.push(data);
                 });
                 this._platformMarkData = this._platformMark.uploadData(allData_1);
             }
@@ -6002,7 +6164,7 @@ var Mark = (function () {
     Mark.prototype.render = function () {
         var _this = this;
         this.prepare();
-        if (this._instanceFunction == null) {
+        if (this._instanceFunctions == null) {
             this._platformMark.render(this._platformMarkData, function () {
                 _this.uploadScaleUniforms();
             });
@@ -6010,16 +6172,15 @@ var Mark = (function () {
         else {
             this._platformMark.render(this._platformMarkData, function (index) {
                 var datum = _this._data[index];
-                var info = _this._instanceFunction(datum, index, _this._data);
-                if (info.attrs != null) {
-                    for (var attr in info.attrs) {
-                        if (info.attrs.hasOwnProperty(attr)) {
-                            _this._platformMark.updateUniform(attr, binding_1.getBindingValue(info.attrs[attr]));
+                if (_this._instanceFunctions.attrs) {
+                    var attrs = _this._instanceFunctions.attrs(datum, index, _this._data);
+                    if (attrs != null) {
+                        for (var attr in attrs) {
+                            if (attrs.hasOwnProperty(attr)) {
+                                _this._platformMark.updateUniform(attr, binding_1.getBindingValue(attrs[attr]));
+                            }
                         }
                     }
-                }
-                if (info.onRender) {
-                    info.onRender(datum, index, _this._data);
                 }
                 _this.uploadScaleUniforms();
             });
@@ -6030,7 +6191,7 @@ var Mark = (function () {
 }());
 exports.Mark = Mark;
 
-},{"../binding/binding":3,"../exceptions":10,"../scale/scale":19,"../utils/utils":25}],16:[function(require,module,exports){
+},{"../binding/binding":3,"../exceptions":11,"../scale/scale":20,"../utils/utils":26}],17:[function(require,module,exports){
 "use strict";
 var compiler_1 = require("../compiler/compiler");
 var declare_1 = require("../compiler/declare");
@@ -6056,15 +6217,24 @@ var mark;
     mark.compile = compile;
     function circle(sides) {
         if (sides === void 0) { sides = 32; }
-        return mark.compile("\n            mark Circle(\n                center: Vector2,\n                radius: float,\n                color: Color\n            ) {\n                for(i in 0.." + (sides - 1) + ") {\n                    let a1 = i / " + sides.toFixed(1) + " * PI * 2.0;\n                    let a2 = (i + 1) / " + sides.toFixed(1) + " * PI * 2.0;\n                    let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n                    let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n                    emit [\n                        { position: center + p1, color: color },\n                        { position: center, color: color },\n                        { position: center + p2, color: color }\n                    ];\n                }\n            }\n        ")["Circle"];
+        return mark.compile("\n            mark Circle(\n                center: Vector2 = [ 0, 0 ],\n                radius: float = 1,\n                color: Color = [ 0, 0, 0, 1 ]\n            ) {\n                for(i in 0.." + (sides - 1) + ") {\n                    let a1 = i / " + sides.toFixed(1) + " * PI * 2.0;\n                    let a2 = (i + 1) / " + sides.toFixed(1) + " * PI * 2.0;\n                    let p1 = Vector2(radius * cos(a1), radius * sin(a1));\n                    let p2 = Vector2(radius * cos(a2), radius * sin(a2));\n                    emit [\n                        { position: center + p1, color: color },\n                        { position: center, color: color },\n                        { position: center + p2, color: color }\n                    ];\n                }\n            }\n        ")["Circle"];
     }
     mark.circle = circle;
+    function rect() {
+        return mark.compile("\n            mark Rectangle(\n                p1: Vector2 = [ 0, 0 ],\n                p2: Vector2 = [ 0, 0 ],\n                color: Color = [ 0, 0, 0, 1 ]\n            ) {\n                emit [\n                    { position: Vector2(p1.x, p1.y), color: color },\n                    { position: Vector2(p2.x, p1.y), color: color },\n                    { position: Vector2(p2.x, p2.y), color: color }\n                ];\n                emit [\n                    { position: Vector2(p1.x, p1.y), color: color },\n                    { position: Vector2(p1.x, p2.y), color: color },\n                    { position: Vector2(p2.x, p2.y), color: color }\n                ];\n            }\n        ")["Rectangle"];
+    }
+    mark.rect = rect;
     function line() {
-        return mark.compile("\n            mark Line(\n                p1: Vector2,\n                p2: Vector2,\n                width: float = 1,\n                color: Color = [ 0, 0, 0, 1 ]\n            ) {\n                let d = normalize(p2 - p1);\n                let t = Vector2(d.y, -d.x) * (width / 2);\n                emit [\n                    { position: p1 + t, color: color },\n                    { position: p1 - t, color: color },\n                    { position: p2 + t, color: color }\n                ];\n                emit [\n                    { position: p1 - t, color: color },\n                    { position: p2 - t, color: color },\n                    { position: p2 + t, color: color }\n                ];\n            }\n        ")["Line"];
+        return mark.compile("\n            mark Line(\n                p1: Vector2 = [ 0, 0 ],\n                p2: Vector2 = [ 0, 0 ],\n                width: float = 1,\n                color: Color = [ 0, 0, 0, 1 ]\n            ) {\n                let d = normalize(p2 - p1);\n                let t = Vector2(d.y, -d.x) * (width / 2);\n                emit [\n                    { position: p1 + t, color: color },\n                    { position: p1 - t, color: color },\n                    { position: p2 + t, color: color }\n                ];\n                emit [\n                    { position: p1 - t, color: color },\n                    { position: p2 - t, color: color },\n                    { position: p2 + t, color: color }\n                ];\n            }\n        ")["Line"];
     }
     mark.line = line;
+    function wedge(sides) {
+        if (sides === void 0) { sides = 60; }
+        return mark.compile("\n            import { Triangle } from P2D;\n\n            mark Wedge(\n                p1: Vector2 = [ 0, 0 ],\n                theta1: float = 0,\n                theta2: float = 0,\n                length: float = 10,\n                width: float = 1,\n                color: Color = [ 0, 0, 0, 1 ]\n            ) {\n                let dTheta = (theta2 - theta1) / 60;\n                let dL = length / 60;\n                for(i in 0..59) {\n                    let dThetaA = i * dTheta;\n                    let dThetaB = (i + 1) * dTheta;\n                    let thetaA = theta1 + dThetaA;\n                    let thetaB = theta1 + dThetaB;\n                    let thetaCenterA = theta1 + dThetaA / 2;\n                    let thetaCenterB = theta1 + dThetaB / 2;\n                    let dlA = dL * i;\n                    let dlB = dL * (i + 1);\n                    if(dThetaA > 1e-5 || dThetaA < -1e-5) {\n                        dlA = dlA / dThetaA * 2 * sin(dThetaA / 2);\n                    }\n                    if(dThetaB > 1e-5 || dThetaB < -1e-5) {\n                        dlB = dlB / dThetaB * 2 * sin(dThetaB / 2);\n                    }\n                    let pAdvA = Vector2(-sin(thetaCenterA), cos(thetaCenterA)) * dlA;\n                    let pAdvB = Vector2(-sin(thetaCenterB), cos(thetaCenterB)) * dlB;\n                    let pA = p1 + pAdvA;\n                    let pB = p1 + pAdvB;\n\n                    let dpA = Vector2(cos(thetaA), sin(thetaA)) * width * 0.5;\n                    let dpB = Vector2(cos(thetaB), sin(thetaB)) * width * 0.5;\n\n                    Triangle(pA + dpA, pB + dpB, pB - dpB, color);\n                    Triangle(pA + dpA, pB - dpB, pA - dpA, color);\n                }\n            }\n        ")["Wedge"];
+    }
+    mark.wedge = wedge;
     function polyline() {
-        var spec = mark.compile("\n            import Triangle from P2D;\n\n            mark Sector2(\n                c: Vector2,\n                p1: Vector2,\n                p2: Vector2,\n                color: Color\n            ) {\n                let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Triangle(c, p1, pc, color);\n                Triangle(c, pc, p2, color);\n            }\n\n            mark Sector4(\n                c: Vector2,\n                p1: Vector2,\n                p2: Vector2,\n                color: Color\n            ) {\n                let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Sector2(c, p1, pc, color);\n                Sector2(c, pc, p2, color);\n            }\n\n            mark PolylineRound(\n                p: Vector2, p_p: Vector2, p_n: Vector2, p_nn: Vector2,\n                width: float,\n                color: Color = [ 0, 0, 0, 1 ]\n            ) {\n                let EPS = 1e-5;\n                let w = width / 2;\n                let d = normalize(p - p_n);\n                let n = Vector2(d.y, -d.x);\n                let m1: Vector2;\n                if(length(p - p_p) < EPS) {\n                    m1 = n * w;\n                } else {\n                    m1 = normalize(d + normalize(p - p_p)) * w;\n                }\n                let m2: Vector2;\n                if(length(p_n - p_nn) < EPS) {\n                    m2 = -n * w;\n                } else {\n                    m2 = normalize(normalize(p_n - p_nn) - d) * w;\n                }\n                let c1a: Vector2;\n                let c1b: Vector2;\n                let a1: Vector2;\n                let a2: Vector2;\n                if(dot(m1, n) > 0) {\n                    c1a = p + m1;\n                    c1b = p + n * w;\n                    a2 = c1b;\n                    a1 = p - m1 * (w / dot(m1, n));\n                } else {\n                    c1a = p + m1;\n                    c1b = p - n * w;\n                    a2 = p + m1 * (w / dot(m1, n));\n                    a1 = c1b;\n                }\n                let c2a: Vector2;\n                let c2b: Vector2;\n                let b1: Vector2;\n                let b2: Vector2;\n                if(dot(m2, n) < 0) {\n                    c2a = p_n + m2;\n                    c2b = p_n - n * w;\n                    b1 = c2b;\n                    b2 = p_n + m2 * (w / dot(m2, n));\n                } else {\n                    c2a = p_n + m2;\n                    c2b = p_n + n * w;\n                    b2 = c2b;\n                    b1 = p_n - m2 * (w / dot(m2, n));\n                }\n                Sector4(p, c1a, c1b, color);\n                Sector4(p_n, c2a, c2b, color);\n                Triangle(p, a1, b1, color);\n                Triangle(p, b1, p_n, color);\n                Triangle(p, a2, b2, color);\n                Triangle(p, b2, p_n, color);\n            }\n        ")["PolylineRound"];
+        var spec = mark.compile("\n            import { Triangle } from P2D;\n\n            mark Sector2(\n                c: Vector2,\n                p1: Vector2,\n                p2: Vector2,\n                color: Color\n            ) {\n                let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Triangle(c, p1, pc, color);\n                Triangle(c, pc, p2, color);\n            }\n\n            mark Sector4(\n                c: Vector2,\n                p1: Vector2,\n                p2: Vector2,\n                color: Color\n            ) {\n                let pc = c + normalize(p1 + p2 - c - c) * length(p1 - c);\n                Sector2(c, p1, pc, color);\n                Sector2(c, pc, p2, color);\n            }\n\n            mark PolylineRound(\n                p: Vector2, p_p: Vector2, p_n: Vector2, p_nn: Vector2,\n                width: float = 1,\n                color: Color = [ 0, 0, 0, 1 ]\n            ) {\n                let EPS = 1e-5;\n                let w = width / 2;\n                let d = normalize(p - p_n);\n                let n = Vector2(d.y, -d.x);\n                let m1: Vector2;\n                if(length(p - p_p) < EPS) {\n                    m1 = n * w;\n                } else {\n                    m1 = normalize(d + normalize(p - p_p)) * w;\n                }\n                let m2: Vector2;\n                if(length(p_n - p_nn) < EPS) {\n                    m2 = -n * w;\n                } else {\n                    m2 = normalize(normalize(p_n - p_nn) - d) * w;\n                }\n                let c1a: Vector2;\n                let c1b: Vector2;\n                let a1: Vector2;\n                let a2: Vector2;\n                if(dot(m1, n) > 0) {\n                    c1a = p + m1;\n                    c1b = p + n * w;\n                    a2 = c1b;\n                    a1 = p - m1 * (w / dot(m1, n));\n                } else {\n                    c1a = p + m1;\n                    c1b = p - n * w;\n                    a2 = p + m1 * (w / dot(m1, n));\n                    a1 = c1b;\n                }\n                let c2a: Vector2;\n                let c2b: Vector2;\n                let b1: Vector2;\n                let b2: Vector2;\n                if(dot(m2, n) < 0) {\n                    c2a = p_n + m2;\n                    c2b = p_n - n * w;\n                    b1 = c2b;\n                    b2 = p_n + m2 * (w / dot(m2, n));\n                } else {\n                    c2a = p_n + m2;\n                    c2b = p_n + n * w;\n                    b2 = c2b;\n                    b1 = p_n - m2 * (w / dot(m2, n));\n                }\n                Sector4(p, c1a, c1b, color);\n                Sector4(p_n, c2a, c2b, color);\n                Triangle(p, a1, b1, color);\n                Triangle(p, b1, p_n, color);\n                Triangle(p, a2, b2, color);\n                Triangle(p, b2, p_n, color);\n            }\n        ")["PolylineRound"];
         spec.repeatBegin = 1;
         spec.repeatEnd = 1;
         return spec;
@@ -6072,7 +6242,7 @@ var mark;
     mark.polyline = polyline;
 })(mark = exports.mark || (exports.mark = {}));
 
-},{"../compiler/compiler":5,"../compiler/declare":6,"./mark":15}],17:[function(require,module,exports){
+},{"../compiler/compiler":6,"../compiler/declare":7,"./mark":16}],18:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -6265,7 +6435,7 @@ var Pose = (function () {
 }());
 exports.Pose = Pose;
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -6332,7 +6502,7 @@ function platform(name) {
 }
 exports.platform = platform;
 
-},{"../utils/utils":25}],19:[function(require,module,exports){
+},{"../utils/utils":26}],20:[function(require,module,exports){
 "use strict";
 var ScaleBinding = (function () {
     function ScaleBinding(scale, returnType, argTypes) {
@@ -6417,7 +6587,7 @@ var ScaleBinding = (function () {
 }());
 exports.ScaleBinding = ScaleBinding;
 
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 "use strict";
 // Prebuilt scales.
 var utils_1 = require("../utils/utils");
@@ -6672,7 +6842,7 @@ var scale;
     scale_2.custom = custom;
 })(scale = exports.scale || (exports.scale = {}));
 
-},{"../compiler/compiler":5,"../compiler/parser":7,"../spec/construct":21,"../utils/utils":25,"./scale":19}],21:[function(require,module,exports){
+},{"../compiler/compiler":6,"../compiler/parser":8,"../spec/construct":22,"../utils/utils":26,"./scale":20}],22:[function(require,module,exports){
 "use strict";
 // Construct part of specification.
 var intrinsics_1 = require("../intrinsics/intrinsics");
@@ -6788,7 +6958,7 @@ function lessThanOrEquals(a1, a2) {
 }
 exports.lessThanOrEquals = lessThanOrEquals;
 
-},{"../intrinsics/intrinsics":11}],22:[function(require,module,exports){
+},{"../intrinsics/intrinsics":12}],23:[function(require,module,exports){
 "use strict";
 exports.types = {
     "float": { name: "float", size: 4, primitive: "float", primitiveCount: 1 },
@@ -6799,7 +6969,7 @@ exports.types = {
     "Color": { name: "Color", size: 16, primitive: "float", primitiveCount: 4 }
 };
 
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 // Flattener: Resolve emit statements into individual render calls.
 "use strict";
 var SC = require("../spec/construct");
@@ -6940,12 +7110,12 @@ function flattenEmits(mark) {
 }
 exports.flattenEmits = flattenEmits;
 
-},{"../spec/construct":21,"../utils/utils":25}],24:[function(require,module,exports){
+},{"../spec/construct":22,"../utils/utils":26}],25:[function(require,module,exports){
 "use strict";
 var flattener_1 = require("./flattener");
 exports.flattenEmits = flattener_1.flattenEmits;
 
-},{"./flattener":23}],25:[function(require,module,exports){
+},{"./flattener":24}],26:[function(require,module,exports){
 "use strict";
 var Dictionary = (function () {
     function Dictionary() {
@@ -7013,7 +7183,7 @@ function timeTask(name, cb) {
 }
 exports.timeTask = timeTask;
 
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 "use strict";
 function __export(m) {
     for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
@@ -7022,6 +7192,7 @@ exports.version = "0.0.1";
 // Math classes and utilities
 __export(require("./core/utils/utils"));
 __export(require("./core/math/math"));
+__export(require("./core/color/color"));
 // Mark class and mark specification
 __export(require("./core/mark/mark"));
 __export(require("./core/mark/marks"));
@@ -7044,7 +7215,7 @@ __export(require("./core/scale/scale"));
 var scales_1 = require("./core/scale/scales");
 exports.scale = scales_1.scale;
 
-},{"./core/binding/binding":3,"./core/compiler/compiler":5,"./core/compiler/declare":6,"./core/compiler/parser":7,"./core/evaluator/evaluator":9,"./core/exceptions":10,"./core/intrinsics/intrinsics":11,"./core/mark/mark":15,"./core/mark/marks":16,"./core/math/math":17,"./core/platform/platform":18,"./core/scale/scale":19,"./core/scale/scales":20,"./core/spec/spec":22,"./core/transform/transforms":24,"./core/utils/utils":25}],27:[function(require,module,exports){
+},{"./core/binding/binding":3,"./core/color/color":5,"./core/compiler/compiler":6,"./core/compiler/declare":7,"./core/compiler/parser":8,"./core/evaluator/evaluator":10,"./core/exceptions":11,"./core/intrinsics/intrinsics":12,"./core/mark/mark":16,"./core/mark/marks":17,"./core/math/math":18,"./core/platform/platform":19,"./core/scale/scale":20,"./core/scale/scales":21,"./core/spec/spec":23,"./core/transform/transforms":25,"./core/utils/utils":26}],28:[function(require,module,exports){
 /// <reference path="./earcut.d.ts" />
 "use strict";
 var stardust_core_1 = require("stardust-core");
@@ -7123,7 +7294,7 @@ function isotype(svg) {
 }
 exports.isotype = isotype;
 
-},{"earcut":28,"stardust-core":26}],28:[function(require,module,exports){
+},{"earcut":29,"stardust-core":27}],29:[function(require,module,exports){
 'use strict';
 
 module.exports = earcut;
@@ -7769,7 +7940,7 @@ earcut.flatten = function (data) {
     return result;
 };
 
-},{}],29:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 "use strict";
 exports.version = "0.0.1";
 var webgl_1 = require("./webgl/webgl");
@@ -7795,7 +7966,7 @@ stardust_core_1.registerPlatformConstructor("webgl-webvr", function (canvas, wid
     return new webgl_2.WebGLCanvasPlatformWebVR(canvas, width, height);
 });
 
-},{"./webgl/webgl":33,"stardust-core":26}],30:[function(require,module,exports){
+},{"./webgl/webgl":34,"stardust-core":27}],31:[function(require,module,exports){
 "use strict";
 var types_1 = require("./types");
 var intrinsics_1 = require("./intrinsics");
@@ -8066,7 +8237,7 @@ var Generator = (function () {
 }());
 exports.Generator = Generator;
 
-},{"./intrinsics":31,"./types":32}],31:[function(require,module,exports){
+},{"./intrinsics":32,"./types":33}],32:[function(require,module,exports){
 "use strict";
 var stardust_core_1 = require("stardust-core");
 var stardust_core_2 = require("stardust-core");
@@ -8191,7 +8362,7 @@ function generateIntrinsicFunction(name, args) {
 }
 exports.generateIntrinsicFunction = generateIntrinsicFunction;
 
-},{"stardust-core":26}],32:[function(require,module,exports){
+},{"stardust-core":27}],33:[function(require,module,exports){
 "use strict";
 var typeName2WebGLTypeName = {
     "float": "float",
@@ -8238,7 +8409,7 @@ function convertConstant(type, value) {
 }
 exports.convertConstant = convertConstant;
 
-},{}],33:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
@@ -8961,7 +9132,7 @@ var WebGLCanvasPlatformWebVR = (function (_super) {
 }(WebGLPlatform));
 exports.WebGLCanvasPlatformWebVR = WebGLCanvasPlatformWebVR;
 
-},{"./generator":30,"./webglutils":34,"stardust-core":26}],34:[function(require,module,exports){
+},{"./generator":31,"./webglutils":35,"stardust-core":27}],35:[function(require,module,exports){
 "use strict";
 var stardust_core_1 = require("stardust-core");
 function compileProgram(GL, vsCode, fsCode) {
@@ -8995,5 +9166,5 @@ function compileProgram(GL, vsCode, fsCode) {
 }
 exports.compileProgram = compileProgram;
 
-},{"stardust-core":26}]},{},[1])(1)
+},{"stardust-core":27}]},{},[1])(1)
 });
