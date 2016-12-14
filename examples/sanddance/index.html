@@ -34,7 +34,7 @@ title: "Stardust Example: SandDance"
     loadData(&quot;demovoteclean.tsv&quot;, (data) =&gt; {
         let demovote = data;
         let mark = Stardust.mark.compile(`
-            import Cube from P3D;
+            import { Cube } from P3D;
 
             let longitude: float;
             let latitude: float;
@@ -126,6 +126,7 @@ title: "Stardust Example: SandDance"
         let yBinCount = 7;
 
         demovote.sort((a, b) =&gt; a.Obama - b.Obama);
+
         demovote.forEach((d, i) =&gt; {
             d.index = i;
             if(state2count[d.StateAbb] == null) state2count[d.StateAbb] = 0;
@@ -168,17 +169,19 @@ title: "Stardust Example: SandDance"
             .attr(&quot;xyBinIndex&quot;, (d) =&gt; d.xyBinIndex)
             .attr(&quot;color&quot;, (d) =&gt; scaleColor(d.Obama));
 
+        let skewing = 1;
+
         function transition12(t) {
-            let tt = t * 1.3 - 0.3;
-            marks.attr(&quot;t1&quot;, 1 - tt).attr(&quot;t2&quot;, tt).attr(&quot;t3&quot;, 0).attr(&quot;ki1&quot;, -0.3).attr(&quot;ki2&quot;, +0.3).attr(&quot;ki3&quot;, 0);
+            let tt = t * (1 + skewing) - skewing;
+            marks.attr(&quot;t1&quot;, 1 - tt).attr(&quot;t2&quot;, tt).attr(&quot;t3&quot;, 0).attr(&quot;ki1&quot;, -skewing).attr(&quot;ki2&quot;, +skewing).attr(&quot;ki3&quot;, 0);
         }
         function transition23(t) {
-            let tt = t * 1.3 - 0.3;
-            marks.attr(&quot;t1&quot;, 0).attr(&quot;t2&quot;, 1 - tt).attr(&quot;t3&quot;, tt).attr(&quot;ki1&quot;, 0).attr(&quot;ki2&quot;, -0.3).attr(&quot;ki3&quot;, +0.3);
+            let tt = t * (1 + skewing) - skewing;
+            marks.attr(&quot;t1&quot;, 0).attr(&quot;t2&quot;, 1 - tt).attr(&quot;t3&quot;, tt).attr(&quot;ki1&quot;, 0).attr(&quot;ki2&quot;, -skewing).attr(&quot;ki3&quot;, +skewing);
         }
         function transition31(t) {
-            let tt = t * 1.3 - 0.3;
-            marks.attr(&quot;t1&quot;, tt).attr(&quot;t2&quot;, 0).attr(&quot;t3&quot;, 1 - tt).attr(&quot;ki1&quot;, +0.3).attr(&quot;ki2&quot;, 0).attr(&quot;ki3&quot;, -0.3);
+            let tt = t * (1 + skewing) - skewing;
+            marks.attr(&quot;t1&quot;, tt).attr(&quot;t2&quot;, 0).attr(&quot;t3&quot;, 1 - tt).attr(&quot;ki1&quot;, +skewing).attr(&quot;ki2&quot;, 0).attr(&quot;ki3&quot;, -skewing);
         }
 
         marks.data(demovote);

@@ -25,7 +25,7 @@
     loadData("demovoteclean.tsv", (data) => {
         let demovote = data;
         let mark = Stardust.mark.compile(`
-            import Cube from P3D;
+            import { Cube } from P3D;
 
             let longitude: float;
             let latitude: float;
@@ -117,6 +117,7 @@
         let yBinCount = 7;
 
         demovote.sort((a, b) => a.Obama - b.Obama);
+
         demovote.forEach((d, i) => {
             d.index = i;
             if(state2count[d.StateAbb] == null) state2count[d.StateAbb] = 0;
@@ -159,17 +160,19 @@
             .attr("xyBinIndex", (d) => d.xyBinIndex)
             .attr("color", (d) => scaleColor(d.Obama));
 
+        let skewing = 1;
+
         function transition12(t) {
-            let tt = t * 1.3 - 0.3;
-            marks.attr("t1", 1 - tt).attr("t2", tt).attr("t3", 0).attr("ki1", -0.3).attr("ki2", +0.3).attr("ki3", 0);
+            let tt = t * (1 + skewing) - skewing;
+            marks.attr("t1", 1 - tt).attr("t2", tt).attr("t3", 0).attr("ki1", -skewing).attr("ki2", +skewing).attr("ki3", 0);
         }
         function transition23(t) {
-            let tt = t * 1.3 - 0.3;
-            marks.attr("t1", 0).attr("t2", 1 - tt).attr("t3", tt).attr("ki1", 0).attr("ki2", -0.3).attr("ki3", +0.3);
+            let tt = t * (1 + skewing) - skewing;
+            marks.attr("t1", 0).attr("t2", 1 - tt).attr("t3", tt).attr("ki1", 0).attr("ki2", -skewing).attr("ki3", +skewing);
         }
         function transition31(t) {
-            let tt = t * 1.3 - 0.3;
-            marks.attr("t1", tt).attr("t2", 0).attr("t3", 1 - tt).attr("ki1", +0.3).attr("ki2", 0).attr("ki3", -0.3);
+            let tt = t * (1 + skewing) - skewing;
+            marks.attr("t1", tt).attr("t2", 0).attr("t3", 1 - tt).attr("ki1", +skewing).attr("ki2", 0).attr("ki3", -skewing);
         }
 
         marks.data(demovote);

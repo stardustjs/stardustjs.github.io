@@ -19,51 +19,16 @@ title: "Stardust Example: Daily Activities of Creative People"
 &lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
 &lt;script src=&quot;//stardust-vis.github.io/examples/assets/utils.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
 &lt;script type=&quot;text/javascript&quot;&gt;
+    // Create Stardust platform from canvas element
     var canvas = document.getElementById(&quot;main-canvas&quot;);
     var width = 960;
     var height = 470;
     var platform = Stardust.platform(&quot;webgl-2d&quot;, canvas, width, height);
 
-    var barSpec = Stardust.mark.compile(`
-        import Triangle from P2D;
+    // Create bar marks using wedge
+    var barMark = Stardust.mark.compile(`
+        import { Wedge } from P2D;
 
-        mark Wedge(
-            p1: Vector2,
-            theta1: float,
-            theta2: float,
-            length: float,
-            width: float,
-            color: Color = [ 0, 0, 0, 1 ]
-        ) {
-            let dTheta = (theta2 - theta1) / 60;
-            let dL = length / 60;
-            for(i in 0..59) {
-                let dThetaA = i * dTheta;
-                let dThetaB = (i + 1) * dTheta;
-                let thetaA = theta1 + dThetaA;
-                let thetaB = theta1 + dThetaB;
-                let thetaCenterA = theta1 + dThetaA / 2;
-                let thetaCenterB = theta1 + dThetaB / 2;
-                let dlA = dL * i;
-                let dlB = dL * (i + 1);
-                if(dThetaA &gt; 1e-5 || dThetaA &lt; -1e-5) {
-                    dlA = dlA / dThetaA * 2 * sin(dThetaA / 2);
-                }
-                if(dThetaB &gt; 1e-5 || dThetaB &lt; -1e-5) {
-                    dlB = dlB / dThetaB * 2 * sin(dThetaB / 2);
-                }
-                let pAdvA = Vector2(-sin(thetaCenterA), cos(thetaCenterA)) * dlA;
-                let pAdvB = Vector2(-sin(thetaCenterB), cos(thetaCenterB)) * dlB;
-                let pA = p1 + pAdvA;
-                let pB = p1 + pAdvB;
-
-                let dpA = Vector2(cos(thetaA), sin(thetaA)) * width * 0.5;
-                let dpB = Vector2(cos(thetaB), sin(thetaB)) * width * 0.5;
-
-                Triangle(pA + dpA, pB + dpB, pB - dpB, color);
-                Triangle(pA + dpA, pB - dpB, pA - dpA, color);
-            }
-        }
         mark Bar(
             index: float,
             center: Vector2,
@@ -94,74 +59,60 @@ title: "Stardust Example: Daily Activities of Creative People"
                 color
             );
         }
-    `)[&quot;Bar&quot;];
+    `);
 
-    var bar = Stardust.mark.create(barSpec, platform);
+    // Create bars with our barMark
+    var bars = Stardust.mark.create(barMark.Bar, platform);
 
+    // Use D3's scale for colors
     var colorScale = d3.scale.category10();
-    var convertD3Color = (c) =&gt; {
-        let m = d3.rgb(c);
-        return [ m.r / 255, m.g / 255, m.b / 255, 1.0 ];
-    };
 
     loadData(&quot;data.json&quot;, (data) =&gt; {
-        // var data0 = data.slice();
-        // for(var k = 0; k &lt; 49; k++) {
-        //     data = data.concat(data0);
-        // }
-
-        bar.attr(&quot;center&quot;, [ 480, 250 ] );
-        bar.attr(&quot;vcenter&quot;, [ 480, 250 ]);
-        bar.attr(&quot;radius&quot;, 40);
-        bar.attr(&quot;t&quot;, 0);
-        bar.attr(&quot;t1&quot;, d =&gt; d.start);
-        bar.attr(&quot;t2&quot;, d =&gt; d.start + d.duration);
-        bar.attr(&quot;color&quot;, d =&gt; convertD3Color(colorScale(d.type)));
-        bar.attr(&quot;index&quot;, 0);
-
+        // Layout parameters
         let yScale = d3.scale.linear().domain([ 0, data.length - 1 ]).range([ 15, height - 15 ]);
         let h = (yScale(1) - yScale(0)) * 0.8;
-        bar.attr(&quot;width&quot;, h);
-
-
         let sz = Math.sqrt((width - 15) * (height - 15) / data.length / 5);
         let grouping = Math.floor(width / sz / 2);
 
-        bar.attr(&quot;width2&quot;, sz * 0.3);
+        // Attributes
+        bars.attr(&quot;t&quot;, 0);
+        bars.attr(&quot;t1&quot;, d =&gt; d.start);
+        bars.attr(&quot;t2&quot;, d =&gt; d.start + d.duration);
+        bars.attr(&quot;color&quot;, d =&gt; Stardust.color.fromHTML(colorScale(d.type)));
+        bars.attr(&quot;width&quot;, h);
+        bars.attr(&quot;width2&quot;, sz * 0.3);
 
-        bar.instance((d, i) =&gt; {
-             return {
-                 data: d.activities,
-                 attrs: {
-                     index: i / (data.length - 1),
-                     center: [ i % grouping * sz * 2 + sz + 4, Math.floor(i / grouping) * sz * 2 + sz + 10 ],
-                     radius: sz - sz * 0.3 / 2 - 2,
-                     vcenter: [ 20, yScale(i) ]
-                 }
-             };
-        });
+        // Instancing
+        bars.instance(
+            d =&gt; d.activities,
+            (d, i) =&gt; {
+                return {
+                    index: i / (data.length - 1),
+                    center: [ i % grouping * sz * 2 + sz + 4, Math.floor(i / grouping) * sz * 2 + sz + 10 ],
+                    radius: sz - sz * 0.3 / 2 - 2,
+                    vcenter: [ 20, yScale(i) ]
+                };
+            }
+        );
 
-        bar.data(data);
+        // Set data items to bars
+        bars.data(data);
 
-        var N = 0;
-        data.forEach(d =&gt; N += d.activities.length);
-        console.log(N);
-
-
-
+        // Render/Re-render bars
         function render() {
             platform.clear();
-            bar.render();
+            bars.render();
         }
 
         render();
 
+        // Handle switches and animation timing
         switches.mode_changed = function(newValue) {
             beginTransition((t) =&gt; {
                 if(newValue == &quot;mode1&quot;)
-                    bar.attr(&quot;t&quot;, 1 - t);
+                    bars.attr(&quot;t&quot;, 1 - t);
                 if(newValue == &quot;mode2&quot;)
-                    bar.attr(&quot;t&quot;, t);
+                    bars.attr(&quot;t&quot;, t);
                 render();
             });
         };
