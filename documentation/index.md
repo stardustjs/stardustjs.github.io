@@ -7,7 +7,7 @@ Overview
 ====
 
 **Stardust** is a library for rendering information visualizations with GPU (WebGL). Stardust provides an easy-to-use
-and familiar API for defining marks and binding data to them. With Stardust, you can render tenth of thousands
+and familiar API for defining marks and binding data to them. With Stardust, you can render tens of thousands
 of markers and animate them in real time without the hassle of managing WebGL shaders and buffers.
 
 Including Stardust in Your Project
