@@ -10,7 +10,7 @@ title: "Stardust Example: Index Chart"
     <pre><code class="highlight html">&lt;!DOCTYPE html&gt;
 &lt;meta charset=&quot;utf-8&quot;&gt;
 &lt;title&gt;Stardust Example: Scatterplot&lt;/title&gt;
-&lt;link rel=&quot;stylesheet&quot; href=&quot;//stardust-vis.github.io/examples/assets/style.css&quot; type=&quot;text/css&quot; /&gt;
+&lt;link rel=&quot;stylesheet&quot; href=&quot;../static/assets/style.css&quot; type=&quot;text/css&quot; /&gt;
 &lt;style type=&quot;text/css&quot;&gt;
     .chart canvas,
     .chart svg {
@@ -51,8 +51,8 @@ title: "Stardust Example: Index Chart"
 &lt;/div&gt;
 &lt;div class=&quot;initializing&quot;&gt;&lt;p&gt;Initializing...&lt;/p&gt;&lt;/div&gt;
 &lt;script src=&quot;//d3js.org/d3.v3.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
-&lt;script src=&quot;//stardust-vis.github.io/stardust/stardust.bundle.min.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
-&lt;script src=&quot;//stardust-vis.github.io/examples/assets/utils.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;../static/stardust/stardust.bundle.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;../static/assets/utils.js&quot; type=&quot;text/javascript&quot;&gt;&lt;/script&gt;
 &lt;script type=&quot;text/javascript&quot;&gt;
     let width = 960;
     let height = 500;
@@ -131,18 +131,14 @@ title: "Stardust Example: Index Chart"
         let refIdx = 0;
 
         polylines.instance((d, i) =&gt; {
-            return {
-                data: data.map((x) =&gt; {
-                    return { time: +x.Time * 1000, value: +x[d] };
-                }),
-                attrs: {
-                    color: colors[i]
-                },
-                onRender: () =&gt; {
-                    yScale.domain([ data[refIdx][d] * indexScale.domain()[0], data[refIdx][d] * indexScale.domain()[1] ]);
-                }
-            }
+            return data.map((x) =&gt; {
+                return { time: +x.Time * 1000, value: +x[d] };
+            })
+        }, (d, i) =&gt; {
+            yScale.domain([ data[refIdx][d] * indexScale.domain()[0], data[refIdx][d] * indexScale.domain()[1] ]);
+            return { color: colors[i] };
         });
+
         polylines.data(names);
 
         let rerender = () =&gt; {
@@ -150,10 +146,6 @@ title: "Stardust Example: Index Chart"
                 d3.min(ranges, (x, i) =&gt; x[0] / data[refIdx][names[i]]),
                 d3.max(ranges, (x, i) =&gt; x[1] / data[refIdx][names[i]])
             ]);
-            // indexScale.domain([
-            //     1 / 3,
-            //     3
-            // ]);
             hline.attr(&quot;y1&quot;, indexScale(1));
             hline.attr(&quot;y2&quot;, indexScale(1));
             vline.attr(&quot;x1&quot;, xScale(+data[refIdx].Time * 1000));
