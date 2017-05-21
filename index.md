@@ -133,8 +133,9 @@ circles.render();
     <li style="line-height: 1.2em">
         <b>Stardust: Accessible and Transparent GPU Support for Information Visualization Rendering</b><br />
         Donghao Ren, Bongshin Lee, Tobias Höllerer<br />
-        <i style="font-style: italic">Computer Graphics Forum (Proc. EuroVis), 2017</i><br />
-        <a href="publications/eurovis2017-stardust.pdf">PDF</a>
+        <i>Computer Graphics Forum (Proc. EuroVis), 2017</i><br />
+        <small>[ <a href="publications/eurovis2017-stardust.pdf">PDF</a> |
+        <a href="https://vimeo.com/218365921">Video</a> ]</small>
     </li>
 </ul>
 
