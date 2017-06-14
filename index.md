@@ -24,7 +24,7 @@ of markers and animate them in real time without the hassle of managing WebGL sh
 
 Play with the library in the online playground:
 
-- [Online Playground](https://stardust-vis.github.io/playground/)
+- [Online Playground](https://stardustjs.github.io/playground/)
 
 Install with npm:
 
@@ -36,12 +36,12 @@ npm install stardust-webgl
 Link to the latest release:
 
 ```html
-<script type="text/javascript" src="//stardust-vis.github.io/stardust/stardust.bundle.min.js"></script>
+<script type="text/javascript" src="//stardustjs.github.io/stardust/stardust.bundle.min.js"></script>
 ```
 
 Checkout the source code here:
 
-- <https://github.com/stardust-vis/>
+- <https://github.com/stardustjs/>
 
 Getting Started
 ----
@@ -51,7 +51,7 @@ First, let's create an HTML file with a script tag to the Stardust library:
 ```html
 <!DOCTYPE html>
 <meta charset="utf-8">
-<script type="text/javascript" src="//stardust-vis.github.io/stardust/stardust.bundle.min.js"></script>
+<script type="text/javascript" src="//stardustjs.github.io/stardust/stardust.bundle.min.js"></script>
 ```
 
 Add a `canvas` element for our visualization:
