@@ -145,4 +145,4 @@ circles.render();
 - See the [examples]({{base}}/examples)
 - Play with existing code in the [online playground]({{base}}/playground)
 - Browse the [documentation]({{base}}/documentation)
-- Checkout the source code at <https://github.com/stardust-vis/>
+- Checkout the source code at <https://github.com/stardustjs/>
