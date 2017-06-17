@@ -35,7 +35,7 @@ Here is a complete example using Stardust to render a few circles. First, let's 
 ```html
 <!DOCTYPE html>
 <meta charset="utf-8">
-<script type="text/javascript" src="//stardust-vis.github.io/stardust/stardust.bundle.min.js"></script>
+<script type="text/javascript" src="//stardustjs.github.io/stardust/stardust.bundle.min.js"></script>
 ```
 
 Add a `canvas` element for our visualization:
