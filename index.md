@@ -41,7 +41,7 @@ Link to the latest release:
 
 Checkout the source code here:
 
-- <https://github.com/stardust-vis/>
+- <https://github.com/stardustjs/>
 
 Getting Started
 ----
