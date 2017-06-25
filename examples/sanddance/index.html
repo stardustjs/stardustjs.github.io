@@ -95,7 +95,7 @@ title: "Stardust Example: SandDance"
                 );
             }
         `)[&quot;Mark&quot;];
-        let marks = Stardust.mark.create(mark, platform);
+        let marks = Stardust.mark.create(mark, Stardust.shader.lighting(), platform);
 
         demovote.forEach(d =&gt; {
             d.Longitude = +d.Longitude;
@@ -210,4 +210,5 @@ title: "Stardust Example: SandDance"
             });
         };
     });
-&lt;/script&gt;</code></pre>
+&lt;/script&gt;
+</code></pre>

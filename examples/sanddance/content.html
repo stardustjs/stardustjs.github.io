@@ -86,7 +86,7 @@
                 );
             }
         `)["Mark"];
-        let marks = Stardust.mark.create(mark, platform);
+        let marks = Stardust.mark.create(mark, Stardust.shader.lighting(), platform);
 
         demovote.forEach(d => {
             d.Longitude = +d.Longitude;
