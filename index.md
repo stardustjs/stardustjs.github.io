@@ -36,7 +36,7 @@ npm install stardust-webgl
 Link to the latest release:
 
 ```html
-<script type="text/javascript" src="//stardust-vis.github.io/stardust/v0.1.1/stardust.bundle.min.js"></script>
+<script type="text/javascript" src="//stardustjs.github.io/stardust/v0.1.1/stardust.bundle.min.js"></script>
 ```
 
 Checkout the source code here:
@@ -51,7 +51,7 @@ First, let's create an HTML file with a script tag to the Stardust library:
 ```html
 <!DOCTYPE html>
 <meta charset="utf-8">
-<script type="text/javascript" src="//stardust-vis.github.io/stardust/v0.1.1/stardust.bundle.min.js"></script>
+<script type="text/javascript" src="//stardustjs.github.io/stardust/v0.1.1/stardust.bundle.min.js"></script>
 ```
 
 Add a `canvas` element for our visualization:

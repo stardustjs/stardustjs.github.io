@@ -22,7 +22,7 @@ or install the node modules.
 Link to the latest release:
 
 ```html
-<script type="text/javascript" src="//stardust-vis.github.io/stardust/v0.1.1/stardust.bundle.min.js"></script>
+<script type="text/javascript" src="//stardustjs.github.io/stardust/v0.1.1/stardust.bundle.min.js"></script>
 ```
 
 ### Use Stardust in Node
