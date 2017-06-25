@@ -496,7 +496,7 @@ var ToolbarView = (function (_super) {
         var _this = this;
         return (React.createElement("div", {className: "toolbar"}, 
             React.createElement("span", {className: "title"}, 
-                React.createElement("a", {href: "https://stardust-vis.github.io/"}, "Stardust"), 
+                React.createElement("a", {href: "https://stardustjs.github.io/"}, "Stardust"), 
                 " Playground"), 
             "Load example: ", 
             React.createElement("select", {ref: "selectExample", onChange: function (event) { return new Actions.LoadExample(_this.refs.selectExample.value).dispatch(); }}, examples_1.examples.map(function (example, index) { return React.createElement("option", {key: index, value: example.name}, example.name); })), 
