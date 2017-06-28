@@ -146,3 +146,4 @@ circles.render();
 - Play with existing code in the [online playground]({{base}}/playground)
 - Browse the [documentation]({{base}}/documentation)
 - Checkout the source code at <https://github.com/stardustjs/>
+- Join the discussion in Google Groups <https://groups.google.com/forum/#!forum/stardustjs>
