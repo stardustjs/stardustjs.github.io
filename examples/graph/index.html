@@ -123,10 +123,12 @@ title: "Stardust Example: Force-directed Graph"
         sedges.data(edges);
 
         force.on(&quot;tick&quot;, () =&gt; {
-            force.start();
+            // force.start();
             positions.data(nodes);
             requestRender();
         });
+
+        requestRender();
 
         // Handle dragging
 

@@ -115,10 +115,12 @@
         sedges.data(edges);
 
         force.on("tick", () => {
-            force.start();
+            // force.start();
             positions.data(nodes);
             requestRender();
         });
+
+        requestRender();
 
         // Handle dragging
 
