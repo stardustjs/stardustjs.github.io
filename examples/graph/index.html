@@ -96,15 +96,14 @@ title: "Stardust Example: Force-directed Graph"
                 var val = +slider.property(&quot;value&quot;);
                 var d = val / 1000 * (max - min) + min;
                 force[attr](d);
-                force.start();
             });
         }
 
         makeSlider(&quot;Friction&quot;, &quot;friction&quot;, 0.01, 1, 0.5);
         makeSlider(&quot;Gravity&quot;, &quot;gravity&quot;, 0.01, 1, 0.5);
-        makeSlider(&quot;Charge&quot;, &quot;charge&quot;, -200, 0, -40);
-        makeSlider(&quot;Link Distance&quot;, &quot;linkDistance&quot;, 0, 200, 50);
-        makeSlider(&quot;Link Strength&quot;, &quot;linkStrength&quot;, 0, 0.2, 0.05);
+        // makeSlider(&quot;Charge&quot;, &quot;charge&quot;, -200, 0, -40);
+        // makeSlider(&quot;Link Distance&quot;, &quot;linkDistance&quot;, 0, 200, 50);
+        // makeSlider(&quot;Link Strength&quot;, &quot;linkStrength&quot;, 0, 0.2, 0.05);
 
         var positions = Stardust.array(&quot;Vector2&quot;)
             .value(d =&gt; [ d.x, d.y ])
@@ -123,9 +122,13 @@ title: "Stardust Example: Force-directed Graph"
         sedges.data(edges);
 
         force.on(&quot;tick&quot;, () =&gt; {
-            // force.start();
+            if(isDragging &amp;&amp; selectedNode &amp;&amp; draggingLocation) {
+                selectedNode.x = draggingLocation[0];
+                selectedNode.y = draggingLocation[1];
+            }
             positions.data(nodes);
             requestRender();
+            force.resume();
         });
 
         requestRender();
@@ -134,13 +137,16 @@ title: "Stardust Example: Force-directed Graph"
 
         let selectedNode = null;
 
+        var requested = null;
         function requestRender() {
-            requestAnimationFrame(render);
+            if(requested) return;
+            requested = requestAnimationFrame(render);
         }
 
         var fps = new FPS();
 
         function render() {
+            requested = false;
             snodesSelected.data(selectedNode ? [ selectedNode ] : []);
 
             // Cleanup and re-render.
@@ -162,6 +168,7 @@ title: "Stardust Example: Force-directed Graph"
         }
 
         var isDragging = false;
+        var draggingLocation = null;
         // Handle dragging.
         canvas.onmousedown = function(e) {
             var x = e.clientX - canvas.getBoundingClientRect().left;
@@ -171,17 +178,20 @@ title: "Stardust Example: Force-directed Graph"
                 selectedNode = nodes[p[1]];
                 requestRender();
                 isDragging = true;
+                draggingLocation = [ selectedNode.x, selectedNode.y ];
                 var onMove = function(e) {
                     var nx = e.clientX - canvas.getBoundingClientRect().left;
                     var ny = e.clientY - canvas.getBoundingClientRect().top;
-                    nodes[p[1]].x = nx;
-                    nodes[p[1]].y = ny;
+                    selectedNode.x = nx;
+                    selectedNode.y = ny;
+                    draggingLocation = [ nx, ny ];
                     // requestRender();
                 };
                 var onUp = function() {
                     window.removeEventListener(&quot;mousemove&quot;, onMove);
                     window.removeEventListener(&quot;mouseup&quot;, onUp);
                     selectedNode = null;
+                    draggingLocation = null;
                     isDragging = false;
                 };
                 window.addEventListener(&quot;mousemove&quot;, onMove);

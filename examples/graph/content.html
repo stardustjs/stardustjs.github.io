@@ -88,15 +88,14 @@
                 var val = +slider.property("value");
                 var d = val / 1000 * (max - min) + min;
                 force[attr](d);
-                force.start();
             });
         }
 
         makeSlider("Friction", "friction", 0.01, 1, 0.5);
         makeSlider("Gravity", "gravity", 0.01, 1, 0.5);
-        makeSlider("Charge", "charge", -200, 0, -40);
-        makeSlider("Link Distance", "linkDistance", 0, 200, 50);
-        makeSlider("Link Strength", "linkStrength", 0, 0.2, 0.05);
+        // makeSlider("Charge", "charge", -200, 0, -40);
+        // makeSlider("Link Distance", "linkDistance", 0, 200, 50);
+        // makeSlider("Link Strength", "linkStrength", 0, 0.2, 0.05);
 
         var positions = Stardust.array("Vector2")
             .value(d => [ d.x, d.y ])
@@ -115,9 +114,13 @@
         sedges.data(edges);
 
         force.on("tick", () => {
-            // force.start();
+            if(isDragging && selectedNode && draggingLocation) {
+                selectedNode.x = draggingLocation[0];
+                selectedNode.y = draggingLocation[1];
+            }
             positions.data(nodes);
             requestRender();
+            force.resume();
         });
 
         requestRender();
@@ -126,13 +129,16 @@
 
         let selectedNode = null;
 
+        var requested = null;
         function requestRender() {
-            requestAnimationFrame(render);
+            if(requested) return;
+            requested = requestAnimationFrame(render);
         }
 
         var fps = new FPS();
 
         function render() {
+            requested = false;
             snodesSelected.data(selectedNode ? [ selectedNode ] : []);
 
             // Cleanup and re-render.
@@ -154,6 +160,7 @@
         }
 
         var isDragging = false;
+        var draggingLocation = null;
         // Handle dragging.
         canvas.onmousedown = function(e) {
             var x = e.clientX - canvas.getBoundingClientRect().left;
@@ -163,17 +170,20 @@
                 selectedNode = nodes[p[1]];
                 requestRender();
                 isDragging = true;
+                draggingLocation = [ selectedNode.x, selectedNode.y ];
                 var onMove = function(e) {
                     var nx = e.clientX - canvas.getBoundingClientRect().left;
                     var ny = e.clientY - canvas.getBoundingClientRect().top;
-                    nodes[p[1]].x = nx;
-                    nodes[p[1]].y = ny;
+                    selectedNode.x = nx;
+                    selectedNode.y = ny;
+                    draggingLocation = [ nx, ny ];
                     // requestRender();
                 };
                 var onUp = function() {
                     window.removeEventListener("mousemove", onMove);
                     window.removeEventListener("mouseup", onUp);
                     selectedNode = null;
+                    draggingLocation = null;
                     isDragging = false;
                 };
                 window.addEventListener("mousemove", onMove);
