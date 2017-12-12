@@ -1,8 +1,8 @@
 ---
 layout: default
-title: "Stardust Example: Scatterplot"
+title: "Stardust Example: Custom Shaders"
 ---
-<h1>Stardust Example: Scatterplot</h1>
+<h1>Stardust Example: Custom Shaders</h1>
 <iframe class="example-container" src="content.html" width="960px" height="500px" scrolling="no" sandbox="allow-popups allow-scripts allow-forms allow-same-origin"></iframe>
 <p>A scatterplot created with the <a href="https://stardustjs.github.io/">Stardust</a> library. Data is generated using a formula.</p>
 
@@ -42,10 +42,27 @@ title: "Stardust Example: Scatterplot"
         }
     }
 
-    let circle &#x3D; new Stardust.mark.circle(16);
+    let circle &#x3D; new Stardust.mark.compile(&#x60;
+        mark Mark(center: Vector2, radius: float, color: Color, k: float) {
+            emit [
+                { position: center + Vector2(-radius, -radius), color: color, off: Vector2(-1, -1), k: k },
+                { position: center + Vector2(-radius, radius), color: color, off: Vector2(-1, 1), k: k },
+                { position: center + Vector2(radius, radius), color: color, off: Vector2(1, 1), k: k },
+                { position: center + Vector2(-radius, -radius), color: color, off: Vector2(-1, -1), k: k },
+                { position: center + Vector2(radius, -radius), color: color, off: Vector2(1, -1), k: k },
+                { position: center + Vector2(radius, radius), color: color, off: Vector2(1, 1), k: k }
+            ];
+        }
+    &#x60;)[&quot;Mark&quot;];
 
-    var circles &#x3D; Stardust.mark.create(circle, platform);
-    var circles2 &#x3D; Stardust.mark.create(circle, platform);
+    var testShader &#x3D; Stardust.shader.compile(&#x60;
+        shader Default(color: Color, off: Vector2, k: float) {
+            let r &#x3D; exp(-sqrt(off.x * off.x + off.y * off.y) * k);
+            emit { color: Color(color.r, color.g, color.b, r) };
+        }
+    &#x60;)[&quot;Default&quot;];
+
+    var circles &#x3D; Stardust.mark.create(circle, testShader, platform);
 
     var scaleX &#x3D; Stardust.scale.linear()
         .domain([ -1, 1 ])
@@ -54,30 +71,18 @@ title: "Stardust Example: Scatterplot"
         .domain([ -1, 1 ])
         .range([ 10, height - 10 ]);
     circles.attr(&quot;center&quot;, Stardust.scale.Vector2(scaleX(d &#x3D;&gt; d.x), scaleY(d &#x3D;&gt; d.y)));
-    circles.attr(&quot;radius&quot;, 2);
+    circles.attr(&quot;radius&quot;, 10);
     circles.attr(&quot;color&quot;, [ 0, 0, 0, 0.4 ]);
-    circles2.attr(&quot;center&quot;, Stardust.scale.Vector2(scaleX(d &#x3D;&gt; d.x), scaleY(d &#x3D;&gt; d.y)));
-    circles2.attr(&quot;radius&quot;, 4);
-    circles2.attr(&quot;color&quot;, [ 255, 0, 0, 1 ]);
+    circles.attr(&quot;k&quot;, 5);
+
     circles.data(data);
-
     circles.render();
 
-    platform.beginPicking(canvas.width, canvas.height);
-    circles.render();
-    platform.endPicking();
-
-    canvas.onmousemove &#x3D; e &#x3D;&gt; {
-        let bounds &#x3D; canvas.getBoundingClientRect();
-        var x &#x3D; e.clientX - bounds.left;
-        var y &#x3D; e.clientY - bounds.top;
-        var p &#x3D; platform.getPickingPixel(x * 2, y * 2);
-        if(p) {
-            platform.clear();
-            circles.render();
-            circles2.attr(&quot;color&quot;, [ 1, 0, 0, 1 ]);
-            circles2.data([ data[p[1]] ]);
-            circles2.render();
-        }
-    }
+    var t0 &#x3D; new Date().getTime();
+    setInterval(() &#x3D;&gt; {
+        var time &#x3D; new Date().getTime() - t0;
+        circles.attr(&quot;k&quot;, 8 + Math.sin(time &#x2F; 1000) * 2);
+        platform.clear();
+        circles.render();
+    }, 10);
 &lt;&#x2F;script&gt;</code></pre>

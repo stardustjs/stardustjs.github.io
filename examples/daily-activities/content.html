@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
-<link rel="stylesheet" href="../static/assets/style.css" type="text/css" />
+<link rel="stylesheet" href="../common/style.css" type="text/css" />
 <canvas id="main-canvas"></canvas>
 <div data-switch="mode">
     <button class="active" data-value="mode1">Circular</button><button data-value="mode2">Linear</button>
@@ -8,8 +8,8 @@
 </div>
 <div class="initializing"><p>Initializing...</p></div>
 <script src="//d3js.org/d3.v3.min.js" type="text/javascript"></script>
-<script src="../static/stardust/stardust.bundle.min.js" type="text/javascript"></script>
-<script src="../static/assets/utils.js" type="text/javascript"></script>
+<script src="../common/stardust/stardust.bundle.js" type="text/javascript"></script>
+<script src="../common/utils.js" type="text/javascript"></script>
 <script type="text/javascript">
     // Create Stardust platform from canvas element
     var canvas = document.getElementById("main-canvas");
@@ -70,7 +70,7 @@
         bars.attr("t", 0);
         bars.attr("t1", d => d.start);
         bars.attr("t2", d => d.start + d.duration);
-        bars.attr("color", d => Stardust.color.fromHTML(colorScale(d.type)));
+        bars.attr("color", d => Stardust.Color.FromHTML(colorScale(d.type)));
         bars.attr("width", h);
         bars.attr("width2", sz * 0.3);
 

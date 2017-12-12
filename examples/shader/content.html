@@ -33,10 +33,27 @@
         }
     }
 
-    let circle = new Stardust.mark.circle(16);
+    let circle = new Stardust.mark.compile(`
+        mark Mark(center: Vector2, radius: float, color: Color, k: float) {
+            emit [
+                { position: center + Vector2(-radius, -radius), color: color, off: Vector2(-1, -1), k: k },
+                { position: center + Vector2(-radius, radius), color: color, off: Vector2(-1, 1), k: k },
+                { position: center + Vector2(radius, radius), color: color, off: Vector2(1, 1), k: k },
+                { position: center + Vector2(-radius, -radius), color: color, off: Vector2(-1, -1), k: k },
+                { position: center + Vector2(radius, -radius), color: color, off: Vector2(1, -1), k: k },
+                { position: center + Vector2(radius, radius), color: color, off: Vector2(1, 1), k: k }
+            ];
+        }
+    `)["Mark"];
 
-    var circles = Stardust.mark.create(circle, platform);
-    var circles2 = Stardust.mark.create(circle, platform);
+    var testShader = Stardust.shader.compile(`
+        shader Default(color: Color, off: Vector2, k: float) {
+            let r = exp(-sqrt(off.x * off.x + off.y * off.y) * k);
+            emit { color: Color(color.r, color.g, color.b, r) };
+        }
+    `)["Default"];
+
+    var circles = Stardust.mark.create(circle, testShader, platform);
 
     var scaleX = Stardust.scale.linear()
         .domain([ -1, 1 ])
@@ -45,30 +62,18 @@
         .domain([ -1, 1 ])
         .range([ 10, height - 10 ]);
     circles.attr("center", Stardust.scale.Vector2(scaleX(d => d.x), scaleY(d => d.y)));
-    circles.attr("radius", 2);
+    circles.attr("radius", 10);
     circles.attr("color", [ 0, 0, 0, 0.4 ]);
-    circles2.attr("center", Stardust.scale.Vector2(scaleX(d => d.x), scaleY(d => d.y)));
-    circles2.attr("radius", 4);
-    circles2.attr("color", [ 255, 0, 0, 1 ]);
+    circles.attr("k", 5);
+
     circles.data(data);
-
     circles.render();
 
-    platform.beginPicking(canvas.width, canvas.height);
-    circles.render();
-    platform.endPicking();
-
-    canvas.onmousemove = e => {
-        let bounds = canvas.getBoundingClientRect();
-        var x = e.clientX - bounds.left;
-        var y = e.clientY - bounds.top;
-        var p = platform.getPickingPixel(x * 2, y * 2);
-        if(p) {
-            platform.clear();
-            circles.render();
-            circles2.attr("color", [ 1, 0, 0, 1 ]);
-            circles2.data([ data[p[1]] ]);
-            circles2.render();
-        }
-    }
+    var t0 = new Date().getTime();
+    setInterval(() => {
+        var time = new Date().getTime() - t0;
+        circles.attr("k", 8 + Math.sin(time / 1000) * 2);
+        platform.clear();
+        circles.render();
+    }, 10);
 </script>
