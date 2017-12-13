@@ -19,10 +19,23 @@ html, body {
   width: 100%;
   height: 100%;
   background-color: #000;
-  color: #fff;
+  color: #ccc;
   margin: 0px;
   padding: 0;
   overflow: hidden;
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 16px;
+}
+span.error {
+  padding: 10px;
+  display: block;
+}
+span.overlay {
+  position: absolute;
+  display: block;
+  left: 0; top: 0; right: 0; bottom: 0;
+  padding: 10px;
+  pointer-events: none;
 }
 canvas {
   position: absolute;
@@ -32,7 +45,9 @@ canvas {
 &lt;&#x2F;html&gt;
 &lt;body&gt;
 
-&lt;canvas id&#x3D;&quot;main-canvas&quot; &#x2F;&gt;
+&lt;canvas id&#x3D;&quot;main-canvas&quot;&gt;&lt;&#x2F;canvas&gt;
+&lt;span class&#x3D;&quot;overlay&quot; id&#x3D;&quot;overlay-element&quot;&gt;Click the screen to start WebVR&lt;&#x2F;span&gt;
+
 &lt;script type&#x3D;&quot;text&#x2F;javascript&quot;&gt;
 WebVRConfig &#x3D; {
   BUFFER_SCALE: 1.0,
@@ -51,10 +66,12 @@ WebVRConfig &#x3D; {
     platform.pixelRatio &#x3D; 1;
 
     UserCode(platform, (userContext) &#x3D;&gt; {
-        alert(navigator.getVRDisplays);
         navigator.getVRDisplays().then((displays) &#x3D;&gt; {
-            alert(displays);
             let vrDisplay &#x3D; displays[0];
+            if(!vrDisplay) {
+                document.body.innerHTML &#x3D; &#39;&lt;span class&#x3D;&quot;error&quot;&gt;Could not find WebVR display&lt;&#x2F;span&gt;&#39;;
+                return;
+            }
 
             function onResize() {
                 if(vrDisplay &amp;&amp; vrDisplay.isPresenting) {
@@ -104,8 +121,10 @@ WebVRConfig &#x3D; {
             vrDisplay.requestAnimationFrame(onAnimationFrame);
 
             canvas.onclick &#x3D; () &#x3D;&gt; {
+                document.getElementById(&quot;overlay-element&quot;).remove();
+                canvas.onclick &#x3D; null;
                 vrDisplay.requestPresent([{ source: canvas }]).catch((err) &#x3D;&gt; {
-                    document.body.innerHTML &#x3D; err;
+                    document.body.innerHTML &#x3D; &#39;&lt;span class&#x3D;&quot;error&quot;&gt;&#39; + err + &#39;&lt;&#x2F;span&gt;&#39;;
                 });
             };
         });
