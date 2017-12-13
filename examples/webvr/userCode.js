@@ -41,7 +41,7 @@ function UserCode(platform, callback) {
                 let x = cos(angle) * r;
                 let y = sin(angle) * r;
                 let z = dayScaler * 50;
-                return Vector3(x, y, z);
+                return Vector3(x / 100, y / 100, z / 100);
             }
 
             function getPosition2(year: float, dayOfYear: float, secondOfDay: float): Vector3 {
@@ -50,7 +50,7 @@ function UserCode(platform, callback) {
                 let x = cos(angle) * r;
                 let y = sin(angle) * r;
                 let z = 0;
-                return Vector3(x, y, z);
+                return Vector3(x / 100, y / 100, z / 100);
             }
 
             mark Glyph(
@@ -63,7 +63,7 @@ function UserCode(platform, callback) {
             ) {
                 let p = getPosition(year, dayOfYear, secondOfDay);
                 let p2 = getPosition2(year, dayOfYear, secondOfDay);
-                Point(p * (1 - t) + p2 * t, log(1 + duration) / 2, color = color);
+                Point(p * (1 - t) + p2 * t, log(1 + duration) / 200, color = color);
             }
 
             mark LineChart(
@@ -83,9 +83,9 @@ function UserCode(platform, callback) {
                 let p2p = getPosition2(year2, dayOfYear2, secondOfDay2);
                 p1 = p1 + (p1p - p1) * t;
                 p2 = p2 + (p2p - p2) * t;
-                p1 = Vector3(p1.x, p1.y, c1);
-                p2 = Vector3(p2.x, p2.y, c2);
-                Line(p1, p2, 0.5, Color(1, 1, 1, 0.8));
+                p1 = Vector3(p1.x, p1.y, c1 / 100);
+                p2 = Vector3(p2.x, p2.y, c2 / 100);
+                Line(p1, p2, 0.5 / 100, Color(1, 1, 1, 0.8));
             }
         `);
 
@@ -151,10 +151,16 @@ function UserCode(platform, callback) {
 
         mark.attr("t", 0);
 
+        let t0 = new Date().getTime();
+
         function render() {
+            let time = (new Date().getTime() - t0) / 1000;
+            let t = (Math.sin(time / 5) + 1) / 2;
+            mark.attr("t", t);
+
             platform.setPose(
                 new Stardust.Pose(
-                    new Stardust.Vector3(30, 100, 10),
+                    new Stardust.Vector3(0, 0, 1),
                     new Stardust.Quaternion(0, 0, 0, 1)
                 )
             );

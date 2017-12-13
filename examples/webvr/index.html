@@ -156,7 +156,7 @@ WebVRConfig &#x3D; {
                 let x &#x3D; cos(angle) * r;
                 let y &#x3D; sin(angle) * r;
                 let z &#x3D; dayScaler * 50;
-                return Vector3(x, y, z);
+                return Vector3(x &#x2F; 100, y &#x2F; 100, z &#x2F; 100);
             }
 
             function getPosition2(year: float, dayOfYear: float, secondOfDay: float): Vector3 {
@@ -165,7 +165,7 @@ WebVRConfig &#x3D; {
                 let x &#x3D; cos(angle) * r;
                 let y &#x3D; sin(angle) * r;
                 let z &#x3D; 0;
-                return Vector3(x, y, z);
+                return Vector3(x &#x2F; 100, y &#x2F; 100, z &#x2F; 100);
             }
 
             mark Glyph(
@@ -178,7 +178,7 @@ WebVRConfig &#x3D; {
             ) {
                 let p &#x3D; getPosition(year, dayOfYear, secondOfDay);
                 let p2 &#x3D; getPosition2(year, dayOfYear, secondOfDay);
-                Point(p * (1 - t) + p2 * t, log(1 + duration) &#x2F; 2, color &#x3D; color);
+                Point(p * (1 - t) + p2 * t, log(1 + duration) &#x2F; 200, color &#x3D; color);
             }
 
             mark LineChart(
@@ -198,9 +198,9 @@ WebVRConfig &#x3D; {
                 let p2p &#x3D; getPosition2(year2, dayOfYear2, secondOfDay2);
                 p1 &#x3D; p1 + (p1p - p1) * t;
                 p2 &#x3D; p2 + (p2p - p2) * t;
-                p1 &#x3D; Vector3(p1.x, p1.y, c1);
-                p2 &#x3D; Vector3(p2.x, p2.y, c2);
-                Line(p1, p2, 0.5, Color(1, 1, 1, 0.8));
+                p1 &#x3D; Vector3(p1.x, p1.y, c1 &#x2F; 100);
+                p2 &#x3D; Vector3(p2.x, p2.y, c2 &#x2F; 100);
+                Line(p1, p2, 0.5 &#x2F; 100, Color(1, 1, 1, 0.8));
             }
         &#x60;);
 
@@ -266,10 +266,16 @@ WebVRConfig &#x3D; {
 
         mark.attr(&quot;t&quot;, 0);
 
+        let t0 &#x3D; new Date().getTime();
+
         function render() {
+            let time &#x3D; (new Date().getTime() - t0) &#x2F; 1000;
+            let t &#x3D; (Math.sin(time &#x2F; 5) + 1) &#x2F; 2;
+            mark.attr(&quot;t&quot;, t);
+
             platform.setPose(
                 new Stardust.Pose(
-                    new Stardust.Vector3(30, 100, 10),
+                    new Stardust.Vector3(0, 0, 1),
                     new Stardust.Quaternion(0, 0, 0, 1)
                 )
             );
