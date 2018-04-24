@@ -88,9 +88,9 @@
             .attr("x", interp(scaleX1(d => d.MPG), scaleX2(d => d.Weight)))
             .attr("y", interp(scaleY1(d => d.Displacement), scaleY2(d => d.Acceleration)))
             .attr("v1", interp(scale1(d => d.Horsepower), scale1(d => d.Horsepower)))
-            .attr("v2", interp(scale2(d => d.Weight), scale1(d => d.Horsepower)))
-            .attr("v3", interp(scale3(d => d.Acceleration), scale1(d => d.Horsepower)))
-            .attr("v4", interp(scale4(d => d.ModelYear), scale1(d => d.Horsepower)))
+            .attr("v2", interp(scale2(d => d.Weight), scale2(d => d.Weight)))
+            .attr("v3", interp(scale3(d => d.Acceleration), scale3(d => d.Acceleration)))
+            .attr("v4", interp(scale4(d => d.ModelYear), scale4(d => d.ModelYear)))
             .attr("color", d => colors[cylinders2Color[d.Cylinders]]);
 
         glyphs.data(data);
