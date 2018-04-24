@@ -97,9 +97,9 @@ title: "Stardust Example: Glyph-based Visualization"
             .attr(&quot;x&quot;, interp(scaleX1(d &#x3D;&gt; d.MPG), scaleX2(d &#x3D;&gt; d.Weight)))
             .attr(&quot;y&quot;, interp(scaleY1(d &#x3D;&gt; d.Displacement), scaleY2(d &#x3D;&gt; d.Acceleration)))
             .attr(&quot;v1&quot;, interp(scale1(d &#x3D;&gt; d.Horsepower), scale1(d &#x3D;&gt; d.Horsepower)))
-            .attr(&quot;v2&quot;, interp(scale2(d &#x3D;&gt; d.Weight), scale1(d &#x3D;&gt; d.Horsepower)))
-            .attr(&quot;v3&quot;, interp(scale3(d &#x3D;&gt; d.Acceleration), scale1(d &#x3D;&gt; d.Horsepower)))
-            .attr(&quot;v4&quot;, interp(scale4(d &#x3D;&gt; d.ModelYear), scale1(d &#x3D;&gt; d.Horsepower)))
+            .attr(&quot;v2&quot;, interp(scale2(d &#x3D;&gt; d.Weight), scale2(d &#x3D;&gt; d.Weight)))
+            .attr(&quot;v3&quot;, interp(scale3(d &#x3D;&gt; d.Acceleration), scale3(d &#x3D;&gt; d.Acceleration)))
+            .attr(&quot;v4&quot;, interp(scale4(d &#x3D;&gt; d.ModelYear), scale4(d &#x3D;&gt; d.ModelYear)))
             .attr(&quot;color&quot;, d &#x3D;&gt; colors[cylinders2Color[d.Cylinders]]);
 
         glyphs.data(data);
