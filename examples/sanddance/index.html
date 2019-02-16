@@ -32,6 +32,7 @@ title: "Stardust Example: SandDance"
         new Stardust.Quaternion(0, 0, 0, 1)
     ));
     platform.clear([ 1, 1, 1, 1 ]);
+    platform.setCameraPosition(Stardust.Vector3(0, 0, 200));
     loadData(&quot;demovoteclean.tsv&quot;, (data) &#x3D;&gt; {
         let demovote &#x3D; data;
         let mark &#x3D; Stardust.mark.compile(&#x60;

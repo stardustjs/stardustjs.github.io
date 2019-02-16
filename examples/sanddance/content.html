@@ -22,6 +22,7 @@
         new Stardust.Quaternion(0, 0, 0, 1)
     ));
     platform.clear([ 1, 1, 1, 1 ]);
+    platform.setCameraPosition(Stardust.Vector3(0, 0, 200));
     loadData("demovoteclean.tsv", (data) => {
         let demovote = data;
         let mark = Stardust.mark.compile(`
