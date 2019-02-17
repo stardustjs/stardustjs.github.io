@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1040">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="keywords" content="Stardust,visualization,WebGL,javascript">
+
+    <title>Stardust Documentation: Data Binding</title>
+
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/styles/atom-one-light.min.css" />
+    <link rel="stylesheet" type="text/css" href="/css/main.css" />
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/highlight.min.js"></script>
+</head>
+<body>
+    <header>
+        <a href="/">Home</a>
+<a href="/examples">Examples</a>
+<a href="/documentation">Documentation</a>
+<a href="/playground">Playground</a>
+<a href="https://github.com/stardustjs/">Source</a>
+    </header>
+    <section class="with-sidebar group">
+        <aside class="sidebar">
+    <ul class="documentation-sidebar">
+        <li><a href="/documentation/">Overview</a></li>
+        <li><a href="/documentation/marks">Marks</a></li>
+        <li><a href="/documentation/specification">Mark Specification</a></li>
+        <li><a href="/documentation/data-binding">Data Binding</a></li>
+        <li><a href="/documentation/rendering">Rendering</a></li>
+    </ul>
+</aside>
+        <div class="content">
+            <h1 id="data-binding">Data Binding</h1>
+
+<p>Once you create a set of marks in Stardust such as:</p>
+
+<pre><code class="language-javascript">let circleMark = Stardust.mark.circle();
+let circles = Stardust.mark.create(circleMark, platform);
+</code></pre>
+
+<p>You can specify their attributes with data bindings.</p>
+
+<h2 id="specifying-data-items">Specifying Data Items</h2>
+
+<p>To specify an array of data items, use <code>marks.data(array)</code>:</p>
+
+<pre><code class="language-javascript">circles.data([ 1, 2, 3, 4, 5 ])
+</code></pre>
+
+<h2 id="specifying-attributes">Specifying Attributes</h2>
+
+<p>Attributes can be specified directly by calling <code>marks.attr(name, value)</code>:</p>
+
+<pre><code class="language-javascript">circles.attr("center", d =&gt; [ d * 3, d * 5 - 2 ]);
+circles.attr("radius", 2);
+circles.attr("color", [ 0.3, 0.1, 0.7, 1 ]);
+</code></pre>
+
+<h2 id="using-scales">Using Scales</h2>
+
+<h3 id="d3-scales">D3 Scales</h3>
+
+<p>If you are familiar with <a href="https://d3js.org/">D3</a>, you’ll find that Stardust’s data binding API is very similar to D3’s.
+Therefore, you can use D3’s scales in Stardust as well:</p>
+
+<pre><code class="language-javascript">// Create a D3 scale
+let radiusScale = d3.scale.linear()
+    .domain([ 0, 10 ])
+    .range([ 0, 5 ]);
+
+// Set mark attributes with D3 scales
+circles.attr("radius", d =&gt; radiusScale(d));
+</code></pre>
+
+<h3 id="stardust-scales">Stardust Scales</h3>
+
+<p>D3’s scales are JavaScript functions, which has to be executed in JavaScript.
+Stardust has a set of scales that can run on GPUs, which means you can setup animation parameters with them, and get great performance.</p>
+
+<h4 id="stardustscalelinear">Stardust.scale.linear</h4>
+
+<pre><code class="language-javascript">// Create a Stardust scale
+let radiusScale = Stardust.scale.linear()
+    .domain([ 0, 10 ])
+    .range([ 0, 5 ]);
+
+// Set mark attributes with D3 scales
+circles.attr("radius", radiusScale(d =&gt; d));
+
+// X and Y scales
+let xScale = Stardust.scale.linear()
+    .domain([ 0, 10 ])
+    .range([ 0, 10 ]);
+
+let yScale = Stardust.scale.linear()
+    .domain([ 0, 10 ])
+    .range([ 0, 20 ]);
+
+// Attributes with Vector or Color types can be set using corresponding functions
+circles.attr("center", Stardust.scale.Vector2(
+    xScale(d =&gt; d), yScale(d =&gt; d)
+);
+</code></pre>
+
+<p>You can also create custom scales with your own expression in the <a href="/documentation/specification">mark specification language</a>:</p>
+
+<pre><code class="language-javascript">// Custom scale with expression
+let positionScale = Stardust.scale.custom(`
+    Vector2(
+        (R - r) * cos(value) + d * cos((R / r - 1) * value),
+        (R - r) * sin(value) - d * sin((R / r - 1) * value)
+    ) * 50 + Vector2(250, 250)
+`);
+// Define attributes in the expression
+positionScale
+    .attr("d", 2.19).attr("R", 5).attr("r", 5 * (18 / 41));
+
+// Another custom scale for color
+let colorScale = Stardust.scale.custom(`
+    hcl2rgb(Color(value, 0.5, 0.5, 0.1))
+`);
+
+circles
+    .attr("center", positionScale(d =&gt; d * 41))
+    .attr("color", colorScale(d =&gt; d * 41))
+    .attr("radius", 1)
+</code></pre>
+
+        </div>
+    </section>
+    <footer>
+        <hr />
+        <p>Copyright Donghao Ren, Bongshin Lee, and Tobias Höllerer, 2016-2017. License: BSD-3-Clause.</p>
+    </footer>
+    <script type="text/javascript">
+        hljs.initHighlightingOnLoad();
+    </script>
+    <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-101038640-1', 'auto');
+    ga('send', 'pageview');
+
+    </script>
+</body>
+</html>

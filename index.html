@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1040">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="keywords" content="Stardust,visualization,WebGL,javascript">
+
+    <title>Stardust: GPU-based Visualization Library</title>
+
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/styles/atom-one-light.min.css" />
+    <link rel="stylesheet" type="text/css" href="/css/main.css" />
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/highlight.min.js"></script>
+</head>
+<body>
+    <header>
+        <a href="/">Home</a>
+<a href="/examples">Examples</a>
+<a href="/documentation">Documentation</a>
+<a href="/playground">Playground</a>
+<a href="https://github.com/stardustjs/">Source</a>
+    </header>
+    <section>
+        <h1 id="stardust-gpu-based-visualization-library">Stardust: GPU-based Visualization Library</h1>
+
+<ul class="examples group">
+    <li><a href="/examples/glyphs"><img src="/examples/glyphs/preview_small.png" /><div class="overlay"><span>Glyphs</span></div></a></li>
+    <li><a href="/examples/sanddance"><img src="/examples/sanddance/preview_small.png" /><div class="overlay"><span>SandDance</span></div></a></li>
+    <li><a href="/examples/daily-activities"><img src="/examples/daily-activities/preview_small.png" /><div class="overlay"><span>Daily Activities</span></div></a></li>
+    <li><a href="/examples/squares"><img src="/examples/squares/preview_small.png" /><div class="overlay"><span>Squares</span></div></a></li>
+    <li><a href="/examples/isotype"><img src="/examples/isotype/preview_small.png" /><div class="overlay"><span>Isotype</span></div></a></li>
+    <li><a href="/examples/graph"><img src="/examples/graph/preview_small.png" /><div class="overlay"><span>Force-directed Graph</span></div></a></li>
+</ul>
+
+<p class="lead">
+<strong>Stardust</strong> is a library for rendering information visualizations with GPU (WebGL). Stardust provides an easy-to-use
+and familiar API for defining marks and binding data to them. With Stardust, you can render tens of thousands
+of markers and animate them in real time without the hassle of managing WebGL shaders and buffers.
+</p>
+
+<p>Play with the library in the online playground:</p>
+
+<ul>
+  <li><a href="/playground/">Online Playground</a></li>
+</ul>
+
+<p>Install with npm:</p>
+
+<pre><code class="language-bash">npm install stardust-core
+npm install stardust-webgl
+</code></pre>
+
+<p>Link to the latest release:</p>
+
+<pre><code class="language-html">&lt;script type="text/javascript" src="//stardustjs.github.io/stardust/v0.1.1/stardust.bundle.min.js"&gt;&lt;/script&gt;
+</code></pre>
+
+<p>Checkout the source code here:</p>
+
+<ul>
+  <li><a href="https://github.com/stardustjs/">https://github.com/stardustjs/</a></li>
+</ul>
+
+<h2 id="getting-started">Getting Started</h2>
+
+<p>First, let’s create an HTML file with a script tag to the Stardust library:</p>
+
+<pre><code class="language-html">&lt;!DOCTYPE html&gt;
+&lt;meta charset="utf-8"&gt;
+&lt;script type="text/javascript" src="//stardustjs.github.io/stardust/v0.1.1/stardust.bundle.min.js"&gt;&lt;/script&gt;
+</code></pre>
+
+<p>Add a <code>canvas</code> element for our visualization:</p>
+
+<pre><code class="language-html">&lt;canvas id="main-canvas"&gt;&lt;/canvas&gt;
+</code></pre>
+
+<p>Initialize the WebGL platform:</p>
+
+<pre><code class="language-html">&lt;script type="text/javascript"&gt;
+    // Get our canvas element
+    var canvas = document.getElementById("main-canvas");
+    var width = 960;
+    var height = 500;
+
+    // Create a WebGL 2D platform on the canvas:
+    var platform = Stardust.platform("webgl-2d", canvas, width, height);
+
+    // ... Load data and render your visualization
+&lt;/script&gt;
+</code></pre>
+
+<p>For the tutorial, let’s make some data. You can load data from JSON or CSV files using other libraries such as D3.</p>
+
+<pre><code class="language-javascript">var data = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
+</code></pre>
+
+<p>Create a Stardust mark specification:</p>
+
+<pre><code class="language-javascript">var circleSpec = Stardust.mark.circle();
+</code></pre>
+
+<p>Create a mark object using the spec on our WebGL platform:</p>
+
+<pre><code class="language-javascript">var circles = Stardust.mark.create(circleSpec, platform);
+</code></pre>
+
+<p>Bind data attributes to the circles:</p>
+
+<pre><code class="language-javascript">circles.attr("center", (d) =&gt; [ d * 80, 250 ]);
+circles.attr("radius", (d) =&gt; d * 3);
+circles.attr("color", [ 0, 0, 0, 1 ]);
+</code></pre>
+
+<p>Bind our data items to the circles:</p>
+
+<pre><code class="language-javascript">circles.data(data);
+</code></pre>
+
+<p>Render the circles:</p>
+
+<pre><code class="language-javascript">circles.render();
+</code></pre>
+
+<p>You may change data bindings and call render again:</p>
+
+<pre><code class="language-javascript">// Update binding attributes
+circles.attr("color", [ 1, 0, 0, 1 ]);
+
+// Clear the previously rendered stuff
+platform.clear();
+
+// Re-render the circles
+circles.render();
+</code></pre>
+
+<h2 id="publication">Publication</h2>
+
+<ul>
+    <li style="line-height: 1.2em">
+        <b>Stardust: Accessible and Transparent GPU Support for Information Visualization Rendering</b><br />
+        Donghao Ren, Bongshin Lee, Tobias Höllerer<br />
+        <i>Computer Graphics Forum (Proc. EuroVis), 2017</i><br />
+        <small>[ <a href="publications/eurovis2017-stardust.pdf">PDF</a> |
+        <a href="https://vimeo.com/218365921">Video</a> ]</small>
+    </li>
+</ul>
+
+<h2 id="next-steps">Next Steps</h2>
+
+<ul>
+  <li>See the <a href="/examples">examples</a></li>
+  <li>Play with existing code in the <a href="/playground">online playground</a></li>
+  <li>Browse the <a href="/documentation">documentation</a></li>
+  <li>Checkout the source code at <a href="https://github.com/stardustjs/">https://github.com/stardustjs/</a></li>
+  <li>Join the discussion in Google Groups <a href="https://groups.google.com/forum/#!forum/stardustjs">https://groups.google.com/forum/#!forum/stardustjs</a></li>
+</ul>
+
+    </section>
+    <footer>
+        <hr />
+        <p>Copyright Donghao Ren, Bongshin Lee, and Tobias Höllerer, 2016-2017. License: BSD-3-Clause.</p>
+    </footer>
+    <script type="text/javascript">
+        hljs.initHighlightingOnLoad();
+    </script>
+    <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-101038640-1', 'auto');
+    ga('send', 'pageview');
+
+    </script>
+</body>
+</html>

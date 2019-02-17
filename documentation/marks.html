@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1040">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="keywords" content="Stardust,visualization,WebGL,javascript">
+
+    <title>Stardust Documentation: Marks</title>
+
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/styles/atom-one-light.min.css" />
+    <link rel="stylesheet" type="text/css" href="/css/main.css" />
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/highlight.min.js"></script>
+</head>
+<body>
+    <header>
+        <a href="/">Home</a>
+<a href="/examples">Examples</a>
+<a href="/documentation">Documentation</a>
+<a href="/playground">Playground</a>
+<a href="https://github.com/stardustjs/">Source</a>
+    </header>
+    <section class="with-sidebar group">
+        <aside class="sidebar">
+    <ul class="documentation-sidebar">
+        <li><a href="/documentation/">Overview</a></li>
+        <li><a href="/documentation/marks">Marks</a></li>
+        <li><a href="/documentation/specification">Mark Specification</a></li>
+        <li><a href="/documentation/data-binding">Data Binding</a></li>
+        <li><a href="/documentation/rendering">Rendering</a></li>
+    </ul>
+</aside>
+        <div class="content">
+            <h1 id="marks">Marks</h1>
+
+<p>Stardust uses the term “mark” for graphical elements, such as circles, lines, and wedges.
+You can use the <strong>predefined marks</strong> as below to create your visualizations,
+or write code in Stardust’s <a href="/documentation/specification">mark specification language</a> to create your own marks.</p>
+
+<h2 id="stardustmarkcircle">Stardust.mark.circle</h2>
+
+<p>Circle marks:</p>
+
+<pre><code class="language-javascript">let circleMark = Stardust.mark.circle();
+// Create circles with 8 triangles, good when drawing large numbers of small circles.
+let circleMark = Stardust.mark.circle(8);
+let circles = Stardust.mark.create(circleMark, platform);
+</code></pre>
+
+<p>Attributes:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">Name</th>
+      <th style="text-align: left">Type</th>
+      <th style="text-align: left">Default</th>
+      <th style="text-align: left">Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left"><code>center</code></td>
+      <td style="text-align: left"><code>Vector2</code></td>
+      <td style="text-align: left"><code>[ 0, 0 ]</code></td>
+      <td style="text-align: left">The center</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><code>radius</code></td>
+      <td style="text-align: left"><code>float</code></td>
+      <td style="text-align: left"><code>1</code></td>
+      <td style="text-align: left">The radius</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><code>color</code></td>
+      <td style="text-align: left"><code>Color</code></td>
+      <td style="text-align: left"><code>[ 0, 0, 0, 1 ]</code></td>
+      <td style="text-align: left">The fill color</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="stardustmarkrect">Stardust.mark.rect</h2>
+
+<p>Rectangle marks:</p>
+
+<pre><code class="language-javascript">let rectMark = Stardust.mark.rect();
+let rects = Stardust.mark.create(rectMark, platform);
+</code></pre>
+
+<p>Attributes:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">Name</th>
+      <th style="text-align: left">Type</th>
+      <th style="text-align: left">Default</th>
+      <th style="text-align: left">Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left"><code>p1</code></td>
+      <td style="text-align: left"><code>Vector2</code></td>
+      <td style="text-align: left"><code>[ 0, 0 ]</code></td>
+      <td style="text-align: left">The top-left corner</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><code>p2</code></td>
+      <td style="text-align: left"><code>Vector2</code></td>
+      <td style="text-align: left"><code>[ 0, 0 ]</code></td>
+      <td style="text-align: left">The bottom-right corner</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><code>color</code></td>
+      <td style="text-align: left"><code>Color</code></td>
+      <td style="text-align: left"><code>[ 0, 0, 0, 1 ]</code></td>
+      <td style="text-align: left">The fill color</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="stardustmarkline">Stardust.mark.line</h2>
+
+<p>Line marks:</p>
+
+<pre><code class="language-javascript">let lineMark = Stardust.mark.line();
+let lines = Stardust.mark.create(lineMark, platform);
+</code></pre>
+
+<p>Attributes:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">Name</th>
+      <th style="text-align: left">Type</th>
+      <th style="text-align: left">Default</th>
+      <th style="text-align: left">Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left"><code>p1</code></td>
+      <td style="text-align: left"><code>Vector2</code></td>
+      <td style="text-align: left"><code>[ 0, 0 ]</code></td>
+      <td style="text-align: left">The top-left corn</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><code>p2</code></td>
+      <td style="text-align: left"><code>Vector2</code></td>
+      <td style="text-align: left"><code>[ 0, 0 ]</code></td>
+      <td style="text-align: left">The bottom-right</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><code>width</code></td>
+      <td style="text-align: left"><code>float</code></td>
+      <td style="text-align: left"><code>1</code></td>
+      <td style="text-align: left">The width</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><code>color</code></td>
+      <td style="text-align: left"><code>Color</code></td>
+      <td style="text-align: left"><code>[ 0, 0, 0, 1 ]</code></td>
+      <td style="text-align: left">The fill color</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="stardustmarkpolyline">Stardust.mark.polyline</h2>
+
+<p>Polyline marks draw lines to connect the data items:</p>
+
+<pre><code class="language-javascript">let polylineMark = Stardust.mark.polyline();
+let polylines = Stardust.mark.create(polylineMark, platform);
+</code></pre>
+
+<p>Attributes:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">Name</th>
+      <th style="text-align: left">Type</th>
+      <th style="text-align: left">Default</th>
+      <th style="text-align: left">Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left"><code>p</code></td>
+      <td style="text-align: left"><code>Vector2</code></td>
+      <td style="text-align: left"><code>[ 0, 0 ]</code></td>
+      <td style="text-align: left">The point</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><code>width</code></td>
+      <td style="text-align: left"><code>float</code></td>
+      <td style="text-align: left"><code>1</code></td>
+      <td style="text-align: left">The width</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><code>color</code></td>
+      <td style="text-align: left"><code>Color</code></td>
+      <td style="text-align: left"><code>[ 0, 0, 0, 1 ]</code></td>
+      <td style="text-align: left">The fill color</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="stardustmarkwedge">Stardust.mark.wedge</h2>
+
+<p>Wedge marks:</p>
+
+<pre><code class="language-javascript">let wedgeMark = Stardust.mark.wedge();
+let wedges = Stardust.mark.create(wedgeMark, platform);
+</code></pre>
+
+<p>Attributes:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">Name</th>
+      <th style="text-align: left">Type</th>
+      <th style="text-align: left">Default</th>
+      <th style="text-align: left">Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left"><code>p1</code></td>
+      <td style="text-align: left"><code>Vector2</code></td>
+      <td style="text-align: left"><code>[ 0, 0 ]</code></td>
+      <td style="text-align: left">The starting point</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><code>theta1</code></td>
+      <td style="text-align: left"><code>float</code></td>
+      <td style="text-align: left"><code>0</code></td>
+      <td style="text-align: left">The starting angle</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><code>theta2</code></td>
+      <td style="text-align: left"><code>float</code></td>
+      <td style="text-align: left"><code>0</code></td>
+      <td style="text-align: left">The ending angle</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><code>length</code></td>
+      <td style="text-align: left"><code>float</code></td>
+      <td style="text-align: left"><code>10</code></td>
+      <td style="text-align: left">The length of the wedge</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><code>width</code></td>
+      <td style="text-align: left"><code>float</code></td>
+      <td style="text-align: left"><code>1</code></td>
+      <td style="text-align: left">The width of the wedge</td>
+    </tr>
+    <tr>
+      <td style="text-align: left"><code>color</code></td>
+      <td style="text-align: left"><code>Color</code></td>
+      <td style="text-align: left"><code>[ 0, 0, 0, 1 ]</code></td>
+      <td style="text-align: left">The color</td>
+    </tr>
+  </tbody>
+</table>
+
+        </div>
+    </section>
+    <footer>
+        <hr />
+        <p>Copyright Donghao Ren, Bongshin Lee, and Tobias Höllerer, 2016-2017. License: BSD-3-Clause.</p>
+    </footer>
+    <script type="text/javascript">
+        hljs.initHighlightingOnLoad();
+    </script>
+    <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-101038640-1', 'auto');
+    ga('send', 'pageview');
+
+    </script>
+</body>
+</html>
