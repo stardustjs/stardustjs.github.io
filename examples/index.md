@@ -15,6 +15,8 @@ Stardust Examples
     <li><a href="{{base}}/examples/daily-activities"><img src="{{base}}/examples/daily-activities/preview_small.png" /><div class="overlay"><span>Daily Activities</span></div></a></li>
     <li><a href="{{base}}/examples/parametric-functions"><img src="{{base}}/examples/parametric-functions/preview_small.png" /><div class="overlay"><span>Parametric Functions</span></div></a></li>
     <li><a href="{{base}}/examples/scatterplot"><img src="{{base}}/examples/scatterplot/preview_small.png" /><div class="overlay"><span>Scatterplot</span></div></a></li>
+    <li><a href="{{base}}/examples/text"><img src="{{base}}/examples/text/preview_small.png" /><div class="overlay"><span>Text Rendering</span></div></a></li>
+    <li><a href="{{base}}/examples/shader"><img src="{{base}}/examples/shader/preview_small.png" /><div class="overlay"><span>Custom Shader</span></div></a></li>
     <li><a href="{{base}}/examples/webvr"><img src="{{base}}/examples/webvr/preview_small.png" /><div class="overlay"><span>WebVR Example</span></div></a></li>
 </ul>
 
