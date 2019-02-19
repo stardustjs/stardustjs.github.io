@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1040">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+    <meta name="keywords" content="Stardust,visualization,WebGL,javascript">
+
+    <title>Stardust Example: Use with three.js</title>
+
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/styles/atom-one-light.min.css" />
+    <link rel="stylesheet" type="text/css" href="/css/main.css" />
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.8.0/highlight.min.js"></script>
+</head>
+<body>
+    <header>
+        <a href="/">Home</a>
+<a href="/examples">Examples</a>
+<a href="/documentation">Documentation</a>
+<a href="/playground">Playground</a>
+<a href="https://github.com/stardustjs/">Source</a>
+    </header>
+    <section>
+        <h1>Stardust Example: Use with three.js</h1>
+<iframe class="example-container" src="content.html" width="960px" height="500px" scrolling="no" sandbox="allow-popups allow-scripts allow-forms allow-same-origin"></iframe>
+<p>Using Stardust with <a href="https://threejs.org/">three.js</a>.</p>
+
+<h2>index.html</h2>
+<pre><code class="highlight html">&lt;!DOCTYPE html&gt;
+&lt;meta charset&#x3D;&quot;utf-8&quot; &#x2F;&gt;
+&lt;link rel&#x3D;&quot;stylesheet&quot; href&#x3D;&quot;..&#x2F;common&#x2F;style.css&quot; type&#x3D;&quot;text&#x2F;css&quot; &#x2F;&gt;
+&lt;style type&#x3D;&quot;text&#x2F;css&quot;&gt;
+  #main-canvas {
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+&lt;&#x2F;style&gt;
+&lt;canvas id&#x3D;&quot;main-canvas&quot;&gt;&lt;&#x2F;canvas&gt;
+&lt;script src&#x3D;&quot;https:&#x2F;&#x2F;cdnjs.cloudflare.com&#x2F;ajax&#x2F;libs&#x2F;three.js&#x2F;101&#x2F;three.min.js&quot;&gt;&lt;&#x2F;script&gt;
+&lt;script src&#x3D;&quot;..&#x2F;common&#x2F;OrbitControls.js&quot;&gt;&lt;&#x2F;script&gt;
+&lt;script src&#x3D;&quot;..&#x2F;common&#x2F;stardust&#x2F;stardust.bundle.js&quot; type&#x3D;&quot;text&#x2F;javascript&quot;&gt;&lt;&#x2F;script&gt;
+&lt;script type&#x3D;&quot;text&#x2F;javascript&quot;&gt;
+  &#x2F;&#x2F; Setup the canvas
+  var canvas &#x3D; document.getElementById(&quot;main-canvas&quot;);
+  var context &#x3D; canvas.getContext(&quot;webgl&quot;);
+  var width &#x3D; 960;
+  var height &#x3D; 470;
+  var devicePixelRatio &#x3D; window.devicePixelRatio || 1;
+  canvas.width &#x3D; width * devicePixelRatio;
+  canvas.height &#x3D; height * devicePixelRatio;
+  canvas.style.width &#x3D; width + &quot;px&quot;;
+  canvas.style.height &#x3D; height + &quot;px&quot;;
+
+  &#x2F;&#x2F; Create THREE renderer
+  var renderer &#x3D; new THREE.WebGLRenderer({
+    context: context
+  });
+  renderer.setSize(canvas.width, canvas.height);
+  renderer.setClearColor(0x202020, 1);
+
+  &#x2F;&#x2F; Create THREE camera
+  var camera &#x3D; new THREE.PerspectiveCamera(60, width &#x2F; height, 0.1, 1000);
+  camera.position.set(-30, 60, 70);
+  camera.lookAt(0, 0, 0);
+
+  &#x2F;&#x2F; Here we use the OrbitControls provided by THREE&#39;s examples
+  var controls &#x3D; new THREE.OrbitControls(camera, canvas);
+  controls.minDistance &#x3D; 50;
+  controls.maxDistance &#x3D; 200;
+  controls.zoomSpeed &#x3D; 0.5;
+  controls.rotateSpeed &#x3D; 0.2;
+  controls.enableDamping &#x3D; true;
+  controls.dampingFactor &#x3D; 0.1;
+  controls.autoRotate &#x3D; true;
+  controls.autoRotateSpeed &#x3D; 0.5;
+
+  &#x2F;&#x2F; Create THREE scene
+  var scene &#x3D; new THREE.Scene();
+
+  &#x2F;&#x2F; Add a cube to the scene
+  var material &#x3D; new THREE.MeshLambertMaterial({
+    color: 0x00afaf,
+    side: THREE.DoubleSide
+  });
+  var ambientLight &#x3D; new THREE.AmbientLight(0x333333);
+  scene.add(ambientLight);
+  var spotLight &#x3D; new THREE.SpotLight(0xffffff);
+  spotLight.position.set(100, 300, 200);
+  scene.add(spotLight);
+
+  var cube &#x3D; new THREE.Mesh(new THREE.BoxGeometry(10, 10, 10), material);
+  scene.add(cube);
+  var dodecahedron &#x3D; new THREE.Mesh(new THREE.DodecahedronGeometry(8), material);
+  dodecahedron.position.set(-20, 0, 0);
+  scene.add(dodecahedron);
+  var icosahedron &#x3D; new THREE.Mesh(new THREE.IcosahedronGeometry(8), material);
+  icosahedron.position.set(20, 0, 0);
+  scene.add(icosahedron);
+
+  function* lorenzAttractor() {
+    var sigma &#x3D; 10;
+    var beta &#x3D; 8 &#x2F; 3;
+    var rho &#x3D; 28;
+    var x &#x3D; 1;
+    var y &#x3D; 1;
+    var z &#x3D; 1;
+    var t &#x3D; 0;
+
+    for (let iter &#x3D; 0; iter &lt; 10000; iter++) {
+      var dx &#x3D; sigma * (y - x);
+      var dy &#x3D; rho * x - y - x * z;
+      var dz &#x3D; -beta * z + x * y;
+      var dt &#x3D; 0.01;
+      yield { x, y, z, t };
+      x +&#x3D; dx * dt;
+      y +&#x3D; dy * dt;
+      z +&#x3D; dz * dt;
+      t +&#x3D; dt;
+    }
+  }
+
+  &#x2F;&#x2F; Create Stardust platform
+  var points &#x3D; Array.from(lorenzAttractor());
+  var platform &#x3D; Stardust.platform(&quot;webgl&quot;, context);
+  var scaleColor &#x3D; Stardust.scale.custom(&#x60;hcl2rgb(Color(value, 0.5, 0.5, 1))&#x60;);
+
+  var lines &#x3D; Stardust.mark.create(Stardust.mark.polyline3d(), platform);
+  lines.attr(&quot;p&quot;, d &#x3D;&gt; [d.x, d.y, d.z]);
+  lines.attr(&quot;width&quot;, 0.2);
+  lines.attr(&quot;color&quot;, scaleColor(d &#x3D;&gt; d.t));
+  lines.data(points);
+
+  var circles &#x3D; Stardust.mark.create(Stardust.mark.circle3d(), platform);
+  circles.attr(&quot;center&quot;, d &#x3D;&gt; [d.x, d.y, d.z]);
+  circles.attr(&quot;radius&quot;, 0.3);
+  circles.attr(&quot;color&quot;, scaleColor(d &#x3D;&gt; d.t));
+  circles.data(points);
+
+  function render() {
+    controls.update();
+    spotLight.position.set(camera.position.x, camera.position.y, camera.position.z);
+
+    &#x2F;&#x2F; Reset THREE&#39;s gl state. This is important!
+    this.renderer.state.reset();
+    renderer.clear();
+    renderer.render(scene, camera);
+
+    &#x2F;&#x2F; Set platform&#39;s matrix and camera position from THREE&#39;s camera
+    platform.setMatrixView(camera.matrixWorldInverse.toArray(), camera.projectionMatrix.toArray());
+    platform.setCameraPosition(new Stardust.Vector3(camera.position.x, camera.position.y, camera.position.z));
+
+    &#x2F;&#x2F; Render Stardust elements
+    lines.render();
+    circles.render();
+
+    requestAnimationFrame(render);
+  }
+  requestAnimationFrame(render);
+&lt;&#x2F;script&gt;
+</code></pre>
+
+    </section>
+    <footer>
+        <hr />
+        <p>Copyright Donghao Ren, Bongshin Lee, and Tobias Höllerer, 2016-2017. License: BSD-3-Clause.</p>
+    </footer>
+    <script type="text/javascript">
+        hljs.initHighlightingOnLoad();
+    </script>
+    <script>
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+    ga('create', 'UA-101038640-1', 'auto');
+    ga('send', 'pageview');
+
+    </script>
+</body>
+</html>
